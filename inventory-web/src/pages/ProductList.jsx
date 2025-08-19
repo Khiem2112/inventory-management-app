@@ -17,14 +17,22 @@ import {
   TextField,
 } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
-
+import AddProductDialog from '../components/AddProductDiaLog';
 import useFetchProducts from '../hooks/Product/useFetchProducts';
 import { useAuth } from '../context/AuthContext';
+import { useState } from 'react';
 
 function ProductsList() {
-  const { productItems, isFetchingProducts, fetchProductsError } = useFetchProducts();
-  const { userData } = useAuth(); 
-
+  const { productItems, isFetchingProducts, fetchProductsError } = useFetchProducts()
+  const { userData } = useAuth()
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const handleOpenDialog = () => {
+    setIsDialogOpen(true);
+  };
+  // Function to close the dialog
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+  };
   // --- Conditional Rendering for Loading and Errors ---
   if (isFetchingProducts) {
     return (
@@ -99,12 +107,15 @@ function ProductsList() {
           <Button
             variant="contained" // Fills the button with the theme's primary color
             startIcon={<AddCircleOutlineIcon />} // Displays an icon to the left of the button text
-            onClick={() => console.log("New Product button clicked")} // A function that is executed when the button is clicked
+            onClick = {handleOpenDialog} // A function that is executed when the button is clicked
           >
             New Product
           </Button>
         </Box>
       </Box>
+
+          {/* The Add Product Dialog */}
+      <AddProductDialog open = {isDialogOpen} onClose={handleCloseDialog}/>
 
       <Paper 
         elevation={3} // Adds a shadow effect to the component, with a value of 3 (higher is more prominent)
