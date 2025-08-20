@@ -23,12 +23,17 @@ import { useAuth } from '../context/AuthContext';
 import { useState } from 'react';
 
 function ProductsList() {
-  const { productItems, isFetchingProducts, fetchProductsError } = useFetchProducts()
+  const { productItems, isFetchingProducts, fetchProductsError, FetchProducts} = useFetchProducts()
   const { userData } = useAuth()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const handleOpenDialog = () => {
     setIsDialogOpen(true);
   };
+
+  const handleAddedProduct =() => {
+    console.log('Trigger handle add product|refresh table')
+    FetchProducts()
+  }
   // Function to close the dialog
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
@@ -115,7 +120,7 @@ function ProductsList() {
       </Box>
 
           {/* The Add Product Dialog */}
-      <AddProductDialog open = {isDialogOpen} onClose={handleCloseDialog}/>
+      <AddProductDialog open = {isDialogOpen} onClose={handleCloseDialog} onProductAdded={handleAddedProduct}/>
 
       <Paper 
         elevation={3} // Adds a shadow effect to the component, with a value of 3 (higher is more prominent)

@@ -21,7 +21,7 @@ import { useEffect, useState } from "react";
 import useAddNewProduct from "../hooks/Product/useAddNewProduct"
 import CloseIcon from '@mui/icons-material/Close'
 // The component now receives open and onClose as props
-const AddProductDialog = ({ open, onClose }) => {
+const AddProductDialog = ({ open, onClose, onProductAdded }) => {
   // Local states and variables
   const [currentMeasurement, setCurrentMeasurement] = useState("kg") // Initial state should be an empty string
   const [currentProductName, setCurrentProductName] = useState('')
@@ -51,8 +51,10 @@ const AddProductDialog = ({ open, onClose }) => {
       setCurrentMeasurement('kg')
       setCurrentInternalPrice(0)
       setCurrentSellingPrice(0)
+      console.log('Trigger re fetch when we close the vgrrg')
+      onProductAdded()
     }
-  }, [congratulationResponse, onClose])
+  }, [congratulationResponse])
   // Render status messages (loading, error, success)
   const renderStatus = () => {
     if (isAddingProduct) {

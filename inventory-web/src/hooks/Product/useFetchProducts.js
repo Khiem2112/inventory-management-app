@@ -10,8 +10,7 @@ const useFetchProduct = () => {
   const {accessToken} = useAuth()
   
   // function to call product data
-  useEffect(() => {
-    const FetchProduct = async () => {
+  const FetchProducts = async () => {
       try {
         // Check if accessToken is available
         if (!accessToken) {
@@ -43,9 +42,10 @@ const useFetchProduct = () => {
         setIsLoadingProducts(false)
       }
     }
-    FetchProduct()
+  useEffect(() => {
+    FetchProducts()
   },[accessToken])// The product can be refetch if user delete or modified a product which we will cover after develop those function)
-  return {productItems, isLoadingProducts, loadingProductsError} 
+  return {productItems, isLoadingProducts, loadingProductsError, FetchProducts} 
 }
 
 export default useFetchProduct
