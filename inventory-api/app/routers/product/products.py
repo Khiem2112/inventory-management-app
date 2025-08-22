@@ -98,7 +98,7 @@ def update_product(
     raise HTTPException(status_code=500, detail=f'Unexpected error: {e}')
   return found_product
 
-@router.delete('/{product_id}', status_code=status.HTTP_204_NO_CONTENT)
+@router.delete('/{product_id}', status_code=status.HTTP_202_ACCEPTED)
 def delete_product(
   product_id: int,
   current_user: UserORM = Depends(get_current_user),
@@ -112,6 +112,9 @@ def delete_product(
       raise HTTPException(status_code=404, detail="Not found product")
     db.delete(product_orm)
     db.commit()
+    return {
+      'message': f'Successfully deleted product_id {product_id}'
+    }
   except SQLAlchemyError as e:
     raise HTTPException(status_code=500, detail=f"database error: {e}")
   except Exception as e:

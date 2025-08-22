@@ -10,6 +10,7 @@ export const AuthProvider = ({ children }) => {
   const [accessToken, setAccessToken] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userData, setUserData] = useState(null);
+  const [beLocation, setBELocation] = useState('http://127.0.0.1:8000')
 
   useEffect(() => {
     const access_token = localStorage.getItem('accessToken');
@@ -39,7 +40,13 @@ export const AuthProvider = ({ children }) => {
 		localStorage.removeItem('accessToken')
 	}
   // 💡 Only expose the data and the token setter, not the data setter
-  const value = { accessToken, setAccessToken, isLoading, userData, logout};
+  const value = {
+    accessToken, 
+    setAccessToken, 
+    isLoading, 
+    userData, 
+    logout,
+    beLocation};
 
   return (
     <AuthContext.Provider value={value}>

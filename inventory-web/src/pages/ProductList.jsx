@@ -15,8 +15,11 @@ import {
   Alert,
   Button,
   TextField,
+  IconButton
 } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import AddProductDialog from '../components/AddProductDiaLog';
 import useFetchProducts from '../hooks/Product/useFetchProducts';
 import { useAuth } from '../context/AuthContext';
@@ -26,6 +29,7 @@ function ProductsList() {
   const { productItems, isFetchingProducts, fetchProductsError, FetchProducts} = useFetchProducts()
   const { userData } = useAuth()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [triggeredRow, setTriggeredRow] = useState(null)
   const handleOpenDialog = () => {
     setIsDialogOpen(true);
   };
@@ -148,6 +152,9 @@ function ProductsList() {
                 <TableCell sx={{ fontWeight: 'bold', color: 'white' }}>Measurement</TableCell>
                 <TableCell sx={{ fontWeight: 'bold', color: 'white' }}>Selling Price</TableCell>
                 <TableCell sx={{ fontWeight: 'bold', color: 'white' }}>Internal Price</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', color: 'white' }}>Edit</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', color: 'white' }}>Delete</TableCell>
+
               </TableRow>
             </TableHead>
             <TableBody> {/* Defines the main body section of the table */}
@@ -169,6 +176,17 @@ function ProductsList() {
                     <TableCell>{product.Measurement}</TableCell>
                     <TableCell>${product.SellingPrice}</TableCell>
                     <TableCell>${product.InternalPrice}</TableCell>
+                    <TableCell>
+                      <IconButton aria-label ='modify'>
+                        <EditIcon/>
+                      </IconButton>
+                    </TableCell>
+                    <TableCell>
+                      <IconButton aria-label ='delete'>
+                        <DeleteIcon/>
+                      </IconButton>
+                    </TableCell>
+
                   </TableRow>
                 ))
               )}
