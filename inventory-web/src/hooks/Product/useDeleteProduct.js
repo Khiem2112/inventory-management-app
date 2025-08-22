@@ -54,4 +54,4 @@ const useDeleteProduct = () => {
   return { isDeletingProduct, deletingError, deleteSuccessMessage, DeleteProduct };
 };
 
-export default useDeleteProduct;inventory-web/src/hooks/Product/useDeleteProduct.js
+export default useDeleteProduct
