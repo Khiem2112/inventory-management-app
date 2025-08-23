@@ -1,6 +1,6 @@
 // src/pages/ProductsList.jsx
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -15,12 +15,13 @@ import {
   Alert,
   Button,
   TextField,
-  IconButton
+  IconButton,
+  requirePropFactory
 } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import AddProductDialog from '../components/AddProductDiaLog';
+import ProductActionDialog from '../components/ProductActionDialog';
 import useFetchProducts from '../hooks/Product/useFetchProducts';
 import { useAuth } from '../context/AuthContext';
 import { useState } from 'react';
@@ -29,14 +30,32 @@ function ProductsList() {
   const { productItems, isFetchingProducts, fetchProductsError, FetchProducts} = useFetchProducts()
   const { userData } = useAuth()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [triggeredRow, setTriggeredRow] = useState(null)
-  const handleOpenDialog = () => {
+  const [dialogType, setDialogType] = useState(false)
+  const [triggeredProduct, setTriggeredProduct] = useState(null)
+  const handleOpenAddDialog = () => {
     setIsDialogOpen(true);
+    setDialogType('add')
   };
-
-  const handleAddedProduct =() => {
-    console.log('Trigger handle add product|refresh table')
+  // Function to handle actions with product: add or modify
+  const handleChangeProductData = useCallback(() => {
+    console.log('Trigger handle add product | refresh table')
     FetchProducts()
+  },[])
+  const handleDeleteProduct = () => {
+    
+  }
+  const handleModifyProduct = (ProductData) => {
+    /**
+     * @param {ProductData}:
+      * ProductName
+      * Measurement
+      * SellingPrice
+      * InternalPrice
+     */
+    console.log(`Is opening modify product table ${ProductData?.ProductName}`)
+    setTriggeredProduct(ProductData)
+    setIsDialogOpen(true)
+    setDialogType('modify')
   }
   // Function to close the dialog
   const handleCloseDialog = () => {
@@ -78,8 +97,6 @@ function ProductsList() {
     );
   }
   // --- End of Conditional Rendering ---
-
-
   return (
     <Box
       sx={{ 
@@ -116,7 +133,7 @@ function ProductsList() {
           <Button
             variant="contained" // Fills the button with the theme's primary color
             startIcon={<AddCircleOutlineIcon />} // Displays an icon to the left of the button text
-            onClick = {handleOpenDialog} // A function that is executed when the button is clicked
+            onClick = {handleOpenAddDialog} // A function that is executed when the button is clicked
           >
             New Product
           </Button>
@@ -124,7 +141,20 @@ function ProductsList() {
       </Box>
 
           {/* The Add Product Dialog */}
-      <AddProductDialog open = {isDialogOpen} onClose={handleCloseDialog} onProductAdded={handleAddedProduct}/>
+      {dialogType === 'add' ? 
+      <ProductActionDialog
+      open = {isDialogOpen} 
+      onClose={handleCloseDialog}
+      onProductChanged={handleChangeProductData}
+      tag = 'add' /> : 
+      dialogType === 'modify' ?
+      <ProductActionDialog
+      open = {isDialogOpen} 
+      onClose={handleCloseDialog}
+      onProductChanged={handleChangeProductData}
+      product={triggeredProduct}
+      tag = 'modify' /> : null}
+      
 
       <Paper 
         elevation={3} // Adds a shadow effect to the component, with a value of 3 (higher is more prominent)
@@ -177,7 +207,7 @@ function ProductsList() {
                     <TableCell>${product.SellingPrice}</TableCell>
                     <TableCell>${product.InternalPrice}</TableCell>
                     <TableCell>
-                      <IconButton aria-label ='modify'>
+                      <IconButton aria-label ='modify' onClick={() => {handleModifyProduct(product)}}>
                         <EditIcon/>
                       </IconButton>
                     </TableCell>
