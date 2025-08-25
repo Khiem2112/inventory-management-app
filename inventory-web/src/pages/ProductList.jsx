@@ -24,10 +24,15 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import ProductActionDialog from '../components/ProductActionDialog';
 import useFetchProducts from '../hooks/Product/useFetchProducts';
 import { useAuth } from '../context/AuthContext';
-import { useState } from 'react';
+import { useState, useEffect   } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchProductsAsync } from '../myRedux/slices/ProductsSlice';
 
 function ProductsList() {
-  const { productItems, isFetchingProducts, fetchProductsError, FetchProducts} = useFetchProducts()
+  const dispatch = useDispatch();
+  const productItems = useSelector(state => state.products.items);
+  const isFetchingProducts = useSelector(state => state.products.status === 'loading');
+  const fetchProductsError = useSelector(state => state.products.error);
   const { userData } = useAuth()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [dialogType, setDialogType] = useState(false)
@@ -36,6 +41,11 @@ function ProductsList() {
     setIsDialogOpen(true);
     setDialogType('add')
   };
+  // fetch data using a Redux thunk on mount
+  useEffect(() => {
+    dispatch(fetchProductsAsync());
+    }, [dispatch]);
+
   // Function to handle actions with product: add or modify
   const handleChangeProductData = useCallback(() => {
     console.log('Trigger handle add product | refresh table')

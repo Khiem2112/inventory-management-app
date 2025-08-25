@@ -12,9 +12,12 @@ import ProductDisplayFetch from './pages/ProductFetch.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import ProtectedRoute from './utils/PrivatedRoute.jsx';
 import ProductsList from './pages/ProductList.jsx';
+import { Provider } from 'react-redux';
+import store from './myRedux/store/store.js';
 function App() {
   return (
-    <AuthProvider>
+    <Provider store = {store}>
+      <AuthProvider>
       <ThemeProvider theme={theme}>
       <CssBaseline /> {/* Resets CSS and applies base Material Design styles */}
         <Routes>
@@ -27,7 +30,7 @@ function App() {
         </Routes>
     </ThemeProvider>
     </AuthProvider>
-    
+    </Provider>
   );
 }
 
