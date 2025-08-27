@@ -1,34 +1,45 @@
 // src/redux/slices/productSlice.js
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import api from '../../../services/api'; // Assuming you have an api service
 
-// 💡 1. Create a thunk to fetch all products
-export const fetchProductsAsync = createAsyncThunk(
-    'products/fetchProducts',
+import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+import api from "../../services/api.js";
+
+// Async thunks for all API operations
+export const fetchAllProductsAsync = createAsyncThunk(
+    'products/fetchAllProducts',
     async (_, { rejectWithValue }) => {
         try {
             const response = await api.get('/products/all/');
             return response.data;
         } catch (error) {
-            return rejectWithValue(error.response.data);
+            return rejectWithValue(error.message);
         }
     }
 );
 
-// 💡 2. Create a thunk to add a new product
+export const fetchOneProductAsync = createAsyncThunk(
+    'products/fetchOneProductAsync',
+    async (productId, { rejectWithValue }) => {
+        try {
+            const response = await api.get(`/products/${productId}`);
+            return response.data;
+        } catch (error) {
+            return rejectWithValue(error.response.data || error.message);
+        }
+    }
+);
+
 export const addNewProductAsync = createAsyncThunk(
     'products/addNewProduct',
     async (newProductData, { rejectWithValue }) => {
         try {
-            const response = await api.post('/products', newProductData);
+            const response = await api.post('/products/', newProductData);
             return response.data;
         } catch (error) {
-            return rejectWithValue(error.response.data);
+            return rejectWithValue(error.response.data || error.message);
         }
     }
 );
 
-// 💡 3. Create a thunk to update a product
 export const updateProductAsync = createAsyncThunk(
     'products/updateProduct',
     async ({ productId, updatedProductData }, { rejectWithValue }) => {
@@ -36,12 +47,11 @@ export const updateProductAsync = createAsyncThunk(
             const response = await api.put(`/products/${productId}`, updatedProductData);
             return response.data;
         } catch (error) {
-            return rejectWithValue(error.response.data);
+            return rejectWithValue(error.response.data || error.message);
         }
     }
 );
 
-// 💡 4. Create a thunk to delete a product
 export const deleteProductAsync = createAsyncThunk(
     'products/deleteProduct',
     async (productId, { rejectWithValue }) => {
@@ -49,52 +59,87 @@ export const deleteProductAsync = createAsyncThunk(
             await api.delete(`/products/${productId}`);
             return productId;
         } catch (error) {
-            return rejectWithValue(error.response.data);
+            return rejectWithValue(error.response.data || error.message);
         }
     }
 );
 
 const initialState = {
     items: [],
-    status: 'idle',
-    error: null,
+    status: {
+        getAll: 'idle',
+        getOne: 'idle',
+        addOne: 'idle',
+        updateOne: 'idle',
+        deleteOne: 'idle'
+    },
+    error: {
+        getAll: null,
+        getOne: null,
+        addOne: null,
+        updateOne: null,
+        deleteOne: null
+    },
+    selectedProduct: null,
 };
 
-const productSlice = createSlice({
+const productsSlice = createSlice({
     name: 'products',
     initialState,
-    reducers: {}, // No reducers needed for async operations
-    // 💡 Add extraReducers to handle the lifecycle of our thunks
+    reducers: {
+        // Only keep synchronous reducers that are NOT handled by a thunk
+        resetStatus: (state) => {
+            state.status.getAll = 'idle';
+            state.status.getOne = 'idle';
+            state.selectedProduct = null;
+        }
+    },
     extraReducers: (builder) => {
         builder
-            // Handle fetchProductsAsync
-            .addCase(fetchProductsAsync.pending, (state) => {
-                state.status = 'loading';
+            // Handling fetchAllProductsAsync
+            .addCase(fetchAllProductsAsync.pending, (state) => {
+                state.status.getAll = 'loading';
+                state.error.getAll = null;
             })
-            .addCase(fetchProductsAsync.fulfilled, (state, action) => {
-                state.status = 'succeeded';
-                state.items = action.payload; // Update the products array
+            .addCase(fetchAllProductsAsync.fulfilled, (state, action) => {
+                state.status.getAll = 'succeeded';
+                state.items = action.payload;
             })
-            .addCase(fetchProductsAsync.rejected, (state, action) => {
-                state.status = 'failed';
-                state.error = action.payload || action.error.message;
+            .addCase(fetchAllProductsAsync.rejected, (state, action) => {
+                state.status.getAll = 'failed';
+                state.error.getAll = action.payload || action.error.message;
             })
-            // Handle addNewProductAsync
+            // Handling fetchOneProductAsync
+            .addCase(fetchOneProductAsync.pending, (state) => {
+                state.status.getOne = 'loading';
+                state.error.getOne = null;
+            })
+            .addCase(fetchOneProductAsync.fulfilled, (state, action) => {
+                state.status.getOne = 'succeeded';
+                state.selectedProduct = action.payload;
+            })
+            .addCase(fetchOneProductAsync.rejected, (state, action) => {
+                state.status.getOne = 'failed';
+                state.error.getOne = action.payload || action.error.message;
+            })
+            // Handling addNewProductAsync
             .addCase(addNewProductAsync.fulfilled, (state, action) => {
-                state.items.push(action.payload); // Add the new product to the state
+                state.items.push(action.payload);
             })
-            // Handle updateProductAsync
+            // Handling updateProductAsync
             .addCase(updateProductAsync.fulfilled, (state, action) => {
-                const index = state.items.findIndex(p => p.ProductId === action.payload.ProductId);
+                const index = state.items.findIndex(p => p.id === action.payload.id);
                 if (index !== -1) {
-                    state.items[index] = action.payload; // Update the product in the state
+                    state.items[index] = action.payload;
                 }
             })
-            // Handle deleteProductAsync
+            // Handling deleteProductAsync
             .addCase(deleteProductAsync.fulfilled, (state, action) => {
-                state.items = state.items.filter(p => p.ProductId !== action.payload); // Remove the deleted product
+                state.items = state.items.filter(p => p.id !== action.payload);
             });
     },
 });
 
-export default productSlice.reducer;
+// Export the synchronous action creators and the main reducer
+export const { resetStatus } = productsSlice.actions;
+export default productsSlice.reducer;

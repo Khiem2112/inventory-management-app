@@ -26,24 +26,26 @@ import useFetchProducts from '../hooks/Product/useFetchProducts';
 import { useAuth } from '../context/AuthContext';
 import { useState, useEffect   } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchProductsAsync } from '../myRedux/slices/ProductsSlice';
+import { fetchAllProductsAsync} from '../myRedux/slices/ProductsSlice';
 
 function ProductsList() {
   const dispatch = useDispatch();
   const productItems = useSelector(state => state.products.items);
-  const isFetchingProducts = useSelector(state => state.products.status === 'loading');
-  const fetchProductsError = useSelector(state => state.products.error);
+  const isFetchingProducts = useSelector(state => state.products.status.getAll === 'pending');
+  const fetchProductsError = useSelector(state => state.products.error.getAll);
   const { userData } = useAuth()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [dialogType, setDialogType] = useState(false)
   const [triggeredProduct, setTriggeredProduct] = useState(null)
+  const currentProductsState = useSelector((state)=> state.products) // Just or seeing or products store object
+  console.log(`Full products object stored is: ${JSON.stringify(currentProductsState, null, 2)}`) // Just or seeing or products store object
   const handleOpenAddDialog = () => {
     setIsDialogOpen(true);
     setDialogType('add')
   };
   // fetch data using a Redux thunk on mount
   useEffect(() => {
-    dispatch(fetchProductsAsync());
+    dispatch(fetchAllProductsAsync());
     }, [dispatch]);
 
   // Function to handle actions with product: add or modify
@@ -95,13 +97,14 @@ function ProductsList() {
   }
 
   if (fetchProductsError) {
+    console.log(`fetch Products Error is ${fetchProductsError}`)
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
         <Alert 
           severity="error" // Changes the alert's color and icon to match an error state
         >
           <Typography variant="h6">Failed to load products:</Typography>
-          <Typography>{fetchProductsError}</Typography>
+          <Typography>{String(fetchProductsError)} </Typography>
         </Alert>
       </Box>
     );
