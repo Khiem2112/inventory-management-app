@@ -44,7 +44,8 @@ export const updateProductAsync = createAsyncThunk(
     'products/updateProduct',
     async ({ productId, updatedProductData }, { rejectWithValue }) => {
         try {
-            const response = await api.put(`/products/${productId}`, updatedProductData);
+            console.log(`Called ProId is: ${productId}`)
+            const response = await api.put(`products/${productId}`, updatedProductData);
             return response.data;
         } catch (error) {
             return rejectWithValue(error.response.data || error.message);
@@ -92,6 +93,9 @@ const productsSlice = createSlice({
             state.status.getAll = 'idle';
             state.status.getOne = 'idle';
             state.selectedProduct = null;
+        },
+        setSelectedProduct: (state,action) => {
+            state.selectedProduct = action.payload
         }
     },
     extraReducers: (builder) => {
@@ -124,14 +128,30 @@ const productsSlice = createSlice({
             })
             // Handling addNewProductAsync
             .addCase(addNewProductAsync.fulfilled, (state, action) => {
-                state.items.push(action.payload);
+                state.items = [...state.items, action.payload];
             })
             // Handling updateProductAsync
             .addCase(updateProductAsync.fulfilled, (state, action) => {
-                const index = state.items.findIndex(p => p.id === action.payload.id);
-                if (index !== -1) {
-                    state.items[index] = action.payload;
-                }
+                const index = state.items.findIndex(
+                (product) => product.ProductId === action.payload.ProductId
+            );
+
+            // If the product is found, update it
+            if (index !== -1) {
+                state.items[index] = action.payload;
+            }
+                state.error.updateOne =null
+                state.status.updateOne = 'idle'
+            })
+            .addCase(updateProductAsync.pending, (state) => {
+                state.status.updateOne = 'pending'
+                state.error.updateOne = null
+                
+            })
+            .addCase(updateProductAsync.rejected, (state,action) => {
+                state.status.updateOne = 'failed'
+                state.error.updateOne = action.payload || action.error.message
+                
             })
             // Handling deleteProductAsync
             .addCase(deleteProductAsync.fulfilled, (state, action) => {
@@ -141,5 +161,5 @@ const productsSlice = createSlice({
 });
 
 // Export the synchronous action creators and the main reducer
-export const { resetStatus } = productsSlice.actions;
+export const { resetStatus,setSelectedProduct } = productsSlice.actions;
 export default productsSlice.reducer;

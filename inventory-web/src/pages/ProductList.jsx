@@ -26,19 +26,21 @@ import useFetchProducts from '../hooks/Product/useFetchProducts';
 import { useAuth } from '../context/AuthContext';
 import { useState, useEffect   } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchAllProductsAsync} from '../myRedux/slices/ProductsSlice';
+import { fetchAllProductsAsync, setSelectedProduct} from '../myRedux/slices/ProductsSlice';
 
 function ProductsList() {
   const dispatch = useDispatch();
   const productItems = useSelector(state => state.products.items);
+  console.log(`Products data loading in ProductsList: ${JSON.stringify(productItems)}`)
   const isFetchingProducts = useSelector(state => state.products.status.getAll === 'pending');
-  const fetchProductsError = useSelector(state => state.products.error.getAll);
+  const fetchProductsError = useSelector(state => state.products.error.getAll)
+  const Error = useSelector(state => state.products.error.getAll);
   const { userData } = useAuth()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [dialogType, setDialogType] = useState(false)
-  const [triggeredProduct, setTriggeredProduct] = useState(null)
+  const selectedProduct = useSelector((state)=> state.products.selectedProduct)
   const currentProductsState = useSelector((state)=> state.products) // Just or seeing or products store object
-  console.log(`Full products object stored is: ${JSON.stringify(currentProductsState, null, 2)}`) // Just or seeing or products store object
+  // console.log(`Full products object stored is: ${JSON.stringify(currentProductsState, null, 2)}`) // Just or seeing or products store object
   const handleOpenAddDialog = () => {
     setIsDialogOpen(true);
     setDialogType('add')
@@ -51,7 +53,7 @@ function ProductsList() {
   // Function to handle actions with product: add or modify
   const handleChangeProductData = useCallback(() => {
     console.log('Trigger handle add product | refresh table')
-    FetchProducts()
+    dispatch(fetchAllProductsAsync())
   },[])
   const handleDeleteProduct = () => {
     
@@ -65,7 +67,8 @@ function ProductsList() {
       * InternalPrice
      */
     console.log(`Is opening modify product table ${ProductData?.ProductName}`)
-    setTriggeredProduct(ProductData)
+    dispatch(setSelectedProduct(ProductData))
+    console.log(`Selected product is: ${JSON.stringify(selectedProduct)}`)
     setIsDialogOpen(true)
     setDialogType('modify')
   }
@@ -165,7 +168,6 @@ function ProductsList() {
       open = {isDialogOpen} 
       onClose={handleCloseDialog}
       onProductChanged={handleChangeProductData}
-      product={triggeredProduct}
       tag = 'modify' /> : null}
       
 
