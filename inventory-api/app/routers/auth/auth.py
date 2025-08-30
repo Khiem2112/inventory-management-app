@@ -1,17 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 import sqlalchemy
 from sqlalchemy.exc import IntegrityError
 from app.database.connection import get_db
 from app.database.user_model import User as UserORM, RefreshToken as RefreshTokenORM
 from passlib.context import CryptContext
-from jose import jwt
+from jose import jwt, JWTError
 from datetime import datetime, timedelta, timezone
 from app.schemas.user import UserLogin
 from app.schemas.refresh_token import RefreshToken
 from app.utils.random_string import generate_random_string
 from app.utils.dependencies import get_current_user
+from app.utils.logger import setup_logger
 import os
 import secrets
 # from app.schemas.user import UserLogin
@@ -20,6 +22,8 @@ router = APIRouter(
   prefix='/auth',
   tags =['auth']
 )
+# Declare logger for debugging
+logger = setup_logger()
 # Declare the Encrypt model
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto") 
 # The JWT settings
@@ -57,11 +61,17 @@ def create_refresh_token(user_id: int):
   return refresh_token, jti, expires_at
 
 @router.post('/login')
-def login_user(UserLogin: UserLogin, db:Session = Depends(get_db)):
+def login_user(UserLogin: UserLogin = None,
+               form_data: OAuth2PasswordRequestForm = Depends(), 
+               db:Session = Depends(get_db)):
   # Get to user first
   try:
-    Username = UserLogin.Username
-    Password = UserLogin.Password
+    if not form_data.username and UserLogin and UserLogin.Username:
+      Username = UserLogin.Username
+      Password = UserLogin.Password
+    elif form_data:
+      Username = form_data.username
+      Password = form_data.password
     query  = db.query(UserORM).filter(UserORM.Username ==Username)
     found_user = query.one_or_none()
     # Check if user exists
@@ -85,10 +95,11 @@ def login_user(UserLogin: UserLogin, db:Session = Depends(get_db)):
     access_token = create_access_token(input_data= access_token_payload, time_delta=time_delta)
     
     refresh_token, refresh_token_jti, expires_at = create_refresh_token(user_id=found_user.UserId)
-    # Save new refresh token to database
+    # Save new refresh token (hashed) to database
+    refresh_token_hashed = pwd_context.hash(refresh_token)
     new_refresh_token_record = RefreshTokenORM (
       Jti = refresh_token_jti,
-      TokenHash = refresh_token,
+      TokenHash = refresh_token_hashed,
       UserId = found_user.UserId,
       ExpiresAt = expires_at
     )
@@ -112,71 +123,67 @@ def login_user(UserLogin: UserLogin, db:Session = Depends(get_db)):
     'message':'Login successfully',
     'token_type': "bearer"
     }
-  
-@router.post('/get-token')
-def login_user(form_data: OAuth2PasswordRequestForm = Depends(), db:Session = Depends(get_db)):
-  # Get to user first
+# Get new access token from refresh token
+@router.post('/refresh-token', status_code=status.HTTP_202_ACCEPTED)
+def refresh_token(request_data: RefreshToken, db: Session = Depends(get_db)):
+  # try to decode refresh token
   try:
-    Username = form_data.username
-    Password = form_data.password
-    query  = db.query(UserORM).filter(UserORM.Username ==Username)
-    found_user = query.one_or_none()
-    # Check if user exists
-    if not found_user:
-      raise HTTPException(
-              status_code=status.HTTP_401_UNAUTHORIZED,
-              detail="Incorrect username or password",
-          )
-    if not pwd_context.verify(Password, found_user.PasswordHash):
-      raise HTTPException(
-              status_code=status.HTTP_401_UNAUTHORIZED,
-              detail="Incorrect username or password",
-          )
-    # Create access token and refresh token for user
-    
-    ## access token
-    access_token_payload = {
-            'sub': found_user.Username,
-            'user_id': found_user.UserId}
-    time_delta = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(input_data = access_token_payload, time_delta=time_delta)
-    
-    refresh_token, refresh_token_jti, expires_at = create_refresh_token(user_id=found_user.UserId)
-    # Save new refresh token to database
-    new_refresh_token_record = RefreshTokenORM (
-      Jti = refresh_token_jti,
-      TokenHash = refresh_token,
-      UserId = found_user.UserId,
-      ExpiresAt = expires_at
-    )
+    payload = jwt.decode(request_data.Token, key = SECRET_KEY, algorithms=[ALGORITHM])
+    print(f'Payload is: {payload}')
+    UserId = payload.get('UserId')
+    Jti = payload.get('Jti')
+    # if fail throw error that refresh token is not valid
+    if not Jti or not UserId:
+      raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Unauthorized payload')
+  except JWTError:
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired refresh token.")
+  
+  
+  # if succeed continue to check if received refresh token match with old refresh token in db
+  try:
+    result = db.query(RefreshTokenORM,UserORM).filter(
+      RefreshTokenORM.UserId == UserORM.UserId,
+      RefreshTokenORM.Jti == Jti,
+      RefreshTokenORM.UserId == int(UserId)).one_or_none()
+    # Check if the return tuple is empty
+    if not result:
+      raise HTTPException(status_code=401, detail='Invalid or used refresh token')
+    # if not throw error that in matching refresh token
+    old_refresh_token, found_user = result
+    if not old_refresh_token:
+      raise HTTPException(status_code=401, detail='Invalid or used refresh token')
+    if not pwd_context.verify(request_data.Token, old_refresh_token.TokenHash):
+      raise HTTPException(status_code=401, detail='Invalid or used refresh token')
+    # Remove existing refresh token
+    db.delete(old_refresh_token)
+    db.commit()
+  except IntegrityError as e:
+    raise HTTPException(status_code=400, detail=f"Error when finding refresh token")
+      # if success give user new access token and refresh token
+  # Create new access token and refresh token if refresh token is valid
+  try:
+    # Find that user
+    new_access_token_payload = {
+      "sub": found_user.Username,
+      'UserId': UserId
+    }
+    new_access_token = create_access_token(input_data= new_access_token_payload, 
+                                           time_delta=timedelta(ACCESS_TOKEN_EXPIRE_MINUTES))
+    new_refresh_token, new_jti, new_expires_at = create_refresh_token(user_id=UserId)
+    # Save new record to db
+    new_refresh_token_record = RefreshTokenORM(
+      Jti=new_jti,
+      TokenHash=new_refresh_token,
+      UserId=found_user.UserId,
+      ExpiresAt = new_expires_at
+  )
     db.add(new_refresh_token_record)
     db.commit()
-    db.refresh(new_refresh_token_record)
   except IntegrityError as e:
-    db.rollback() # Rollback on error
-    # Catch the specific error for a duplicate username
-    raise HTTPException(
-      status_code=status.HTTP_400_BAD_REQUEST,
-      detail=f"Cannot create the new refresh_token record {e}"
-    )
-  except sqlalchemy.exc.SQLAlchemyError as e:
-    db.rollback()
-    raise HTTPException(status_code=500, detail=f"Database error: {e}")
+    raise HTTPException(status_code= 400, detail= f"Error when saving new refresh token to db: {e}")
+  except Exception as e:
+    raise HTTPException(status_code=500, detail=f'Unexpected error when create new tokens: {e}')
   return {
-    'access_token': access_token,
-    'refresh_token': refresh_token,
-    'is_accept': True,
-    'message':'Login successfully',
-    'token_type': "bearer"
-    }
-  
-# Get new access token from refresh token
-@router.post('refresh-token', status_code=status.HTTP_202_ACCEPTED)
-def refresh_token(refresh_token: RefreshToken, db: Session = Depends(get_db)):
-  # try to decode refresh token
-    # if fail throw error that refresh token is not valid
-    # if succeed continue to check if received refresh token match with old refresh token in db
-      # if not throw error that in matching refresh token
-        # then delete old refresh token
-      # if success give user new access token and refresh token
-  pass
+    'refresh_token' :new_refresh_token,
+    'access_token': new_access_token
+  }

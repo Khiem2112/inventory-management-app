@@ -12,7 +12,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 ALGORITHM = os.getenv('ALGORITHM')
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv('ACCESS_TOKEN_EXPIRE_MINUTES'))
 # This tells FastAPI to expect a token in the Authorization header
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/get-token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 def create_access_token (input_data: dict, time_delta: timedelta |None = None):
   # make a copy of input data
   input_data_copy = input_data.copy()
