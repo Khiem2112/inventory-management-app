@@ -61,17 +61,23 @@ def create_refresh_token(user_id: int):
   return refresh_token, jti, expires_at
 
 @router.post('/login')
-def login_user(UserLogin: UserLogin = None,
-               form_data: OAuth2PasswordRequestForm = Depends(), 
+def login_user_with_json(UserLogin: UserLogin = None,
                db:Session = Depends(get_db)):
+  return process_login_user(Username=UserLogin.Username,
+                            Password=UserLogin.Password,
+                            db = db)
+@router.post('/get-token')
+def login_user_with_form(UserForm: OAuth2PasswordRequestForm = Depends(),
+                        db:Session = Depends(get_db)):
+  return process_login_user(Username= UserForm.username,
+                            Password= UserForm.password,
+                            db = db)
+  
+def process_login_user (Username:str, 
+                        Password: str, 
+                        db: Session = Depends(get_db)):
   # Get to user first
   try:
-    if not form_data.username and UserLogin and UserLogin.Username:
-      Username = UserLogin.Username
-      Password = UserLogin.Password
-    elif form_data:
-      Username = form_data.username
-      Password = form_data.password
     query  = db.query(UserORM).filter(UserORM.Username ==Username)
     found_user = query.one_or_none()
     # Check if user exists
