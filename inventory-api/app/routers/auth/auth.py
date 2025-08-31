@@ -193,3 +193,9 @@ def refresh_token(request_data: RefreshToken, db: Session = Depends(get_db)):
     'refresh_token' :new_refresh_token,
     'access_token': new_access_token
   }
+@router.get('/validate', status_code=status.HTTP_202_ACCEPTED)
+def validate_token(current_user: UserORM = Depends(get_current_user),
+                   ):
+  return {
+    "message": "Validated successfully"
+  }

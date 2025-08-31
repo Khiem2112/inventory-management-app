@@ -7,7 +7,6 @@ const ProtectedRoute = ({children}) => {
   const [isActive, setIsActive] = useState(false)
   const [isValidating, setIsValidating]= useState(true)
   const [error, setError] = useState(null)
-  const BE_Location = "127.0.0.1:8000"
   console.log('ProtectedRoute:', 'isLoading:', isLoading, 'accessToken:', accessToken);
 
   //check if user are logged in
@@ -19,10 +18,10 @@ const ProtectedRoute = ({children}) => {
       setError(null) //Clear previous error
       // Call API to BE
       console.log(`Start call API with accessToken: ${accessToken} and ${isLoading}`)
-      const response = await fetch (`${BE_Location}/auth/validate`, {
+      const response = await fetch (`http://127.0.0.1:8000/auth/validate`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${accessToken}`
+          'Authorization': `Bearer ${accessToken}`,
         },
         cache: 'no-store'
       })
@@ -40,7 +39,7 @@ const ProtectedRoute = ({children}) => {
     catch (err) {
       // localStorage.removeItem('accessToken')
       setError(err.message)
-      console.error(`Face error : ${error}`)
+      console.error(`Face error`, err)
     }
     finally {
       // End validating after all

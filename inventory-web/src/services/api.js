@@ -32,16 +32,42 @@ api.interceptors.request.use(
 // This allows you to handle errors globally
 api.interceptors.response.use(
   (response) => {
-    return response;
+    return response
   },
-  (error) => {
-    // For example, if a 401 Unauthorized error occurs, you can redirect the user to the login page
-    if (error.response.status === 401) {
-      console.log('Unauthorized request. Redirecting to login.');
-      // You would dispatch a Redux action to log out the user here
+  async (error) => {
+    const originalRequest = error.config
+    // Check if the error is 401 and it's not a refresh token request
+    if (error.response.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true; // Mark as retried to avoid infinite loops
+
+      const refreshToken = localStorage.getItem('refreshToken')
+      if (refreshToken) {
+        try {
+          const response = await axios.post('http://127.0.0.1:8000/auth/refresh-token', {
+            Token: refreshToken,
+          });
+          
+          const newAccessToken = response.data.access_token
+          const newRefreshToken = response.data.refresh_token
+
+          // Update tokens in localStorage and the default headers
+          localStorage.setItem('accessToken', newAccessToken)
+          localStorage.setItem('refreshToken', newRefreshToken)
+          axios.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`
+
+          // Retry the original request
+          return api(originalRequest)
+        } catch (refreshError) {
+          // If the refresh token also fails, log the user out
+          localStorage.removeItem('accessToken')
+          localStorage.removeItem('refreshToken')
+          // You would also redirect to the login page here
+          return Promise.reject(refreshError)
+        }
+      }
     }
-    return Promise.reject(error);
+    return Promise.reject(error)
   }
 );
 
-export default api;
+export default api

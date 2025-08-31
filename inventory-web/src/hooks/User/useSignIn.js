@@ -6,7 +6,7 @@ const useSignIn = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
   const [isSuccess, setIsSuccess] = useState(null)
-  const {setAccessToken} = useAuth()
+  const {setAccessToken, setRefreshToken} = useAuth()
   const SignIn = async (username, password) => {
     // Reset state before making a new API call
     setIsLoading(true)
@@ -34,10 +34,14 @@ const useSignIn = () => {
 
     const success =  responseData?.is_accept
     const receivedAccessToken = responseData?.access_token
-    if (success && receivedAccessToken) {
+    const receivedRefreshToken = responseData?.refresh_token
+    if (success && receivedAccessToken && receivedRefreshToken) {
       localStorage.setItem('accessToken', receivedAccessToken)
+      localStorage.setItem('refreshToken', receivedRefreshToken)
+      // Set access token and refresh token
       setIsSuccess(Boolean(success))
       setAccessToken(receivedAccessToken)
+      setRefreshToken(receivedRefreshToken)
     }
     else {
       setIsSuccess(false)
