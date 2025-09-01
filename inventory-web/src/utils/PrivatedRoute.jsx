@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { useAuth } from "../context/AuthContext"
 import { Navigate } from "react-router-dom"
+import api from "../services/api"
 const ProtectedRoute = ({children}) => {
   // Declare local state
   const {accessToken, isLoading} = useAuth()
@@ -17,14 +18,8 @@ const ProtectedRoute = ({children}) => {
       setIsValidating(true)
       setError(null) //Clear previous error
       // Call API to BE
-      console.log(`Start call API with accessToken: ${accessToken} and ${isLoading}`)
-      const response = await fetch (`http://127.0.0.1:8000/auth/validate`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-        cache: 'no-store'
-      })
+      console.log(`Start call API with accessToken: ${accessToken} and loading status: ${isLoading}`)
+      const response = await api.get('/auth/validate')
       // Case when API response not ok
       if (!response.ok) {
         setIsValidating(false)

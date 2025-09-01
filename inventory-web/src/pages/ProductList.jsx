@@ -16,7 +16,8 @@ import {
   Button,
   TextField,
   IconButton,
-  requirePropFactory
+  requirePropFactory,
+  Pagination
 } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import EditIcon from '@mui/icons-material/Edit';
@@ -26,7 +27,9 @@ import useFetchProducts from '../hooks/Product/useFetchProducts';
 import { useAuth } from '../context/AuthContext';
 import { useState, useEffect   } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchAllProductsAsync, setSelectedProduct} from '../myRedux/slices/ProductsSlice';
+import { fetchAllProductsAsync,
+         setSelectedProduct,
+         fetchSomeProductsAsync} from '../myRedux/slices/ProductsSlice';
 
 function ProductsList() {
   const dispatch = useDispatch();
@@ -40,6 +43,11 @@ function ProductsList() {
   const [dialogType, setDialogType] = useState(false)
   const selectedProduct = useSelector((state)=> state.products.selectedProduct)
   const currentProductsState = useSelector((state)=> state.products) // Just or seeing or products store object
+  // Pagination
+  const pageCount = useSelector(state => state.products.pagination.totalPage)
+  const currentPage = useSelector (state => state.products.pagination.currentPage)
+  console.log(`Current page is ${currentPage}`)
+  const limit = useSelector(state => state.products.pagination.limit)
   // console.log(`Full products object stored is: ${JSON.stringify(currentProductsState, null, 2)}`) // Just or seeing or products store object
   const handleOpenAddDialog = () => {
     setIsDialogOpen(true);
@@ -47,13 +55,13 @@ function ProductsList() {
   };
   // fetch data using a Redux thunk on mount
   useEffect(() => {
-    dispatch(fetchAllProductsAsync());
+    dispatch(fetchSomeProductsAsync());
     }, [dispatch]);
 
   // Function to handle actions with product: add or modify
   const handleChangeProductData = useCallback(() => {
     console.log('Trigger handle add product | refresh table')
-    dispatch(fetchAllProductsAsync())
+    dispatch(fetchSomeProductsAsync())
   },[])
   const handleDeleteProduct = () => {
     
@@ -71,6 +79,13 @@ function ProductsList() {
     console.log(`Selected product is: ${JSON.stringify(selectedProduct)}`)
     setIsDialogOpen(true)
     setDialogType('modify')
+  }
+  const handlePageChange = (event, value) => {
+    const params = {
+      page : value,
+      limit: limit
+    }
+    dispatch(fetchSomeProductsAsync(params))
   }
   // Function to close the dialog
   const handleCloseDialog = () => {
@@ -237,6 +252,11 @@ function ProductsList() {
               )}
             </TableBody>
           </Table>
+          <Pagination count = {pageCount}
+                  page = {currentPage}
+                  onChange = {handlePageChange}
+                  color = 'primary'
+      />
         </TableContainer>
       </Paper>
     </Box>

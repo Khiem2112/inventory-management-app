@@ -15,6 +15,19 @@ export const fetchAllProductsAsync = createAsyncThunk(
         }
     }
 );
+export const fetchSomeProductsAsync = createAsyncThunk(
+    'products/fetchSomeProducts',
+    async (params = {page : 1, limit : 10}, {rejectWithValue}) => {
+        try {
+            console.log('toi dang duoc goi nef ba con oi')
+            const response = await api.get(`/products/`, {params})
+            return response.data
+        }
+        catch (error) {
+            return rejectWithValue(error.message)
+        }
+    }
+)
 
 export const fetchOneProductAsync = createAsyncThunk(
     'products/fetchOneProductAsync',
@@ -67,8 +80,14 @@ export const deleteProductAsync = createAsyncThunk(
 
 const initialState = {
     items: [],
+    pagination : {
+        currentPage: 1,
+        totalPage: null,
+        limit: 10
+    },
     status: {
         getAll: 'idle',
+        getSome: 'idle',
         getOne: 'idle',
         addOne: 'idle',
         updateOne: 'idle',
@@ -76,6 +95,7 @@ const initialState = {
     },
     error: {
         getAll: null,
+        getSome: 'idle',
         getOne: null,
         addOne: null,
         updateOne: null,
@@ -112,6 +132,23 @@ const productsSlice = createSlice({
             .addCase(fetchAllProductsAsync.rejected, (state, action) => {
                 state.status.getAll = 'failed';
                 state.error.getAll = action.payload || action.error.message;
+            })
+            // Handling fetchSomeProductsAsync
+            .addCase(fetchSomeProductsAsync.pending, (state) => {
+                state.status.getSome = 'loading';
+                state.error.getSome = null;
+            })
+            .addCase(fetchSomeProductsAsync.fulfilled, (state, action) => {
+                state.status.getSome = 'succeeded';
+                state.items = action.payload.items;
+                // Set pagination state
+                state.pagination.currentPage = action.payload.current_page
+                state.pagination.limit = action.payload.limit
+                state.pagination.totalPage = action.payload.total_page
+            })
+            .addCase(fetchSomeProductsAsync.rejected, (state, action) => {
+                state.status.getSome = 'failed';
+                state.error.getSome = action.payload || action.error.message;
             })
             // Handling fetchOneProductAsync
             .addCase(fetchOneProductAsync.pending, (state) => {
