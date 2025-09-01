@@ -17,6 +17,7 @@ api.interceptors.request.use(
   (config) => {
     // You can get the user's token from local storage or Redux here
     const token = localStorage.getItem('accessToken');
+    console.log('Sending API request:', config.method, config.url, 'with data:', config.data || 'no data');
     if (token) {
       // Add the authorization header to every request
       config.headers.Authorization = `Bearer ${token}`;

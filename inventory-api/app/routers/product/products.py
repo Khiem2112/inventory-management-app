@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from app.schemas.product import ProductPublic, ProductBase, ProductCreate, ProductUpdate
@@ -13,7 +13,10 @@ router = APIRouter(
   tags =['product']
 )
 # Get all products
-@router.get('/all/', response_model= List[ProductPublic], status_code=status.HTTP_200_OK)
+@router.get('/all/', 
+            response_model= List[ProductPublic], 
+            status_code=status.HTTP_200_OK, 
+            description="Fetch all product records")  
 def get_products (current_user: UserORM = Depends(get_current_user), db: Session = Depends(get_db)):
   # Get all products
   try:
@@ -24,7 +27,33 @@ def get_products (current_user: UserORM = Depends(get_current_user), db: Session
         raise HTTPException(status_code=500, detail=f"Database error: {e}")
   except Exception as e:
       raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
-
+    
+# Get some products with parameter
+@router.get('/',
+            status_code=status.HTTP_200_OK, 
+            # description="Get products based on page number"
+            )
+def get_products (current_user: UserORM = Depends(get_current_user),
+                  db:Session = Depends(get_db),
+                  page: int = Query(1, ge=1, description="Page index, must be >= 1"),
+                  limit: int = Query(10, ge=10, le=25, description="Item per page, from 10 to 25")):
+  try:
+    # Set offset and limit
+    offset = (page-1)*limit
+    total_products = db.query(ProductORM).count()
+    products = db.query(ProductORM).order_by(ProductORM.ProductId).offset(offset).limit(limit).all()
+    total_page =( total_products + limit - 1 ) // limit
+    return {
+      "items" : products,
+      "current_page" : page,
+      "limit" : limit,
+      "total_page" : total_page,
+    }
+  except SQLAlchemyError as e:
+    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Database error: {e}")
+  except Exception as e:
+    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {e}")
+  
 # Get one product by id 
 @router.get('/{product_id}', response_model=ProductPublic, status_code=status.HTTP_200_OK)
 def get_product_by_id(
