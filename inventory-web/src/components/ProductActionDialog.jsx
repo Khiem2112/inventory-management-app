@@ -9,7 +9,10 @@ import useUpdateProduct from "../hooks/Product/useUpdateProduct";
 import CloseIcon from '@mui/icons-material/Close';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 
-const ProductActionDialog = ({ open, onClose, tag, product, onProductChanged }) => {
+import { addNewProductAsync, updateProductAsync, fetchAllProductsAsync } from "../myRedux/slices/ProductsSlice";
+import { useDispatch, useSelector } from "react-redux";
+
+const ProductActionDialog = ({ open, onClose, tag, onProductChanged }) => {
   // Local states for the form
   const [currentProductName, setCurrentProductName] = useState('');
   const [currentMeasurement, setCurrentMeasurement] = useState('kg');
@@ -17,22 +20,40 @@ const ProductActionDialog = ({ open, onClose, tag, product, onProductChanged }) 
   const [currentInternalPrice, setCurrentInternalPrice] = useState(0);
 
   // Use hooks for the two actions
-  const { isAddingProduct, addingProductError, congratulationResponse, addNewProduct } = useAddNewProduct();
-  const { isUpdatingProduct, updatingProductError, updateSuccessMessage, UpdateProduct } = useUpdateProduct();
+    // Hooks for Add one new product
+  const dispatch = useDispatch()
+  const product = useSelector((state)=> state.products.selectedProduct)
+  const addingProductError = useSelector((state)=> state.products.error.addOne)
+  const updatingProductError = useSelector((state)=> state.products.error.updateOne)
+  const isAddingProduct = useSelector((state)=> state.products.status.addOne === 'pending')
+  const isUpdatingProduct = useSelector((state)=> state.products.status.updateOne === 'pending')
+  const [congratulationResponse, setCongratulationResponse] = useState(null);
+  const [updateSuccessMessage, setUpdateSuccessMessage ] = useState(null);
   // Function to clear all data fields
-  const clearAll = () => {
+  console.log(`Product adding status is: ${isAddingProduct}`)
+  const clearProductInfo = () => {
     setCurrentProductName('');
     setCurrentMeasurement('kg');
     setCurrentSellingPrice(0);
     setCurrentInternalPrice(0);
   }
+  const clearMessageBar = () => {
+    setCongratulationResponse(null)
+    setUpdateSuccessMessage(null)
+  }
+  const clearAll = () => {
+    clearProductInfo()
+    clearMessageBar()
+  }
   // Use an effect to load data and clear the form
   useEffect(() => {
-    if (tag === 'modify' && product) {
-      setCurrentProductName(product.ProductName);
-      setCurrentMeasurement(product.Measurement);
-      setCurrentSellingPrice(product.SellingPrice);
-      setCurrentInternalPrice(product.InternalPrice);
+    if (tag === 'modify') {
+      console.log(`Loaded the Dialog with product data: ${JSON.stringify(product)}`)
+      setCurrentProductName(product?.ProductName);
+      setCurrentMeasurement(product?.Measurement);
+      setCurrentSellingPrice(product?.SellingPrice);
+      setCurrentInternalPrice(product?.InternalPrice);
+      clearMessageBar()
     } else if (tag === 'add') {
       clearAll()
     }
@@ -41,8 +62,9 @@ const ProductActionDialog = ({ open, onClose, tag, product, onProductChanged }) 
   // Use an effect to handle post-action cleanup and parent refresh
   useEffect(() => {
     if (congratulationResponse || updateSuccessMessage) {
-      onProductChanged(); // Tell the parent to re-fetch
-      clearAll()
+      console.log(`Update Success Message is: ${updateSuccessMessage}`)
+      dispatch(fetchAllProductsAsync()); // Tell the parent to re-fetch
+      clearProductInfo()
     }
   }, [congratulationResponse, updateSuccessMessage, onProductChanged]);
 
@@ -55,27 +77,56 @@ const ProductActionDialog = ({ open, onClose, tag, product, onProductChanged }) 
       InternalPrice: parseFloat(currentInternalPrice)
     };
     if (tag === 'add') {
-      addNewProduct(productData);
+      const promise = dispatch(addNewProductAsync(productData));
+      promise.then( result => {
+        setCongratulationResponse(result.payload || 'Successfully add a new product')
+      })
+
+      // Set the dispatch result to the success message
+      setCongratulationResponse(response)
     } else if (tag === 'modify') {
-      UpdateProduct(product.ProductId, productData);
+      console.log(`Full product data is: ${JSON.stringify(product)}`)
+      console.log(`Product id is: ${product.ProductId}`)
+      console.log(`Product data is: ${JSON.stringify(productData)}`)
+      console.log(`Thunk to update product data is: ${updateProductAsync(product.ProductId, productData)}`)
+      const promise = dispatch(updateProductAsync({
+        productId: product.ProductId,
+        updatedProductData: productData
+      }
+      ));
+      console.log(`Current status of the promise is: ${JSON.stringify(promise)}`)
+      console.log(`Updating error: ${updatingProductError}`)
+      console.log(`Updating status: ${isUpdatingProduct}`)
+      console.log(`Adding status: ${isAddingProduct}`)
+
+      promise.then(result => {
+        console.log(`update error is: ${useSelector(state => state.products.error.updateOne)}`)
+        setUpdateSuccessMessage(result.payload|| `Successfully update product ${product.ProductId}`)
+      })
+      setUpdateSuccessMessage('hehehee')
     }
   };
   
   // Render status messages for both actions
   const renderStatus = () => {
-    if (isAddingProduct || isUpdatingProduct) {
+    if (isAddingProduct|| isUpdatingProduct) {
+      console.log('rendering loading')
+      console.log(`Updating status: ${isUpdatingProduct}`)
+      console.log(`Adding status: ${isAddingProduct}`)
+      console.log(`Updating error: ${updatingProductError}`)
       return <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 2 }}>
         <CircularProgress size={24} /><Typography sx={{ ml: 2 }}>Processing...</Typography>
       </Box>;
     }
     if (addingProductError || updatingProductError) {
       const errorMsg = addingProductError || updatingProductError;
-      return <Alert severity="error" sx={{ mt: 2 }}>{errorMsg}</Alert>;
+      return <Alert severity="error" sx={{ mt: 2 }}>{JSON.stringify(errorMsg)}</Alert>;
     }
     if (congratulationResponse || updateSuccessMessage) {
     let successMsg = congratulationResponse || updateSuccessMessage;
     // Check if successMsg is not a string, and if so, set it to 'Success'
     if (typeof successMsg !== 'string') {
+      console.log(`Type of successMsg is not string, we use a simple word instead ${JSON.stringify(successMsg)}`)
       successMsg = 'Success';
     }
     return (

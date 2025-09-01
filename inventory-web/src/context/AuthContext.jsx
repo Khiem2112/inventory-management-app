@@ -7,11 +7,13 @@ const AuthContext = createContext(null);
 // Step 2: Set up global variables
 export const AuthProvider = ({ children }) => {
   // Common state
-  const [accessToken, setAccessToken] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [userData, setUserData] = useState(null);
+  const [accessToken, setAccessToken] = useState(null)
+  const [refreshToken, setRefreshToken] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [userData, setUserData] = useState(null)
   const [beLocation, setBELocation] = useState('http://127.0.0.1:8000')
 
+  // re-update access_token
   useEffect(() => {
     const access_token = localStorage.getItem('accessToken');
     if (access_token) {
@@ -33,6 +35,24 @@ export const AuthProvider = ({ children }) => {
     setIsLoading(false);
   }, []);
 
+  // re-update refresh token
+  useEffect(() => {
+    const refresh_token = localStorage.getItem('refreshToken');
+    if (refresh_token) {
+      try {
+        setRefreshToken(refresh_token);
+        console.log(`we receive new decoded refresh token: ${decodedToken}`);
+      } catch (err) {
+        console.log(`Failed to load or decode token: ${err.message}`);
+        // Clear bad token if decoding fails
+        // localStorage.removeItem('refreshToken');
+        setRefreshToken(null);
+      }
+    }
+    // Always set loading to false after initial check
+    setIsLoading(false);
+  }, []);
+
 	//Logout function
 	const logout = () => {
 		setAccessToken(null)
@@ -42,7 +62,9 @@ export const AuthProvider = ({ children }) => {
   // 💡 Only expose the data and the token setter, not the data setter
   const value = {
     accessToken, 
-    setAccessToken, 
+    setAccessToken,
+    refreshToken,
+    setRefreshToken, 
     isLoading, 
     userData, 
     logout,

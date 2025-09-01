@@ -1,47 +1,71 @@
 // src/redux/slices/productSlice.js
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import api from '../../../services/api'; // Assuming you have an api service
 
-// 💡 1. Create a thunk to fetch all products
-export const fetchProductsAsync = createAsyncThunk(
-    'products/fetchProducts',
+import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+import api from "../../services/api.js";
+
+// Async thunks for all API operations
+export const fetchAllProductsAsync = createAsyncThunk(
+    'products/fetchAllProducts',
     async (_, { rejectWithValue }) => {
         try {
             const response = await api.get('/products/all/');
             return response.data;
         } catch (error) {
-            return rejectWithValue(error.response.data);
+            return rejectWithValue(error.message);
+        }
+    }
+);
+export const fetchSomeProductsAsync = createAsyncThunk(
+    'products/fetchSomeProducts',
+    async (params = {page : 1, limit : 10}, {rejectWithValue}) => {
+        try {
+            console.log('toi dang duoc goi nef ba con oi')
+            const response = await api.get(`/products/`, {params})
+            return response.data
+        }
+        catch (error) {
+            return rejectWithValue(error.message)
+        }
+    }
+)
+
+export const fetchOneProductAsync = createAsyncThunk(
+    'products/fetchOneProductAsync',
+    async (productId, { rejectWithValue }) => {
+        try {
+            const response = await api.get(`/products/${productId}`);
+            return response.data;
+        } catch (error) {
+            return rejectWithValue(error.response.data || error.message);
         }
     }
 );
 
-// 💡 2. Create a thunk to add a new product
 export const addNewProductAsync = createAsyncThunk(
     'products/addNewProduct',
     async (newProductData, { rejectWithValue }) => {
         try {
-            const response = await api.post('/products', newProductData);
+            const response = await api.post('/products/', newProductData);
             return response.data;
         } catch (error) {
-            return rejectWithValue(error.response.data);
+            return rejectWithValue(error.response.data || error.message);
         }
     }
 );
 
-// 💡 3. Create a thunk to update a product
 export const updateProductAsync = createAsyncThunk(
     'products/updateProduct',
     async ({ productId, updatedProductData }, { rejectWithValue }) => {
         try {
-            const response = await api.put(`/products/${productId}`, updatedProductData);
+            console.log(`Called ProId is: ${productId}`)
+            const response = await api.put(`products/${productId}`, updatedProductData);
             return response.data;
         } catch (error) {
-            return rejectWithValue(error.response.data);
+            return rejectWithValue(error.response.data || error.message);
         }
     }
 );
 
-// 💡 4. Create a thunk to delete a product
 export const deleteProductAsync = createAsyncThunk(
     'products/deleteProduct',
     async (productId, { rejectWithValue }) => {
@@ -49,52 +73,130 @@ export const deleteProductAsync = createAsyncThunk(
             await api.delete(`/products/${productId}`);
             return productId;
         } catch (error) {
-            return rejectWithValue(error.response.data);
+            return rejectWithValue(error.response.data || error.message);
         }
     }
 );
 
 const initialState = {
     items: [],
-    status: 'idle',
-    error: null,
+    pagination : {
+        currentPage: 1,
+        totalPage: null,
+        limit: 10
+    },
+    status: {
+        getAll: 'idle',
+        getSome: 'idle',
+        getOne: 'idle',
+        addOne: 'idle',
+        updateOne: 'idle',
+        deleteOne: 'idle'
+    },
+    error: {
+        getAll: null,
+        getSome: 'idle',
+        getOne: null,
+        addOne: null,
+        updateOne: null,
+        deleteOne: null
+    },
+    selectedProduct: null,
 };
 
-const productSlice = createSlice({
+const productsSlice = createSlice({
     name: 'products',
     initialState,
-    reducers: {}, // No reducers needed for async operations
-    // 💡 Add extraReducers to handle the lifecycle of our thunks
+    reducers: {
+        // Only keep synchronous reducers that are NOT handled by a thunk
+        resetStatus: (state) => {
+            state.status.getAll = 'idle';
+            state.status.getOne = 'idle';
+            state.selectedProduct = null;
+        },
+        setSelectedProduct: (state,action) => {
+            state.selectedProduct = action.payload
+        }
+    },
     extraReducers: (builder) => {
         builder
-            // Handle fetchProductsAsync
-            .addCase(fetchProductsAsync.pending, (state) => {
-                state.status = 'loading';
+            // Handling fetchAllProductsAsync
+            .addCase(fetchAllProductsAsync.pending, (state) => {
+                state.status.getAll = 'loading';
+                state.error.getAll = null;
             })
-            .addCase(fetchProductsAsync.fulfilled, (state, action) => {
-                state.status = 'succeeded';
-                state.items = action.payload; // Update the products array
+            .addCase(fetchAllProductsAsync.fulfilled, (state, action) => {
+                state.status.getAll = 'succeeded';
+                state.items = action.payload;
             })
-            .addCase(fetchProductsAsync.rejected, (state, action) => {
-                state.status = 'failed';
-                state.error = action.payload || action.error.message;
+            .addCase(fetchAllProductsAsync.rejected, (state, action) => {
+                state.status.getAll = 'failed';
+                state.error.getAll = action.payload || action.error.message;
             })
-            // Handle addNewProductAsync
+            // Handling fetchSomeProductsAsync
+            .addCase(fetchSomeProductsAsync.pending, (state) => {
+                state.status.getSome = 'loading';
+                state.error.getSome = null;
+            })
+            .addCase(fetchSomeProductsAsync.fulfilled, (state, action) => {
+                state.status.getSome = 'succeeded';
+                state.items = action.payload.items;
+                // Set pagination state
+                state.pagination.currentPage = action.payload.current_page
+                state.pagination.limit = action.payload.limit
+                state.pagination.totalPage = action.payload.total_page
+            })
+            .addCase(fetchSomeProductsAsync.rejected, (state, action) => {
+                state.status.getSome = 'failed';
+                state.error.getSome = action.payload || action.error.message;
+            })
+            // Handling fetchOneProductAsync
+            .addCase(fetchOneProductAsync.pending, (state) => {
+                state.status.getOne = 'loading';
+                state.error.getOne = null;
+            })
+            .addCase(fetchOneProductAsync.fulfilled, (state, action) => {
+                state.status.getOne = 'succeeded';
+                state.selectedProduct = action.payload;
+            })
+            .addCase(fetchOneProductAsync.rejected, (state, action) => {
+                state.status.getOne = 'failed';
+                state.error.getOne = action.payload || action.error.message;
+            })
+            // Handling addNewProductAsync
             .addCase(addNewProductAsync.fulfilled, (state, action) => {
-                state.items.push(action.payload); // Add the new product to the state
+                state.items = [...state.items, action.payload];
             })
-            // Handle updateProductAsync
+            // Handling updateProductAsync
             .addCase(updateProductAsync.fulfilled, (state, action) => {
-                const index = state.items.findIndex(p => p.ProductId === action.payload.ProductId);
-                if (index !== -1) {
-                    state.items[index] = action.payload; // Update the product in the state
-                }
+                const index = state.items.findIndex(
+                (product) => product.ProductId === action.payload.ProductId
+            );
+
+            // If the product is found, update it
+            if (index !== -1) {
+                state.items[index] = action.payload;
+            }
+                state.error.updateOne =null
+                state.status.updateOne = 'idle'
             })
-            // Handle deleteProductAsync
+            .addCase(updateProductAsync.pending, (state) => {
+                state.status.updateOne = 'pending'
+                state.error.updateOne = null
+                
+            })
+            .addCase(updateProductAsync.rejected, (state,action) => {
+                state.status.updateOne = 'failed'
+                state.error.updateOne = action.payload || action.error.message
+                
+            })
+            // Handling deleteProductAsync
             .addCase(deleteProductAsync.fulfilled, (state, action) => {
-                state.items = state.items.filter(p => p.ProductId !== action.payload); // Remove the deleted product
+                state.items = state.items.filter(p => p.id !== action.payload);
             });
     },
 });
 
-export default productSlice.reducer;
+// Export the synchronous action creators and the main reducer
+export const { resetStatus,setSelectedProduct } = productsSlice.actions;
+export default productsSlice.reducer;

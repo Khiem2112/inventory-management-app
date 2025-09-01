@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react"
 import { useAuth } from "../context/AuthContext"
 import { Navigate } from "react-router-dom"
+import api from "../services/api"
 const ProtectedRoute = ({children}) => {
   // Declare local state
   const {accessToken, isLoading} = useAuth()
   const [isActive, setIsActive] = useState(false)
   const [isValidating, setIsValidating]= useState(true)
   const [error, setError] = useState(null)
-  const BE_Location = "127.0.0.1:8000"
   console.log('ProtectedRoute:', 'isLoading:', isLoading, 'accessToken:', accessToken);
 
   //check if user are logged in
@@ -18,14 +18,8 @@ const ProtectedRoute = ({children}) => {
       setIsValidating(true)
       setError(null) //Clear previous error
       // Call API to BE
-      console.log(`Start call API with accessToken: ${accessToken} and ${isLoading}`)
-      const response = await fetch (`${BE_Location}/auth/validate`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        },
-        cache: 'no-store'
-      })
+      console.log(`Start call API with accessToken: ${accessToken} and loading status: ${isLoading}`)
+      const response = await api.get('/auth/validate')
       // Case when API response not ok
       if (!response.ok) {
         setIsValidating(false)
@@ -40,7 +34,7 @@ const ProtectedRoute = ({children}) => {
     catch (err) {
       // localStorage.removeItem('accessToken')
       setError(err.message)
-      console.error(`Face error : ${error}`)
+      console.error(`Face error`, err)
     }
     finally {
       // End validating after all

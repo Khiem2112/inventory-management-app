@@ -1,0 +1,8 @@
+CREATE TABLE RefreshToken (
+    Id INT PRIMARY KEY,
+    Jti VARCHAR(36) NOT NULL UNIQUE,
+    TokenHash VARCHAR(255) NOT NULL,
+    UserId INT NOT NULL,
+    ExpiresAt DATETIME NOT NULL,
+    FOREIGN KEY (UserId) REFERENCES [User](UserId)
+);

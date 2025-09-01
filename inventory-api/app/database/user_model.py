@@ -1,7 +1,7 @@
 # app/database/models.py (Corrected version)
 
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column# Keep these
-from sqlalchemy import String, Integer, DateTime, CheckConstraint, text # Import DateTime and text
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship# Keep these
+from sqlalchemy import String, Integer, DateTime, CheckConstraint, text, ForeignKey # Import DateTime and text
 from datetime import datetime
 from typing import Optional, List # Keep Optional for nullable fields
 
@@ -42,8 +42,9 @@ class User(Base):
     CreateDate: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     # OR if your SQL Server has a DEFAULT GETDATE() constraint:
     # CreateDate: Mapped[datetime] = mapped_column(DateTime, server_default=text("GETDATE()"), nullable=False)
-
-
+    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
+        back_populates="user"
+    )
     # Constraints
     __table_args__ = (
         CheckConstraint(
@@ -57,3 +58,13 @@ class User(Base):
     # Optional: For better debugging and representation
     def __repr__(self):
         return f"<User(UserId={self.UserId}, Username='{self.Username}')>"
+class RefreshToken(Base):
+  __tablename__ = 'RefreshToken'
+  Id: Mapped[int] = mapped_column(Integer, nullable=False, primary_key=True, autoincrement=True)
+  Jti: Mapped[str] = mapped_column(String(36), nullable=False, unique=True)  # Corrected to String
+  TokenHash: Mapped[str] = mapped_column(String(255), nullable=False)
+  UserId: Mapped[int] = mapped_column(Integer, ForeignKey('User.UserId'), nullable=False)
+  ExpiresAt: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+  user: Mapped["User"] = relationship(
+        back_populates="refresh_tokens"
+    )
