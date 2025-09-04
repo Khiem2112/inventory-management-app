@@ -1,23 +1,31 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, WebSocket, WebSocketDisconnect
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-from app.schemas.product import ProductPublic, ProductBase, ProductCreate, ProductUpdate
+from app.schemas.product import ProductPublic, ProductBase, ProductCreate, ProductUpdate, ProductBroadcastMessage, ProductBroadcastType
 from app.utils.dependencies import get_current_user
 from app.database.connection import get_db
 from app.database.user_model import User as UserORM
 from app.database.product_model import Product as ProductORM
 from typing import List
+from app.services.socket_manager import ConnectionManager
+from app.utils.logger import setup_logger
+import json
 
 router = APIRouter(
   prefix='/products',
   tags =['product']
 )
+
+# logger
+logger = setup_logger()
+
+manager = ConnectionManager()
 # Get all products
 @router.get('/all/', 
             response_model= List[ProductPublic], 
             status_code=status.HTTP_200_OK, 
             description="Fetch all product records")  
-def get_products (current_user: UserORM = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_products_all (current_user: UserORM = Depends(get_current_user), db: Session = Depends(get_db)):
   # Get all products
   try:
     query = db.query(ProductORM)
@@ -33,7 +41,7 @@ def get_products (current_user: UserORM = Depends(get_current_user), db: Session
             status_code=status.HTTP_200_OK, 
             # description="Get products based on page number"
             )
-def get_products (current_user: UserORM = Depends(get_current_user),
+def get_products_paginated (current_user: UserORM = Depends(get_current_user),
                   db:Session = Depends(get_db),
                   page: int = Query(1, ge=1, description="Page index, must be >= 1"),
                   limit: int = Query(10, ge=10, le=25, description="Item per page, from 10 to 25")):
@@ -54,6 +62,15 @@ def get_products (current_user: UserORM = Depends(get_current_user),
   except Exception as e:
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {e}")
   
+# Auto get some product using websocket
+@router.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
 # Get one product by id 
 @router.get('/{product_id}', response_model=ProductPublic, status_code=status.HTTP_200_OK)
 def get_product_by_id(
@@ -73,7 +90,7 @@ def get_product_by_id(
 
 # Create new product
 @router.post('/', response_model=ProductPublic, status_code=status.HTTP_201_CREATED)
-def create_product(new_product: ProductCreate,
+async def create_product(new_product: ProductCreate,
                    current_user: UserORM = Depends(get_current_user),
                    db: Session = Depends(get_db)
                    ):
@@ -88,6 +105,15 @@ def create_product(new_product: ProductCreate,
     db.add(added_product)
     db.commit()
     db.refresh(added_product)
+    # Broadcast message
+    broadcast_data = ProductPublic.model_validate(added_product)
+    logger.info(f"read broadcast data: {broadcast_data}")
+    message = ProductBroadcastMessage (
+      type=ProductBroadcastType.Add,
+      payload= broadcast_data.model_dump()
+    )
+    logger.info('have create a message')
+    await manager.broadcast(message.model_dump_json())
   except SQLAlchemyError as e:
     db.rollback()
     raise HTTPException(status_code=500, detail =f"Database error {e}")
@@ -97,7 +123,7 @@ def create_product(new_product: ProductCreate,
   return added_product
 
 @router.put('/{product_id}', response_model=ProductPublic, status_code=status.HTTP_200_OK)
-def update_product(
+async def update_product(
   product: ProductUpdate,
   product_id: int,
   current_user: UserORM = Depends(get_current_user),
@@ -119,6 +145,13 @@ def update_product(
     db.add(found_product)
     db.commit()
     db.refresh(found_product)
+    # Broadcast an update message
+    broadcast_data = ProductPublic.model_validate(found_product)
+    message = ProductBroadcastMessage(
+      type =ProductBroadcastType.Update,
+      payload= broadcast_data.model_dump()
+    )
+    await manager.broadcast(message.model_dump_json())
   except SQLAlchemyError as e:
     db.rollback()
     raise HTTPException(status_code=500, detail=f'Database error: {e}')
@@ -128,7 +161,7 @@ def update_product(
   return found_product
 
 @router.delete('/{product_id}', status_code=status.HTTP_202_ACCEPTED)
-def delete_product(
+async def delete_product(
   product_id: int,
   current_user: UserORM = Depends(get_current_user),
   db: Session = Depends(get_db)
@@ -141,10 +174,21 @@ def delete_product(
       raise HTTPException(status_code=404, detail="Not found product")
     db.delete(product_orm)
     db.commit()
+    # broadcast message to all cients
+    broadcast_data = ProductPublic.model_validate(product_orm)
+    message = ProductBroadcastMessage(
+      type = ProductBroadcastType.Delete,
+      payload={
+        "product_id": product_id
+      }
+    )
+    await manager.broadcast(message.model_dump_json())
     return {
       'message': f'Successfully deleted product_id {product_id}'
     }
   except SQLAlchemyError as e:
+    db.rollback()
     raise HTTPException(status_code=500, detail=f"database error: {e}")
   except Exception as e:
+    db.rollback()
     raise HTTPException(status_code=500, detail=f'Unexpected error: {e}')
