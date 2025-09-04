@@ -2,7 +2,11 @@
 
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import api from "../../services/api.js";
-
+import { wsConnectStart, 
+         wsConnectSuccess, 
+         wsConnectError, 
+         wsDisconnect,
+         wsMessageReceive } from "../action/wsActions.js";
 // Async thunks for all API operations
 export const fetchAllProductsAsync = createAsyncThunk(
     'products/fetchAllProducts',
@@ -102,7 +106,9 @@ const initialState = {
         deleteOne: null
     },
     selectedProduct: null,
+    wsStatus: 'uninstantiated'
 };
+
 
 const productsSlice = createSlice({
     name: 'products',
@@ -116,7 +122,18 @@ const productsSlice = createSlice({
         },
         setSelectedProduct: (state,action) => {
             state.selectedProduct = action.payload
-        }
+        },
+        productUpdated: (state, action) => {
+      // Find the product and update it or add it if it's new
+            const index = state.items.findIndex(
+                (product) => product.ProductId === action.payload.ProductId
+            );
+            if (index !== -1) {
+                state.items[index] = action.payload; // Update existing product
+            } else {
+                state.items.push(action.payload); // Add new product
+            }
+            }
     },
     extraReducers: (builder) => {
         builder
@@ -193,10 +210,36 @@ const productsSlice = createSlice({
             // Handling deleteProductAsync
             .addCase(deleteProductAsync.fulfilled, (state, action) => {
                 state.items = state.items.filter(p => p.id !== action.payload);
-            });
+            })
+            .addCase(wsMessageReceive, (state, action) => { // Use the action creator's `type`
+                const message = action.payload;
+                console.log(`We receive socket message: ${message}`)
+                // The rest of your logic remains the same
+                if (message.type === 'product_added' || message.type === 'product_updated') {
+                    const updatedProduct = message.payload;
+                    const index = state.items.findIndex((p) => p.ProductId === updatedProduct.ProductId);
+                    if (index !== -1) {
+                    state.items[index] = updatedProduct;
+                    } else {
+                    state.items.push(updatedProduct);
+                    }
+                }
+            })
+            .addCase(wsConnectStart, (state) => {
+                state.wsStatus = 'connecting';
+            })
+            .addCase(wsConnectSuccess, (state) => {
+                state.wsStatus = 'open';
+            })
+            .addCase(wsConnectError, (state) => {
+                state.wsStatus = 'closed';
+            })
+            .addCase(wsDisconnect, (state) => {
+                state.wsStatus = 'closed';
+            })
     },
 });
 
 // Export the synchronous action creators and the main reducer
-export const { resetStatus,setSelectedProduct } = productsSlice.actions;
+export const { resetStatus,setSelectedProduct, productUpdated } = productsSlice.actions;
 export default productsSlice.reducer;
