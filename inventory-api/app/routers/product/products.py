@@ -66,11 +66,13 @@ def get_products_paginated (current_user: UserORM = Depends(get_current_user),
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
+    logger.info('A client connected to server')
     try:
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+        logger.info('Disconnect to a client')
 # Get one product by id 
 @router.get('/{product_id}', response_model=ProductPublic, status_code=status.HTTP_200_OK)
 def get_product_by_id(
