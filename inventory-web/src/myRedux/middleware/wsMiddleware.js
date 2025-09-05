@@ -77,4 +77,4 @@ const wsMiddleware = () => {
   };
 };
 
-export default wsMiddleware();
+export default wsMiddleware;
