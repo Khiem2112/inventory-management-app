@@ -10,7 +10,7 @@ const store = configureStore({
   reducer: rootReducer,
   // This is the correct way to add middleware
   middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware().concat(wsMiddleware),
+    getDefaultMiddleware().concat(wsMiddleware()),
 });
 
 export default store;

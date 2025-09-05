@@ -54,7 +54,7 @@ function ProductsList() {
   // The useWebSocket hook provides everything you need
     // Handle incoming messages from the WebSocket
     useEffect(()=>{
-      dispatch(wsConnectStart(WS_URL))
+      dispatch(wsConnectStart({url:WS_URL}))
       return () => {
         dispatch(wsDisconnect())
       }
