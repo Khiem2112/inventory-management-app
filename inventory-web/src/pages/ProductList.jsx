@@ -226,13 +226,11 @@ const webSocketConnectionStatusUI = () => {
       <ProductActionDialog
       open = {isDialogOpen} 
       onClose={handleCloseDialog}
-      onProductChanged={handleChangeProductData}
       tag = 'add' /> : 
       dialogType === 'modify' ?
       <ProductActionDialog
       open = {isDialogOpen} 
       onClose={handleCloseDialog}
-      onProductChanged={handleChangeProductData}
       tag = 'modify' /> : null}
       
 

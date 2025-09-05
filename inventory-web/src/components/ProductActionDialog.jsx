@@ -9,10 +9,10 @@ import useUpdateProduct from "../hooks/Product/useUpdateProduct";
 import CloseIcon from '@mui/icons-material/Close';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 
-import { addNewProductAsync, updateProductAsync, fetchAllProductsAsync } from "../myRedux/slices/ProductsSlice";
+import { addNewProductAsync, updateProductAsync, fetchAllProductsAsync, fetchSomeProductsAsync } from "../myRedux/slices/ProductsSlice";
 import { useDispatch, useSelector } from "react-redux";
 
-const ProductActionDialog = ({ open, onClose, tag, onProductChanged }) => {
+const ProductActionDialog = ({ open, onClose, tag}) => {
   // Local states for the form
   const [currentProductName, setCurrentProductName] = useState('');
   const [currentMeasurement, setCurrentMeasurement] = useState('kg');
@@ -29,8 +29,10 @@ const ProductActionDialog = ({ open, onClose, tag, onProductChanged }) => {
   const isUpdatingProduct = useSelector((state)=> state.products.status.updateOne === 'pending')
   const [congratulationResponse, setCongratulationResponse] = useState(null);
   const [updateSuccessMessage, setUpdateSuccessMessage ] = useState(null);
+  const [message, setMessage] = useState(null)
   // Function to clear all data fields
   console.log(`Product adding status is: ${isAddingProduct}`)
+  // Clear All any time the dialog is opened
   const clearProductInfo = () => {
     setCurrentProductName('');
     setCurrentMeasurement('kg');
@@ -40,6 +42,7 @@ const ProductActionDialog = ({ open, onClose, tag, onProductChanged }) => {
   const clearMessageBar = () => {
     setCongratulationResponse(null)
     setUpdateSuccessMessage(null)
+    console.log('Clear the message bar completed')
   }
   const clearAll = () => {
     clearProductInfo()
@@ -53,20 +56,21 @@ const ProductActionDialog = ({ open, onClose, tag, onProductChanged }) => {
       setCurrentMeasurement(product?.Measurement);
       setCurrentSellingPrice(product?.SellingPrice);
       setCurrentInternalPrice(product?.InternalPrice);
+      setMessage(null)
       clearMessageBar()
     } else if (tag === 'add') {
       clearAll()
     }
-  }, [tag, product]);
+  }, [tag, product, open]);
 
   // Use an effect to handle post-action cleanup and parent refresh
   useEffect(() => {
     if (congratulationResponse || updateSuccessMessage) {
       console.log(`Update Success Message is: ${updateSuccessMessage}`)
-      dispatch(fetchAllProductsAsync()); // Tell the parent to re-fetch
+      dispatch(fetchSomeProductsAsync()); // Tell the parent to re-fetch
       clearProductInfo()
     }
-  }, [congratulationResponse, updateSuccessMessage, onProductChanged]);
+  }, [congratulationResponse, updateSuccessMessage]);
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -109,6 +113,7 @@ const ProductActionDialog = ({ open, onClose, tag, onProductChanged }) => {
   
   // Render status messages for both actions
   const renderStatus = () => {
+    console.log(`Start new message bar rendering with: congratulation: ${JSON.stringify(congratulationResponse)}`)
     if (isAddingProduct|| isUpdatingProduct) {
       console.log('rendering loading')
       console.log(`Updating status: ${isUpdatingProduct}`)
@@ -140,7 +145,6 @@ const ProductActionDialog = ({ open, onClose, tag, onProductChanged }) => {
   }
     return null;
   };
-
   return (
     <Dialog open={open} onClose={onClose}>
       <DialogTitle>
