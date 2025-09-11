@@ -1,13 +1,15 @@
 import {
   Dialog, TextField, Button, Typography, CircularProgress, Alert,
   DialogTitle, DialogActions, DialogContent, Select, MenuItem,
-  FormControl, InputLabel, IconButton, Box
+  FormControl, InputLabel, IconButton, Box,
+  Stack
 } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import useAddNewProduct from "../hooks/Product/useAddNewProduct";
 import useUpdateProduct from "../hooks/Product/useUpdateProduct";
 import CloseIcon from '@mui/icons-material/Close';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 
 import { addNewProductAsync, updateProductAsync, fetchAllProductsAsync, fetchSomeProductsAsync } from "../myRedux/slices/ProductsSlice";
 import { useDispatch, useSelector } from "react-redux";
@@ -30,6 +32,12 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
   const [congratulationResponse, setCongratulationResponse] = useState(null);
   const [updateSuccessMessage, setUpdateSuccessMessage ] = useState(null);
   const [message, setMessage] = useState(null)
+  // For image preview
+  const [productImage, setProductImage] = useState({
+    file:null,
+    previewUrl:null
+  })
+  const fileInputRef = useRef(null); // <-- Create a ref for the hidden input
   // Function to clear all data fields
   console.log(`Product adding status is: ${isAddingProduct}`)
   // Clear All any time the dialog is opened
@@ -44,9 +52,13 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
     setUpdateSuccessMessage(null)
     console.log('Clear the message bar completed')
   }
+  const clearImage = () => {
+    setProductImage({ file: null, previewUrl: null })
+  }
   const clearAll = () => {
     clearProductInfo()
     clearMessageBar()
+    clearImage()
   }
   // Use an effect to load data and clear the form
   useEffect(() => {
@@ -110,6 +122,24 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
       setUpdateSuccessMessage('hehehee')
     }
   };
+
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    console.log(`A file is selected: ${JSON.stringify(URL.createObjectURL(file))}`)
+    if (file) {
+      setProductImage({
+        file:file,
+        previewUrl: URL.createObjectURL(file)
+      })
+    }
+    else {
+      clearImage()
+      }
+    }
+  };
+  const handleImageButtonClick= () => {
+    fileInputRef.current.click()
+  }
   
   // Render status messages for both actions
   const renderStatus = () => {
@@ -158,7 +188,9 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
         </Box>
       </DialogTitle>
       <DialogContent>
-        <Box component="form">
+        <Box component="form" sx = {{display:'flex', gap:2}}>
+          {/* Left Column for form fields (60% width) */}
+          <Box sx ={{flex: '0 0 45%'}}>
           <TextField label="Product Name" fullWidth margin="normal" value={currentProductName} onChange={(e) => setCurrentProductName(e.target.value)} />
           <FormControl fullWidth margin="normal">
             <InputLabel>Measurement Unit</InputLabel>
@@ -170,6 +202,65 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
           </FormControl>
           <TextField label="Selling Price" fullWidth margin="normal" type="number" value={currentSellingPrice} onChange={(e) => setCurrentSellingPrice(e.target.value)} />
           <TextField label="Internal Price" fullWidth margin="normal" type="number" value={currentInternalPrice} onChange={(e) => setCurrentInternalPrice(e.target.value)} />
+        </Box>
+            {/* Right Column for the image field (40% width) */}
+            <input
+            type="file"
+            ref = {fileInputRef}
+            onChange={handleFileChange}
+            style={{display:'none'}}
+            />
+          <Box sx ={{flex: '0 0 55%',
+                     display: 'flex',
+                     flexDirection: 'column',
+                     alignItems: 'center',
+                     padding: '15px',
+                     gap: '12px'
+          }}>
+            {imagePreviewUrl ? (
+              <Box
+                component="img"
+                sx={{
+                  width: '100%',
+                  height: '85%',
+                  objectFit: 'contain',
+                  border: '1px solid #ccc',
+                  borderRadius: '8px',
+                  objectFit: 'cover'
+                }}
+                src={imagePreviewUrl}
+                alt="Product"
+              />
+            ) : (
+              <Box
+                sx={{
+                  width: '100%',
+                  height: '85%',
+                  bgcolor: '#f5f5f5',
+                  border: '1px dashed #ccc',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#999',
+                  fontStyle: 'italic',
+                }}
+              >
+                No Image
+              </Box>
+            )}
+            <Button
+              variant="outlined"
+              startIcon={<AddPhotoAlternateIcon />}
+              onClick={handleImageButtonClick}
+              sx = {{
+                width: '100%'
+              }}
+            >
+              Add Image
+            </Button>
+          </Box>
+
           {renderStatus()}
         </Box>
       </DialogContent>
