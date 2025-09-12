@@ -101,7 +101,8 @@ async def create_product(new_product: ProductCreate,
       ProductName = new_product.ProductName,
       Measurement = new_product.Measurement,
       SellingPrice = new_product.SellingPrice,
-      InternalPrice = new_product.InternalPrice
+      InternalPrice = new_product.InternalPrice,
+      ProductImageId = new_product.ProductImageId
     )
     # add product to db
     db.add(added_product)
