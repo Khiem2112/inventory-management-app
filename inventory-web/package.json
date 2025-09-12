@@ -15,6 +15,7 @@
     "@mui/icons-material": "^5.18.0",
     "@mui/material": "^5.15.10",
     "@reduxjs/toolkit": "^2.8.2",
+    "@tanstack/react-query": "^5.87.4",
     "jwt-decode": "^4.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -30,6 +31,6 @@
     "eslint-plugin-react": "^7.34.1",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.6",
-    "vite": "^5.2.0"
+    "vite": "^7.1.5"
   }
 }
