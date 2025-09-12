@@ -5,6 +5,7 @@ import {
   Stack
 } from "@mui/material";
 import { useEffect, useState, useRef } from "react";
+import { useMutation } from "@tanstack/react-query";
 import useAddNewProduct from "../hooks/Product/useAddNewProduct";
 import useUpdateProduct from "../hooks/Product/useUpdateProduct";
 import CloseIcon from '@mui/icons-material/Close';
@@ -13,7 +14,10 @@ import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 
 import { addNewProductAsync, updateProductAsync, fetchAllProductsAsync, fetchSomeProductsAsync } from "../myRedux/slices/ProductsSlice";
 import { useDispatch, useSelector } from "react-redux";
-
+import useImagePreview from "../hooks/Product/useImagePreview";
+import useAddImageToCloudinary from "../hooks/Product/useAddProductImageToCloud"
+import axios from "axios";
+import api from "../services/api";
 const ProductActionDialog = ({ open, onClose, tag}) => {
   // Local states for the form
   const [currentProductName, setCurrentProductName] = useState('');
@@ -29,15 +33,24 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
   const updatingProductError = useSelector((state)=> state.products.error.updateOne)
   const isAddingProduct = useSelector((state)=> state.products.status.addOne === 'pending')
   const isUpdatingProduct = useSelector((state)=> state.products.status.updateOne === 'pending')
+
+  //For uploading image to cloudinary
+  const {
+    mutateAsync : uploadImage,
+    isPending: isUploadingImage,
+    isSuccess: isUploadingSuccess,
+    error: uploadError
+  } = useAddImageToCloudinary()
+  // The Above code is for testing
+
   const [congratulationResponse, setCongratulationResponse] = useState(null);
   const [updateSuccessMessage, setUpdateSuccessMessage ] = useState(null);
   const [message, setMessage] = useState(null)
   // For image preview
-  const [productImage, setProductImage] = useState({
-    file:null,
-    previewUrl:null
-  })
+  const [productImageFile, setProductImageFile] = useState(null)
+  const imagePreviewUrl = useImagePreview(productImageFile)
   const fileInputRef = useRef(null); // <-- Create a ref for the hidden input
+
   // Function to clear all data fields
   console.log(`Product adding status is: ${isAddingProduct}`)
   // Clear All any time the dialog is opened
@@ -53,7 +66,7 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
     console.log('Clear the message bar completed')
   }
   const clearImage = () => {
-    setProductImage({ file: null, previewUrl: null })
+    setProductImageFile(null)
   }
   const clearAll = () => {
     clearProductInfo()
@@ -81,25 +94,32 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
       console.log(`Update Success Message is: ${updateSuccessMessage}`)
       dispatch(fetchSomeProductsAsync()); // Tell the parent to re-fetch
       clearProductInfo()
+      clearImage()
     }
   }, [congratulationResponse, updateSuccessMessage]);
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    const productData = {
+  
+    if (tag === 'add') {
+      let productImageId = null
+      if (productImageFile) {
+        productImageId = await uploadImage(productImageFile);
+      }
+      console.log('Successfully Uploaded imaeg to cloudinary')
+      const productData = {
       ProductName: currentProductName,
       Measurement: currentMeasurement,
       SellingPrice: parseFloat(currentSellingPrice),
-      InternalPrice: parseFloat(currentInternalPrice)
+      InternalPrice: parseFloat(currentInternalPrice),
+      ProductImageId: productImageId
     };
-    if (tag === 'add') {
-      const promise = dispatch(addNewProductAsync(productData));
-      promise.then( result => {
-        setCongratulationResponse(result.payload || 'Successfully add a new product')
-      })
-
+      const result = await dispatch(addNewProductAsync(productData)).unwrap();
+      setCongratulationResponse(result.message || 'Successfully added a new product');
+      
       // Set the dispatch result to the success message
       setCongratulationResponse(response)
+
     } else if (tag === 'modify') {
       console.log(`Full product data is: ${JSON.stringify(product)}`)
       console.log(`Product id is: ${product.ProductId}`)
@@ -116,7 +136,7 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
       console.log(`Adding status: ${isAddingProduct}`)
 
       promise.then(result => {
-        console.log(`update error is: ${useSelector(state => state.products.error.updateOne)}`)
+        console.log(`update error is: ${updatingProductError}`)
         setUpdateSuccessMessage(result.payload|| `Successfully update product ${product.ProductId}`)
       })
       setUpdateSuccessMessage('hehehee')
@@ -127,16 +147,12 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
     const file = event.target.files[0];
     console.log(`A file is selected: ${JSON.stringify(URL.createObjectURL(file))}`)
     if (file) {
-      setProductImage({
-        file:file,
-        previewUrl: URL.createObjectURL(file)
-      })
+     setProductImageFile(file)
     }
     else {
       clearImage()
       }
-    }
-  };
+    };
   const handleImageButtonClick= () => {
     fileInputRef.current.click()
   }
@@ -188,7 +204,14 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
         </Box>
       </DialogTitle>
       <DialogContent>
-        <Box component="form" sx = {{display:'flex', gap:2}}>
+      <Box component="form" sx = {{
+        display:'flex', 
+        gap:2,
+        flexDirection: "column"}}>
+        <Box sx ={{
+          display: 'flex',
+          flexDirection: "row"
+        }}>
           {/* Left Column for form fields (60% width) */}
           <Box sx ={{flex: '0 0 45%'}}>
           <TextField label="Product Name" fullWidth margin="normal" value={currentProductName} onChange={(e) => setCurrentProductName(e.target.value)} />
@@ -260,7 +283,7 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
               Add Image
             </Button>
           </Box>
-
+        </Box>
           {renderStatus()}
         </Box>
       </DialogContent>

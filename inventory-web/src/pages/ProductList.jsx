@@ -232,7 +232,6 @@ const webSocketConnectionStatusUI = () => {
       open = {isDialogOpen} 
       onClose={handleCloseDialog}
       tag = 'modify' /> : null}
-      
 
       <Paper 
         elevation={3} // Adds a shadow effect to the component, with a value of 3 (higher is more prominent)

@@ -14,9 +14,14 @@ import ProtectedRoute from './utils/PrivatedRoute.jsx';
 import ProductsList from './pages/ProductList.jsx';
 import { Provider } from 'react-redux';
 import store from './myRedux/store/store.js';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+// Create new Query Client
+const queryClient = new QueryClient()
 function App() {
   return (
-    <Provider store = {store}>
+    <QueryClientProvider client ={queryClient}>
+      <Provider store = {store}>
       <AuthProvider>
       <ThemeProvider theme={theme}>
       <CssBaseline /> {/* Resets CSS and applies base Material Design styles */}
@@ -31,6 +36,8 @@ function App() {
     </ThemeProvider>
     </AuthProvider>
     </Provider>
+    </QueryClientProvider>
+    
   );
 }
 
