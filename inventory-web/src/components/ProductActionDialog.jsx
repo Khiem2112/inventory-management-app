@@ -120,13 +120,16 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
       SellingPrice: parseFloat(currentSellingPrice),
       InternalPrice: parseFloat(currentInternalPrice),
       ProductImageId: productImageId
-    };
-      const result = await dispatch(addNewProductAsync(productData)).unwrap();
-      setCongratulationResponse(result.message || 'Successfully added a new product');
-      
-      // Set the dispatch result to the success message
-      setCongratulationResponse(response)
 
+    };
+    try {
+      const result = await dispatch(addNewProductAsync(productData)).unwrap();
+      setCongratulationResponse('Successfully added a new product');
+    }
+    catch (err) {
+      console.error('Face problem when adding a new product',err)
+    }
+      
     } else if (tag === 'modify') {
       console.log(`Full product data is: ${JSON.stringify(product)}`)
       console.log(`Product id is: ${product.ProductId}`)

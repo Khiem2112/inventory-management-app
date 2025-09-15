@@ -182,7 +182,7 @@ const productsSlice = createSlice({
             })
             // Handling addNewProductAsync
             .addCase(addNewProductAsync.fulfilled, (state, action) => {
-                state.items = [...state.items, action.payload];
+                state.status.addOne = 'succeeded';
             })
             // Handling updateProductAsync
             .addCase(updateProductAsync.fulfilled, (state, action) => {
@@ -211,20 +211,20 @@ const productsSlice = createSlice({
             .addCase(deleteProductAsync.fulfilled, (state, action) => {
                 state.items = state.items.filter(p => p.id !== action.payload);
             })
-            .addCase(wsMessageReceive, (state, action) => { // Use the action creator's `type`
-                const message = action.payload;
-                console.log(`We receive socket message: ${message}`)
-                // The rest of your logic remains the same
-                if (message.type === 'product_added' || message.type === 'product_updated') {
-                    const updatedProduct = message.payload;
-                    const index = state.items.findIndex((p) => p.ProductId === updatedProduct.ProductId);
-                    if (index !== -1) {
-                    state.items[index] = updatedProduct;
-                    } else {
-                    state.items.push(updatedProduct);
-                    }
-                }
-            })
+            // .addCase(wsMessageReceive, (state, action) => { // Use the action creator's `type`
+            //     const message = action.payload;
+            //     console.log(`We receive socket message: ${message}`)
+            //     // The rest of your logic remains the same
+            //     if (message.type === 'product_added' || message.type === 'product_updated') {
+            //         const updatedProduct = message.payload;
+            //         const index = state.items.findIndex((p) => p.ProductId === updatedProduct.ProductId);
+            //         if (index !== -1) {
+            //         state.items[index] = updatedProduct;
+            //         } else {
+            //         state.items.push(updatedProduct);
+            //         }
+            //     }
+            // })
             .addCase(wsConnectStart, (state) => {
                 state.wsStatus = 'connecting';
             })
