@@ -16,8 +16,11 @@ import { addNewProductAsync, updateProductAsync, fetchAllProductsAsync, fetchSom
 import { useDispatch, useSelector } from "react-redux";
 import useImagePreview from "../hooks/Product/useImagePreview";
 import useAddImageToCloudinary from "../hooks/Product/useAddProductImageToCloud"
+import useGetImageCloudinary from "../hooks/Product/useGetImageCloudinary";
 import axios from "axios";
 import api from "../services/api";
+import { AdvancedImage } from "@cloudinary/react";
+
 const ProductActionDialog = ({ open, onClose, tag}) => {
   // Local states for the form
   const [currentProductName, setCurrentProductName] = useState('');
@@ -33,6 +36,8 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
   const updatingProductError = useSelector((state)=> state.products.error.updateOne)
   const isAddingProduct = useSelector((state)=> state.products.status.addOne === 'pending')
   const isUpdatingProduct = useSelector((state)=> state.products.status.updateOne === 'pending')
+    // Hooks about cloudinary image
+  const {setImageId, imageObj} = useGetImageCloudinary(null)
 
   //For uploading image to cloudinary
   const {
@@ -59,6 +64,7 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
     setCurrentMeasurement('kg');
     setCurrentSellingPrice(0);
     setCurrentInternalPrice(0);
+    setImageId(null)
   }
   const clearMessageBar = () => {
     setCongratulationResponse(null)
@@ -81,6 +87,7 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
       setCurrentMeasurement(product?.Measurement);
       setCurrentSellingPrice(product?.SellingPrice);
       setCurrentInternalPrice(product?.InternalPrice);
+      setImageId(product?.ProductImageId)
       setMessage(null)
       clearMessageBar()
     } else if (tag === 'add') {
@@ -191,6 +198,8 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
   }
     return null;
   };
+
+  console.log(`Loading image object to UI: ${JSON.stringify(imageObj)}`)
   return (
     <Dialog open={open} onClose={onClose}>
       <DialogTitle>
@@ -254,7 +263,23 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
                 src={imagePreviewUrl}
                 alt="Product"
               />
-            ) : (
+            ) : 
+
+            imageObj ? (
+              <AdvancedImage
+                cldImg={imageObj}
+                style={{
+                  width: '100%',
+                  height: '85%',
+                  objectFit: 'cover',
+                  border: '1px solid #ccc',
+                  borderRadius: '8px',
+                }}
+                alt="Product"
+              />
+            )
+            :
+            (
               <Box
                 sx={{
                   width: '100%',
