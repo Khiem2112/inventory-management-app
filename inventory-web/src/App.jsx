@@ -16,13 +16,14 @@ import CloudinaryTest from '../practice/test.jsx';
 import { Provider } from 'react-redux';
 import store from './myRedux/store/store.js';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-
+import { CloudinaryProvider } from './context/CloudinaryContext.jsx';
 // Create new Query Client
 const queryClient = new QueryClient()
 function App() {
   return (
-    <QueryClientProvider client ={queryClient}>
+      <QueryClientProvider client ={queryClient}>
       <Provider store = {store}>
+      <CloudinaryProvider>
       <AuthProvider>
       <ThemeProvider theme={theme}>
       <CssBaseline /> {/* Resets CSS and applies base Material Design styles */}
@@ -37,8 +38,10 @@ function App() {
         </Routes>
     </ThemeProvider>
     </AuthProvider>
+      </CloudinaryProvider>
+      
     </Provider>
-    </QueryClientProvider>
+    </QueryClientProvider>    
     
   );
 }
