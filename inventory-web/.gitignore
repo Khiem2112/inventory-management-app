@@ -24,3 +24,5 @@ dist-ssr
 *.sw?
 # Test file
 /practice
+node_modules
+src/dummy_resource/
