@@ -19,6 +19,7 @@ import useAddImageToCloudinary from "../hooks/Product/useAddProductImageToCloud"
 import useGetImageCloudinary from "../hooks/Product/useGetImageCloudinary";
 import axios from "axios";
 import api from "../services/api";
+import { Cloudinary } from "@cloudinary/url-gen/index";
 import { AdvancedImage } from "@cloudinary/react";
 
 const ProductActionDialog = ({ open, onClose, tag}) => {
@@ -37,7 +38,6 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
   const isAddingProduct = useSelector((state)=> state.products.status.addOne === 'pending')
   const isUpdatingProduct = useSelector((state)=> state.products.status.updateOne === 'pending')
     // Hooks about cloudinary image
-  const {setImageId, imageObj} = useGetImageCloudinary(null)
 
   //For uploading image to cloudinary
   const {
@@ -52,9 +52,11 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
   const [updateSuccessMessage, setUpdateSuccessMessage ] = useState(null);
   const [message, setMessage] = useState(null)
   // For image preview
+  const {setImageId, imageObj} = useGetImageCloudinary(null)
   const [productImageFile, setProductImageFile] = useState(null)
   const imagePreviewUrl = useImagePreview(productImageFile)
   const fileInputRef = useRef(null); // <-- Create a ref for the hidden input
+  const [cloudinaryWidget, setCloudinaryWidget] = useState(null);
 
   // Function to clear all data fields
   console.log(`Product adding status is: ${isAddingProduct}`)
@@ -105,6 +107,31 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
     }
   }, [congratulationResponse, updateSuccessMessage]);
 
+  // An effect to handle cloudinary upload widget
+  useEffect(() => {
+    // Initialize Cloudinary widget
+    const widget = window.cloudinary.createUploadWidget(
+      {
+        cloudName: 'dxtd2ycxu',
+        uploadPreset: 'upload_prod_image', // Replace with your upload preset
+      },
+      (error, result) => {
+        if (!error && result && result.event === 'success') {
+          console.log('Upload result:', result.info);
+          setImageId(result.info.public_id); // Update state with public ID
+        } else {
+          console.error('Upload error:', error);
+        }
+      }
+    );
+    setCloudinaryWidget(widget);
+
+    // Cleanup function to destroy the widget when the component unmounts
+    return () => {
+      widget.destroy();
+    };
+  }, []);
+
   const handleSubmit = async (event) => {
     event.preventDefault();
   
@@ -154,17 +181,38 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
   };
 
   const handleFileChange = (event) => {
-    const file = event.target.files[0];
-    console.log(`A file is selected: ${JSON.stringify(URL.createObjectURL(file))}`)
-    if (file) {
-     setProductImageFile(file)
-    }
-    else {
-      clearImage()
+    
+    // const file = event.target.files[0];
+    // console.log(`A file is selected: ${JSON.stringify(URL.createObjectURL(file))}`)
+    // if (file) {
+    //  setProductImageFile(file)
+    // }
+    // else {
+    //   clearImage()
+    //   }
+
+    const myWidget = window.cloudinary.createUploadWidget(
+      {
+        cloudName: 'dxtd2ycxu',
+        uploadPreset: 'upload_prod_image', // Replace with your upload preset
+      },
+      (error, result) => {
+        if (!error && result && result.event === 'success') {
+          console.log('Upload result:', result.info);
+          setPublicId(result.info.public_id); // Update state with public ID
+          alert(`Image uploaded! Public ID: ${result.info.public_id}`);
+        } else {
+          console.error('Upload error:', error);
+        }
       }
+    );
+    // Image object
+    const image = myWidget.image()
+
     };
-  const handleImageButtonClick= () => {
-    fileInputRef.current.click()
+
+    const handleImageButtonClick= () => {
+      cloudinaryWidget.open()
   }
   
   // Render status messages for both actions
