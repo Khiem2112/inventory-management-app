@@ -107,31 +107,6 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
     }
   }, [congratulationResponse, updateSuccessMessage]);
 
-  // An effect to handle cloudinary upload widget
-  useEffect(() => {
-    // Initialize Cloudinary widget
-    const widget = window.cloudinary.createUploadWidget(
-      {
-        cloudName: 'dxtd2ycxu',
-        uploadPreset: 'upload_prod_image', // Replace with your upload preset
-      },
-      (error, result) => {
-        if (!error && result && result.event === 'success') {
-          console.log('Upload result:', result.info);
-          setImageId(result.info.public_id); // Update state with public ID
-        } else {
-          console.error('Upload error:', error);
-        }
-      }
-    );
-    setCloudinaryWidget(widget);
-
-    // Cleanup function to destroy the widget when the component unmounts
-    return () => {
-      widget.destroy();
-    };
-  }, []);
-
   const handleSubmit = async (event) => {
     event.preventDefault();
   
@@ -182,37 +157,18 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
 
   const handleFileChange = (event) => {
     
-    // const file = event.target.files[0];
-    // console.log(`A file is selected: ${JSON.stringify(URL.createObjectURL(file))}`)
-    // if (file) {
-    //  setProductImageFile(file)
-    // }
-    // else {
-    //   clearImage()
-    //   }
-
-    const myWidget = window.cloudinary.createUploadWidget(
-      {
-        cloudName: 'dxtd2ycxu',
-        uploadPreset: 'upload_prod_image', // Replace with your upload preset
-      },
-      (error, result) => {
-        if (!error && result && result.event === 'success') {
-          console.log('Upload result:', result.info);
-          setPublicId(result.info.public_id); // Update state with public ID
-          alert(`Image uploaded! Public ID: ${result.info.public_id}`);
-        } else {
-          console.error('Upload error:', error);
-        }
+    const file = event.target.files[0];
+    console.log(`A file is selected: ${JSON.stringify(URL.createObjectURL(file))}`)
+    if (file) {
+     setProductImageFile(file)
+    }
+    else {
+      clearImage()
       }
-    );
-    // Image object
-    const image = myWidget.image()
-
     };
 
     const handleImageButtonClick= () => {
-      cloudinaryWidget.open()
+      fileInputRef.click()
   }
   
   // Render status messages for both actions
