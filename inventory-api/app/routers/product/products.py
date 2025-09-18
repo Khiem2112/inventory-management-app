@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, status, Query, WebSocket, WebSocketDisconnect, UploadFile
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from app.schemas.product import ProductPublic, ProductBase, ProductCreate, ProductUpdate, ProductBroadcastMessage, ProductBroadcastType
@@ -9,6 +9,9 @@ from app.database.product_model import Product as ProductORM
 from typing import List
 from app.services.socket_manager import ConnectionManager
 from app.utils.logger import setup_logger
+import cloudinary.uploader
+import cloudinary
+
 import json
 
 router = APIRouter(
@@ -195,3 +198,32 @@ async def delete_product(
   except Exception as e:
     db.rollback()
     raise HTTPException(status_code=500, detail=f'Unexpected error: {e}')
+  
+@router.post("/image-upload", status_code=status.HTTP_201_CREATED)
+async def upload_product_image(
+  file: UploadFile,
+  current_user: UserORM = Depends(get_current_user)
+):
+  if not file.content_type.startswith('image/'):
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                        detail="Only image file is valid")
+  try:
+    upload_result = cloudinary.uploader.upload(file = file.file
+                                                        )
+    logger.info("Upload image can be performed")
+    image_url = upload_result.get("secure_url")
+    public_id = upload_result.get("public_id")
+    
+    logger.info(f"Image url returned by cloudinary server is: {image_url}")
+    if not image_url:
+      raise Exception("Cloudinary failed to return an url")
+    
+    return {
+      "message": "Image uploaded successfully",
+      "image_url": image_url,
+      "public_id": public_id
+    }
+  except Exception as e:
+    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail=f"Uncaught Internal Server Error: {e}")
+    
