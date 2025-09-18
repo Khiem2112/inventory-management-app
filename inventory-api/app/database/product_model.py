@@ -18,5 +18,6 @@ class Product(Base):
   SellingPrice: Mapped[float] = mapped_column(Float) # DECIMAL maps to Float in Pydantic
   InternalPrice: Mapped[float] = mapped_column(Float, nullable=False)    
   ProductImageId: Mapped[str] = mapped_column(String, nullable=True)
+  ProductImageUrl: Mapped[str] = mapped_column(String, nullable=True)
   class Config:
     from_attributes = True
