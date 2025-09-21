@@ -1,6 +1,7 @@
 # app/schemas/product.py
 
 from pydantic import BaseModel, ConfigDict, Field
+from fastapi import UploadFile
 from datetime import datetime
 from typing import Optional, Dict, Any
 from enum import Enum
@@ -12,8 +13,6 @@ class ProductBase(BaseModel):
     Measurement: str
     SellingPrice: Optional[float] = None  # Using Optional since your SQL has no NOT NULL constraint
     InternalPrice: float
-    ProductImageId: Optional[str] = None
-    ProductImageUrl: Optional[str] = None
 
 # This model is used for data coming from the client to create a new product.
 class ProductCreate(ProductBase):
@@ -29,6 +28,8 @@ class ProductUpdate (BaseModel):
 # It inherits from ProductBase and adds the database-generated fields.
 class ProductPublic(ProductBase):
     ProductId: int
+    ProductImageId: Optional[str] = None
+    ProductImageUrl: Optional[str] = None
     # CreateDate: Optional[datetime]
 
     # This configuration tells Pydantic to read from ORM attributes
