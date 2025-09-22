@@ -12,6 +12,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import useProductImageUpload from "../hooks/Product/useProductImageUpload";
+import useProductImageModify from "../hooks/Product/useProductImageModify";
 import { addNewProductAsync, updateProductAsync, fetchAllProductsAsync, fetchSomeProductsAsync } from "../myRedux/slices/ProductsSlice";
 import { useDispatch, useSelector } from "react-redux";
 import useImagePreview from "../hooks/Product/useImagePreview";
@@ -23,6 +24,7 @@ import { AdvancedImage } from "@cloudinary/react";
 
 const ProductActionDialog = ({ open, onClose, tag}) => {
   // Local states for the form
+  const [currentProductId, setCurrentProductId] = useState(null)
   const [currentProductName, setCurrentProductName] = useState('');
   const [currentMeasurement, setCurrentMeasurement] = useState('kg');
   const [currentSellingPrice, setCurrentSellingPrice] = useState(0);
@@ -50,11 +52,13 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
   const fileInputRef = useRef(null); // <-- Create a ref for the hidden input
   // Fpr image upload
   const { mutateAsync: uploadImage, isLoading: isImageUploading, error: imageUploadError } = useProductImageUpload();
+  const {mutateAsync: updateImage, isLoading: isImageUpdating, error: imageUpdateError} = useProductImageModify()
 
   // Function to clear all data fields
   console.log(`Product adding status is: ${isAddingProduct}`)
   // Clear All any time the dialog is opened
   const clearProductInfo = () => {
+    setCurrentProductId(null)
     setCurrentProductName('');
     setCurrentMeasurement('kg');
     setCurrentSellingPrice(0);
@@ -81,6 +85,7 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
   useEffect(() => {
     if (tag === 'modify') {
       console.log(`Loaded the Dialog with product data: ${JSON.stringify(product)}`)
+      setCurrentProductId(product?.ProductId)
       setCurrentProductName(product?.ProductName);
       setCurrentMeasurement(product?.Measurement);
       setCurrentSellingPrice(product?.SellingPrice);
@@ -107,14 +112,14 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-  
+    let productData;
     if (tag === 'add') {
       let imageData = null
       if (productImageFile) {
         imageData = await uploadImage(productImageFile);
       }
       console.log('Successfully Uploaded imaeg to cloudinary')
-      const productData = {
+      productData = {
       ProductName: currentProductName,
       Measurement: currentMeasurement,
       SellingPrice: parseFloat(currentSellingPrice),
@@ -132,11 +137,40 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
     }
       
     } else if (tag === 'modify') {
+
+      try {
+        // Check if there is a product id
+        if (!currentProductId) {
+          throw new Error("Cannot access product id")
+        }
+        let imageData = null
+        // Check imageFile exist to upload
+        if (productImageFile) {
+          console.log('Start update new image')
+          imageData = await updateImage({  // Fix: Pass object with named parameters
+            productId: currentProductId,
+            imageFile: productImageFile
+          })
+          console.log('Successfully update new image')
+    }
+        // Call API to update product record
+        productData = {
+          ProductName: currentProductName,
+          Measurement: currentMeasurement,
+          SellingPrice: parseFloat(currentSellingPrice),
+          InternalPrice: parseFloat(currentInternalPrice),
+          ProductImageId: imageData?.public_id,
+          ProductImageUrl: imageData?.image_url
+        } 
+      }
+      catch (error) {
+        console.log("Error when updating product image: ", error)
+      }
       console.log(`Full product data is: ${JSON.stringify(product)}`)
       console.log(`Product id is: ${product.ProductId}`)
       console.log(`Product data is: ${JSON.stringify(productData)}`)
       console.log(`Thunk to update product data is: ${updateProductAsync(product.ProductId, productData)}`)
-      const promise = dispatch(updateProductAsync({
+      const promise = await dispatch(updateProductAsync({
         productId: product.ProductId,
         updatedProductData: productData
       }
@@ -312,7 +346,7 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
                 width: '100%'
               }}
             >
-              Add Image
+              {currentImageUrl || imagePreviewUrl ? "Modify Image" : "Add Image"}
             </Button>
           </Box>
         </Box>

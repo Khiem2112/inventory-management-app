@@ -201,12 +201,12 @@ async def update_product(
 @router.put('/{product_id}/image')
 async def update_product_image(
     product_id: int,
-    product_image: UploadFile = File(...),
+    upload_file: UploadFile = File(...),
     current_user: UserORM = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     # Step 1: Validate the incoming file
-    if not product_image.content_type.startswith('image/'):
+    if not upload_file.content_type.startswith('image/'):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Only image files are valid"
@@ -227,7 +227,7 @@ async def update_product_image(
             cloudinary.uploader.destroy(product.ProductImageId)
 
         # Step 4: Upload the new image to Cloudinary
-        upload_result = cloudinary.uploader.upload(product_image.file)
+        upload_result = cloudinary.uploader.upload(upload_file.file)
         
         # Step 5: Update the database record with the new image info
         product.ProductImageUrl = upload_result.get("secure_url")
