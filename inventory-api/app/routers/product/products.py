@@ -99,7 +99,7 @@ def get_product_by_id(
 async def create_product(new_product: ProductCreate,
                    current_user: UserORM = Depends(get_current_user),
                    db: Session = Depends(get_db),
-                   ):  
+                   ):
   
   try:
     added_product = ProductORM (

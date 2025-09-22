@@ -11,11 +11,10 @@ import useUpdateProduct from "../hooks/Product/useUpdateProduct";
 import CloseIcon from '@mui/icons-material/Close';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
-
+import useProductImageUpload from "../hooks/Product/useProductImageUpload";
 import { addNewProductAsync, updateProductAsync, fetchAllProductsAsync, fetchSomeProductsAsync } from "../myRedux/slices/ProductsSlice";
 import { useDispatch, useSelector } from "react-redux";
 import useImagePreview from "../hooks/Product/useImagePreview";
-import useAddImageToCloudinary from "../hooks/Product/useAddProductImageToCloud"
 import useGetImageCloudinary from "../hooks/Product/useGetImageCloudinary";
 import axios from "axios";
 import api from "../services/api";
@@ -28,6 +27,8 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
   const [currentMeasurement, setCurrentMeasurement] = useState('kg');
   const [currentSellingPrice, setCurrentSellingPrice] = useState(0);
   const [currentInternalPrice, setCurrentInternalPrice] = useState(0);
+  const [currentImageUrl, setCurrentImageUrl] = useState(null);
+  const [currentImageId, setCurrentImageId] = useState(null)
 
   // Use hooks for the two actions
     // Hooks for Add one new product
@@ -39,24 +40,16 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
   const isUpdatingProduct = useSelector((state)=> state.products.status.updateOne === 'pending')
     // Hooks about cloudinary image
 
-  //For uploading image to cloudinary
-  const {
-    mutateAsync : uploadImage,
-    isPending: isUploadingImage,
-    isSuccess: isUploadingSuccess,
-    error: uploadError
-  } = useAddImageToCloudinary()
-  // The Above code is for testing
-
   const [congratulationResponse, setCongratulationResponse] = useState(null);
   const [updateSuccessMessage, setUpdateSuccessMessage ] = useState(null);
   const [message, setMessage] = useState(null)
   // For image preview
-  const {setImageId, imageObj} = useGetImageCloudinary(null)
-  const [productImageFile, setProductImageFile] = useState(null)
-  const imagePreviewUrl = useImagePreview(productImageFile)
+  const {setImageId, imageObj} = useGetImageCloudinary(null) // Image from existing product
+  const [productImageFile, setProductImageFile] = useState(null) //Image file uploaded from local machine
+  const imagePreviewUrl = useImagePreview(productImageFile) // Url that used to preview for user
   const fileInputRef = useRef(null); // <-- Create a ref for the hidden input
-  const [cloudinaryWidget, setCloudinaryWidget] = useState(null);
+  // Fpr image upload
+  const { mutateAsync: uploadImage, isLoading: isImageUploading, error: imageUploadError } = useProductImageUpload();
 
   // Function to clear all data fields
   console.log(`Product adding status is: ${isAddingProduct}`)
@@ -66,6 +59,8 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
     setCurrentMeasurement('kg');
     setCurrentSellingPrice(0);
     setCurrentInternalPrice(0);
+    setCurrentImageId(null);
+    setCurrentImageUrl(null);
     setImageId(null)
   }
   const clearMessageBar = () => {
@@ -81,6 +76,7 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
     clearMessageBar()
     clearImage()
   }
+
   // Use an effect to load data and clear the form
   useEffect(() => {
     if (tag === 'modify') {
@@ -89,6 +85,8 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
       setCurrentMeasurement(product?.Measurement);
       setCurrentSellingPrice(product?.SellingPrice);
       setCurrentInternalPrice(product?.InternalPrice);
+      setCurrentImageId(product?.ProductImageId)
+      setCurrentImageUrl(product?.ProductImageUrl)
       setImageId(product?.ProductImageId)
       setMessage(null)
       clearMessageBar()
@@ -111,9 +109,9 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
     event.preventDefault();
   
     if (tag === 'add') {
-      let productImageId = null
+      let imageData = null
       if (productImageFile) {
-        productImageId = await uploadImage(productImageFile);
+        imageData = await uploadImage(productImageFile);
       }
       console.log('Successfully Uploaded imaeg to cloudinary')
       const productData = {
@@ -121,7 +119,8 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
       Measurement: currentMeasurement,
       SellingPrice: parseFloat(currentSellingPrice),
       InternalPrice: parseFloat(currentInternalPrice),
-      ProductImageId: productImageId
+      ProductImageId: imageData?.public_id,
+      ProductImageUrl: imageData?.image_url
 
     };
     try {
@@ -168,7 +167,7 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
     };
 
     const handleImageButtonClick= () => {
-      fileInputRef.click()
+      fileInputRef.current.click()
   }
   
   // Render status messages for both actions
@@ -271,21 +270,22 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
                 alt="Product"
               />
             ) : 
-
-            imageObj ? (
-              <AdvancedImage
-                cldImg={imageObj}
-                style={{
+            
+            currentImageUrl ? (
+              <Box
+                component="img"
+                sx={{
                   width: '100%',
                   height: '85%',
-                  objectFit: 'cover',
+                  objectFit: 'contain',
                   border: '1px solid #ccc',
                   borderRadius: '8px',
+                  objectFit: 'cover'
                 }}
+                src={currentImageUrl}
                 alt="Product"
               />
-            )
-            :
+            ) : 
             (
               <Box
                 sx={{
