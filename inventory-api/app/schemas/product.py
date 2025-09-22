@@ -16,7 +16,8 @@ class ProductBase(BaseModel):
 
 # This model is used for data coming from the client to create a new product.
 class ProductCreate(ProductBase):
-    pass
+    ProductImageUrl: str
+    ProductImageId: str
 class ProductUpdate (BaseModel):
     ProductName: Optional[str]
     Measurement: Optional[str]
