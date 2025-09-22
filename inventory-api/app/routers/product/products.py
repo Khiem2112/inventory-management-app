@@ -100,7 +100,6 @@ async def create_product(new_product: ProductCreate,
                    current_user: UserORM = Depends(get_current_user),
                    db: Session = Depends(get_db),
                    ):
-  
   try:
     added_product = ProductORM (
       ProductName = new_product.ProductName,
@@ -198,6 +197,58 @@ async def update_product(
     db.rollback()
     raise HTTPException(status_code=500, detail=f'Unexpected error: {e}')
   return found_product
+
+@router.put('/{product_id}/image')
+async def update_product_image(
+    product_id: int,
+    product_image: UploadFile = File(...),
+    current_user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Step 1: Validate the incoming file
+    if not product_image.content_type.startswith('image/'):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only image files are valid"
+        )
+    
+    # Step 2: Retrieve the existing product from the database
+    product = db.query(ProductORM).filter(ProductORM.ProductId == product_id).first()
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Product with id {product_id} not found."
+        )
+
+    public_id = None
+    try:
+        # Step 3: Delete the old image from Cloudinary if it exists
+        if product.ProductImageId:
+            cloudinary.uploader.destroy(product.ProductImageId)
+
+        # Step 4: Upload the new image to Cloudinary
+        upload_result = cloudinary.uploader.upload(product_image.file)
+        
+        # Step 5: Update the database record with the new image info
+        product.ProductImageUrl = upload_result.get("secure_url")
+        product.ProductImageId = upload_result.get("public_id")
+
+        db.commit()
+        db.refresh(product)
+        
+        return {
+            "message": "Product image updated successfully",
+            "image_url": product.ProductImageUrl,
+            "public_id": product.ProductImageId
+        }
+    
+    except Exception as e:
+        # Rollback the database if the upload or commit fails
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred during image update: {e}"
+        )
 
 @router.delete('/{product_id}', status_code=status.HTTP_202_ACCEPTED)
 async def delete_product(
