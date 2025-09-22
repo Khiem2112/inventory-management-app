@@ -6,9 +6,10 @@ from app.utils.dependencies import get_current_user
 from app.database.connection import get_db
 from app.database.user_model import User as UserORM
 from app.database.product_model import Product as ProductORM
-from typing import List
+from typing import List, Annotated
 from app.services.socket_manager import ConnectionManager
 from app.utils.logger import setup_logger
+from app.utils.dependencies import FormBody
 import cloudinary.uploader
 import cloudinary
 
@@ -95,32 +96,11 @@ def get_product_by_id(
 
 # Create new product
 @router.post('/', response_model=ProductPublic, status_code=status.HTTP_201_CREATED)
-async def create_product(new_product_str: str = Form(...),
-                         product_image: UploadFile = File(...), 
+async def create_product(new_product: ProductCreate,
                    current_user: UserORM = Depends(get_current_user),
-                   db: Session = Depends(get_db)
-                   ):
-  # Convert form data to dict
-  new_product_dict =json.loads(new_product_str)
-  new_product = ProductCreate(**new_product_dict)
+                   db: Session = Depends(get_db),
+                   ):  
   
-  # Check image upload
-  if not product_image.content_type.startswith('image/'):
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
-                        detail="Only image file is valid")
-  try:
-    upload_result = cloudinary.uploader.upload(file = product_image.file
-                                                        )
-    logger.info("Upload image can be performed")
-    image_url = upload_result.get("secure_url")
-    public_id = upload_result.get("public_id")
-    
-    logger.info(f"Image url returned by cloudinary server is: {image_url}")
-    if not image_url:
-      raise Exception("Cloudinary failed to return an url")
-  except Exception as e:
-    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail=f"Uncaught Internal Server Error: {e}")
   try:
     added_product = ProductORM (
       ProductName = new_product.ProductName,
@@ -128,8 +108,8 @@ async def create_product(new_product_str: str = Form(...),
       SellingPrice = new_product.SellingPrice,
       InternalPrice = new_product.InternalPrice,
       # Image info
-      ProductImageId = public_id,
-      ProductImageUrl = image_url
+      ProductImageId = new_product.ProductImageId,
+      ProductImageUrl = new_product.ProductImageUrl
     )
     # add product to db
     db.add(added_product)
@@ -153,6 +133,33 @@ async def create_product(new_product_str: str = Form(...),
     raise HTTPException(status_code=500, detail= f"Unexpected error {e}")
   return added_product
 
+@router.post("/upload-image", status_code=status.HTTP_201_CREATED)
+async def upload_product_image (upload_file: UploadFile = File(...),
+                                current_user = Depends(get_current_user),
+                                ):
+  # Check image upload
+  if not upload_file.content_type.startswith('image/'):
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                        detail="Only image file is valid")
+  try:
+    upload_result = cloudinary.uploader.upload(file = upload_file.file
+                                                        )
+    logger.info("Upload image can be performed")
+    image_url = upload_result.get("secure_url")
+    public_id = upload_result.get("public_id")
+    
+    logger.info(f"Image url returned by cloudinary server is: {image_url}")
+    if not image_url:
+      raise Exception("Cloudinary failed to return an url")
+  except Exception as e:
+    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail=f"Uncaught Internal Server Error: {e}")
+  return {
+    'image_url': image_url,
+    'public_id': public_id,
+    'message': "Upload Product image successfully",
+    'image_category': "product"
+  }
 
 @router.put('/{product_id}', response_model=ProductPublic, status_code=status.HTTP_200_OK)
 async def update_product(

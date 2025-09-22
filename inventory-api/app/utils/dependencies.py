@@ -1,12 +1,14 @@
 # app/dependencies.py
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 from app.database.connection import get_db
 from app.database.user_model import User as UserORM
 from datetime import datetime, timedelta, timezone
+from pydantic import BaseModel
+from typing import TypeVar, Type
 import os
 SECRET_KEY = os.getenv('SECRET_KEY')
 ALGORITHM = os.getenv('ALGORITHM')
@@ -45,3 +47,15 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
     if user is None:
         raise credentials_exception
     return user
+
+class FormBody:
+    def __init__(self, model: Type[BaseModel]):
+        self.model = model
+
+    async def __call__(self, request: Request):
+        try:
+            data = await request.form()
+            data_dict = data.as_dict()
+            return self.model(**data_dict)
+        except Exception as e:
+            raise e
