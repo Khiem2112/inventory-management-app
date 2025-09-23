@@ -21,7 +21,8 @@ import {
   fetchAllProductsAsync, 
   fetchSomeProductsAsync, 
   setSelectedProduct,
-setSelectedProductWithIndex } from "../myRedux/slices/ProductsSlice";
+  setSelectedProductWithIndex,
+  resetSelectedProductWithIndex } from "../myRedux/slices/ProductsSlice";
 import { useDispatch, useSelector } from "react-redux";
 import useImagePreview from "../hooks/Product/useImagePreview";
 import useGetImageCloudinary from "../hooks/Product/useGetImageCloudinary";
@@ -89,6 +90,7 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
     clearProductInfo()
     clearMessageBar()
     clearImage()
+    dispatch(resetSelectedProductWithIndex())
   }
 
   // Use an effect to load data and clear the form
@@ -259,8 +261,10 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
     let newIndex = selectedIndex;
 
     if (direction === 'next' && selectedIndex < products.length - 1) {
+        console.log("next button is is clicked")
         newIndex = selectedIndex + 1;
     } else if (direction === 'previous' && selectedIndex > 0) {
+        console.log("previous button is clicked")
         newIndex = selectedIndex - 1;
     }
     // Set the new selected product in your Redux store
@@ -271,7 +275,7 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
           product: newProduct,
           index: newIndex
         }));
-        console.log(`Current product index is: ${newIndex} with id: ${product.ProductId}`)
+        console.log(`Current product index is: ${newIndex} with id: ${newProduct.ProductId}`)
     }
 };
   
@@ -313,29 +317,60 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
   return (
     <Dialog open={open} onClose={onClose}>
       <DialogTitle>
-        <Typography variant="h6">
-          {/* Product name here */}
-        </Typography>
-
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <IconButton
-          onClick={() => handleNavigation('previous')}
-          disabled={selectedIndex === 0}
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            alignItems: 'center',
+            width: '100%',
+            gap: 1  // Add spacing between items
+          }}
         >
-          <NavigateBeforeIcon />
-        </IconButton>
-          <Typography variant="h6">
+          <Box sx={{ width: '10%', display: 'flex', justifyContent: 'center' }}>
+            <IconButton
+              onClick={() => handleNavigation('previous')}
+              disabled={selectedIndex === 0}
+            >
+              <NavigateBeforeIcon />
+            </IconButton>
+          </Box>
+
+          <Typography 
+            variant="h6" 
+            sx={{
+              width: '65%',
+              textAlign: 'center',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}
+          >
             {tag === 'add' ? 'Add New Product' : `Modify ${product?.ProductName}`}
           </Typography>
-          <IconButton
-          onClick={() => handleNavigation('next')}
-          disabled={selectedIndex === products.length - 1}
-        >
-          <NavigateNextIcon />
-        </IconButton>
-          <IconButton onClick={onClose} sx={{ bgcolor: (theme) => theme.palette.primary.main, color: 'white', borderRadius: '8px', '&:hover': { bgcolor: (theme) => theme.palette.primary.dark } }}>
-            <CloseIcon />
-          </IconButton>
+
+          <Box sx={{ width: '10%', display: 'flex', justifyContent: 'center' }}>
+            <IconButton
+              onClick={() => handleNavigation('next')}
+              disabled={selectedIndex === products.length - 1}
+            >
+              <NavigateNextIcon />
+            </IconButton>
+          </Box>
+
+          <Box sx={{ width: '10%', display: 'flex', justifyContent: 'center' }}>
+            <IconButton 
+              onClick={onClose} 
+              sx={{ 
+                bgcolor: (theme) => theme.palette.primary.main, 
+                color: 'white', 
+                borderRadius: '8px', 
+                '&:hover': { 
+                  bgcolor: (theme) => theme.palette.primary.dark 
+                } 
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Box>
         </Box>
       </DialogTitle>
       <DialogContent ref ={dialogContentRef}>

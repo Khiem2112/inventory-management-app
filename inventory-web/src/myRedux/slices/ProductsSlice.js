@@ -129,8 +129,18 @@ const productsSlice = createSlice({
         setSelectedProduct: (state,action) => {
             state.selectedProduct = action.payload
         },
+        resetSelectedProductWithIndex: (state) => {
+            state.selectedProduct = null
+            state.selectedIndex = null
+        },
+        assignSelectedProduct: (state, action) => {
+        state.selectedProduct = action.payload;
+        state.selectedIndex = state.items.findIndex(
+            item => item.ProductId === action.payload.ProductId
+        );
+        },
         productUpdated: (state, action) => {
-      // Find the product and update it or add it if it's new
+        // Find the product and update it or add it if it's new
             const index = state.items.findIndex(
                 (product) => product.ProductId === action.payload.ProductId
             );
@@ -251,5 +261,7 @@ export const {
     resetStatus,
     setSelectedProduct, 
     productUpdated,
-setSelectedProductWithIndex } = productsSlice.actions;
+    setSelectedProductWithIndex,
+    assignSelectedProduct,
+    resetSelectedProductWithIndex } = productsSlice.actions;
 export default productsSlice.reducer;
