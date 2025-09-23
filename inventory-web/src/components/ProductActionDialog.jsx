@@ -10,10 +10,18 @@ import useAddNewProduct from "../hooks/Product/useAddNewProduct";
 import useUpdateProduct from "../hooks/Product/useUpdateProduct";
 import CloseIcon from '@mui/icons-material/Close';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import NavigateNextIcon from '@mui/icons-material/NavigateNext';
+import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import useProductImageUpload from "../hooks/Product/useProductImageUpload";
 import useProductImageModify from "../hooks/Product/useProductImageModify";
-import { addNewProductAsync, updateProductAsync, fetchAllProductsAsync, fetchSomeProductsAsync } from "../myRedux/slices/ProductsSlice";
+import { 
+  addNewProductAsync, 
+  updateProductAsync, 
+  fetchAllProductsAsync, 
+  fetchSomeProductsAsync, 
+  setSelectedProduct,
+setSelectedProductWithIndex } from "../myRedux/slices/ProductsSlice";
 import { useDispatch, useSelector } from "react-redux";
 import useImagePreview from "../hooks/Product/useImagePreview";
 import useGetImageCloudinary from "../hooks/Product/useGetImageCloudinary";
@@ -29,17 +37,21 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
   const [currentMeasurement, setCurrentMeasurement] = useState('kg');
   const [currentSellingPrice, setCurrentSellingPrice] = useState(0);
   const [currentInternalPrice, setCurrentInternalPrice] = useState(0);
-  const fileInputRef = useRef(null); // <-- Create a ref for the hidden input
   const [productImage, setProductImage] = useState({
     file: null,      // The file object for a new upload
     url: null,       // The URL to display (either local or Cloudinary)
     id: null,        // The Cloudinary public ID
 });
+  const fileInputRef = useRef(null); // <-- Create a ref for the hidden input
+  const dialogContentRef = useRef(null)
+
 
   // Use hooks for the two actions
     // Hooks for Add one new product
   const dispatch = useDispatch()
   const product = useSelector((state)=> state.products.selectedProduct)
+  const selectedIndex = useSelector((state)=> state.products.selectedIndex)
+  const products = useSelector((state)=> state.products.items)
   const addingProductError = useSelector((state)=> state.products.error.addOne)
   const updatingProductError = useSelector((state)=> state.products.error.updateOne)
   const isAddingProduct = useSelector((state)=> state.products.status.addOne === 'pending')
@@ -109,6 +121,38 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
       clearImage()
     }
   }, [congratulationResponse, updateSuccessMessage]);
+
+  useEffect(() => {
+  const handleWheel = (event) => {
+    const minDelta = 20; // Set a minimum delta to avoid accidental triggers
+    if (Math.abs(event.deltaX) > minDelta) {
+      event.preventDefault(); // Prevent default horizontal scrolling
+
+      if (event.deltaX > 0) {
+        // Swipe left (next product)
+        // Call your handleNext function here
+        // handleNext();
+        console.log("Next product");
+      } else if (event.deltaX < 0) {
+        // Swipe right (previous product)
+        // Call your handlePrevious function here
+        // handlePrevious();
+        console.log("Previous product");
+      }
+    }
+  }
+
+  const dialogElement = dialogContentRef.current;
+  if (dialogElement) {
+    dialogElement.addEventListener('wheel', handleWheel, { passive: false });
+  }
+
+  return () => {
+    if (dialogElement) {
+      dialogElement.removeEventListener('wheel', handleWheel);
+    }
+  };
+}, [open]); // Add 'open' to the dependency array
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -207,6 +251,29 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
     const handleImageButtonClick= () => {
       fileInputRef.current.click()
   }
+
+  const handleNavigation = (direction) => {
+    // A check to prevent navigation if the products list is not available
+    if (!products || products.length === 0) return;
+    
+    let newIndex = selectedIndex;
+
+    if (direction === 'next' && selectedIndex < products.length - 1) {
+        newIndex = selectedIndex + 1;
+    } else if (direction === 'previous' && selectedIndex > 0) {
+        newIndex = selectedIndex - 1;
+    }
+    // Set the new selected product in your Redux store
+    if (newIndex !== selectedIndex) {
+        const newProduct = products[newIndex];
+        // Dispatch an action to update selectedProduct and selectedIndex
+        dispatch(setSelectedProductWithIndex({
+          product: newProduct,
+          index: newIndex
+        }));
+        console.log(`Current product index is: ${newIndex} with id: ${product.ProductId}`)
+    }
+};
   
   // Render status messages for both actions
   const renderStatus = () => {
@@ -246,16 +313,32 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
   return (
     <Dialog open={open} onClose={onClose}>
       <DialogTitle>
+        <Typography variant="h6">
+          {/* Product name here */}
+        </Typography>
+
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <IconButton
+          onClick={() => handleNavigation('previous')}
+          disabled={selectedIndex === 0}
+        >
+          <NavigateBeforeIcon />
+        </IconButton>
           <Typography variant="h6">
             {tag === 'add' ? 'Add New Product' : `Modify ${product?.ProductName}`}
           </Typography>
+          <IconButton
+          onClick={() => handleNavigation('next')}
+          disabled={selectedIndex === products.length - 1}
+        >
+          <NavigateNextIcon />
+        </IconButton>
           <IconButton onClick={onClose} sx={{ bgcolor: (theme) => theme.palette.primary.main, color: 'white', borderRadius: '8px', '&:hover': { bgcolor: (theme) => theme.palette.primary.dark } }}>
             <CloseIcon />
           </IconButton>
         </Box>
       </DialogTitle>
-      <DialogContent>
+      <DialogContent ref ={dialogContentRef}>
       <Box component="form" sx = {{
         display:'flex', 
         gap:2,

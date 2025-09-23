@@ -106,6 +106,7 @@ const initialState = {
         deleteOne: null
     },
     selectedProduct: null,
+    selectedIndex: null,
     wsStatus: 'uninstantiated'
 };
 
@@ -119,6 +120,11 @@ const productsSlice = createSlice({
             state.status.getAll = 'idle';
             state.status.getOne = 'idle';
             state.selectedProduct = null;
+        },
+        setSelectedProductWithIndex: (state,action) => {
+            const {product, index} = action.payload
+            state.selectedProduct = product
+            state.selectedIndex = index
         },
         setSelectedProduct: (state,action) => {
             state.selectedProduct = action.payload
@@ -168,13 +174,13 @@ const productsSlice = createSlice({
                 state.error.getSome = action.payload || action.error.message;
             })
             // Handling fetchOneProductAsync
-            .addCase(fetchOneProductAsync.pending, (state) => {
-                state.status.getOne = 'loading';
-                state.error.getOne = null;
-            })
             .addCase(fetchOneProductAsync.fulfilled, (state, action) => {
                 state.status.getOne = 'succeeded';
                 state.selectedProduct = action.payload;
+                // Find and set the index
+                state.selectedIndex = state.items.findIndex(
+                    item => item.ProductId === action.payload.ProductId
+                );
             })
             .addCase(fetchOneProductAsync.rejected, (state, action) => {
                 state.status.getOne = 'failed';
@@ -241,5 +247,9 @@ const productsSlice = createSlice({
 });
 
 // Export the synchronous action creators and the main reducer
-export const { resetStatus,setSelectedProduct, productUpdated } = productsSlice.actions;
+export const { 
+    resetStatus,
+    setSelectedProduct, 
+    productUpdated,
+setSelectedProductWithIndex } = productsSlice.actions;
 export default productsSlice.reducer;
