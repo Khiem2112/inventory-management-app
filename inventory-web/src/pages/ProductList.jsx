@@ -28,6 +28,7 @@ import { useState, useEffect   } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchAllProductsAsync,
          setSelectedProduct,
+         assignSelectedProduct,
          fetchSomeProductsAsync} from '../myRedux/slices/ProductsSlice';
 import useWebSocket, {ReadyState} from 'react-use-websocket';
 import { wsConnectStart, wsDisconnect } from '../myRedux/action/wsActions';
@@ -124,7 +125,7 @@ const webSocketConnectionStatusUI = () => {
       * InternalPrice
      */
     console.log(`Is opening modify product table ${ProductData?.ProductName}`)
-    dispatch(setSelectedProduct(ProductData))
+    dispatch(assignSelectedProduct(ProductData))
     console.log(`Selected product is: ${JSON.stringify(selectedProduct)}`)
     setIsDialogOpen(true)
     setDialogType('modify')
