@@ -29,8 +29,12 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
   const [currentMeasurement, setCurrentMeasurement] = useState('kg');
   const [currentSellingPrice, setCurrentSellingPrice] = useState(0);
   const [currentInternalPrice, setCurrentInternalPrice] = useState(0);
-  const [currentImageUrl, setCurrentImageUrl] = useState(null);
-  const [currentImageId, setCurrentImageId] = useState(null)
+  const fileInputRef = useRef(null); // <-- Create a ref for the hidden input
+  const [productImage, setProductImage] = useState({
+    file: null,      // The file object for a new upload
+    url: null,       // The URL to display (either local or Cloudinary)
+    id: null,        // The Cloudinary public ID
+});
 
   // Use hooks for the two actions
     // Hooks for Add one new product
@@ -46,10 +50,7 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
   const [updateSuccessMessage, setUpdateSuccessMessage ] = useState(null);
   const [message, setMessage] = useState(null)
   // For image preview
-  const {setImageId, imageObj} = useGetImageCloudinary(null) // Image from existing product
-  const [productImageFile, setProductImageFile] = useState(null) //Image file uploaded from local machine
-  const imagePreviewUrl = useImagePreview(productImageFile) // Url that used to preview for user
-  const fileInputRef = useRef(null); // <-- Create a ref for the hidden input
+
   // Fpr image upload
   const { mutateAsync: uploadImage, isLoading: isImageUploading, error: imageUploadError } = useProductImageUpload();
   const {mutateAsync: updateImage, isLoading: isImageUpdating, error: imageUpdateError} = useProductImageModify()
@@ -63,9 +64,6 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
     setCurrentMeasurement('kg');
     setCurrentSellingPrice(0);
     setCurrentInternalPrice(0);
-    setCurrentImageId(null);
-    setCurrentImageUrl(null);
-    setImageId(null)
   }
   const clearMessageBar = () => {
     setCongratulationResponse(null)
@@ -73,7 +71,7 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
     console.log('Clear the message bar completed')
   }
   const clearImage = () => {
-    setProductImageFile(null)
+    setProductImage({ file: null, url: null, id: null });
   }
   const clearAll = () => {
     clearProductInfo()
@@ -90,9 +88,11 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
       setCurrentMeasurement(product?.Measurement);
       setCurrentSellingPrice(product?.SellingPrice);
       setCurrentInternalPrice(product?.InternalPrice);
-      setCurrentImageId(product?.ProductImageId)
-      setCurrentImageUrl(product?.ProductImageUrl)
-      setImageId(product?.ProductImageId)
+      setProductImage({
+        file:null,
+        url: product?.ProductImageUrl,
+        id: product?.ProductImageId
+      })
       setMessage(null)
       clearMessageBar()
     } else if (tag === 'add') {
@@ -115,8 +115,8 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
     let productData;
     if (tag === 'add') {
       let imageData = null
-      if (productImageFile) {
-        imageData = await uploadImage(productImageFile);
+      if (productImage.file) {
+        imageData = await uploadImage(productImage.file);
       }
       console.log('Successfully Uploaded imaeg to cloudinary')
       productData = {
@@ -145,11 +145,11 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
         }
         let imageData = null
         // Check imageFile exist to upload
-        if (productImageFile) {
+        if (productImage.file) {
           console.log('Start update new image')
           imageData = await updateImage({  // Fix: Pass object with named parameters
             productId: currentProductId,
-            imageFile: productImageFile
+            imageFile: productImage.file
           })
           console.log('Successfully update new image')
     }
@@ -193,7 +193,11 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
     const file = event.target.files[0];
     console.log(`A file is selected: ${JSON.stringify(URL.createObjectURL(file))}`)
     if (file) {
-     setProductImageFile(file)
+     setProductImage({
+            file: file,
+            url: URL.createObjectURL(file), // The new "display" URL
+            id: null, // No permanent ID yet
+        });
     }
     else {
       clearImage()
@@ -239,7 +243,6 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
     return null;
   };
 
-  console.log(`Loading image object to UI: ${JSON.stringify(imageObj)}`)
   return (
     <Dialog open={open} onClose={onClose}>
       <DialogTitle>
@@ -289,7 +292,7 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
                      padding: '15px',
                      gap: '12px'
           }}>
-            {imagePreviewUrl ? (
+            {productImage.url ? (
               <Box
                 component="img"
                 sx={{
@@ -300,26 +303,10 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
                   borderRadius: '8px',
                   objectFit: 'cover'
                 }}
-                src={imagePreviewUrl}
+                src={productImage.url}
                 alt="Product"
               />
-            ) : 
-            
-            currentImageUrl ? (
-              <Box
-                component="img"
-                sx={{
-                  width: '100%',
-                  height: '85%',
-                  objectFit: 'contain',
-                  border: '1px solid #ccc',
-                  borderRadius: '8px',
-                  objectFit: 'cover'
-                }}
-                src={currentImageUrl}
-                alt="Product"
-              />
-            ) : 
+            ) :  
             (
               <Box
                 sx={{
@@ -346,7 +333,7 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
                 width: '100%'
               }}
             >
-              {currentImageUrl || imagePreviewUrl ? "Modify Image" : "Add Image"}
+              {productImage.url ? "Modify Image" : "Add Image"}
             </Button>
           </Box>
         </Box>
