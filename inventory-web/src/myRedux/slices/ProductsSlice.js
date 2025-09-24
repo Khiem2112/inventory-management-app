@@ -7,6 +7,35 @@ import { wsConnectStart,
          wsConnectError, 
          wsDisconnect,
          wsMessageReceive } from "../action/wsActions.js";
+
+const initialState = {
+    items: [],
+    pagination : {
+        currentPage: 1,
+        totalPage: null,
+        limit: 10
+    },
+    status: {
+        getAll: 'idle',
+        getSome: 'idle',
+        getOne: 'idle',
+        addOne: 'idle',
+        updateOne: 'idle',
+        deleteOne: 'idle'
+    },
+    error: {
+        getAll: null,
+        getSome: 'idle',
+        getOne: null,
+        addOne: null,
+        updateOne: null,
+        deleteOne: null
+    },
+    selectedProduct: null,
+    selectedIndex: null,
+    wsStatus: 'uninstantiated'
+};
+
 // Async thunks for all API operations
 export const fetchAllProductsAsync = createAsyncThunk(
     'products/fetchAllProducts',
@@ -21,7 +50,7 @@ export const fetchAllProductsAsync = createAsyncThunk(
 );
 export const fetchSomeProductsAsync = createAsyncThunk(
     'products/fetchSomeProducts',
-    async (params = {page : 1, limit : 10}, {rejectWithValue}) => {
+    async (params = {page : initialState.pagination.currentPage, limit : initialState.pagination.limit}, {rejectWithValue}) => {
         try {
             console.log('toi dang duoc goi nef ba con oi')
             const response = await api.get(`/products/`, {params})
@@ -49,6 +78,7 @@ export const addNewProductAsync = createAsyncThunk(
     'products/addNewProduct',
     async (newProductData, { rejectWithValue }) => {
         try {
+            console.log(`Sending product data ${JSON.stringify(newProductData)}`)
             const response = await api.post('/products/', newProductData);
             return response.data;
         } catch (error) {
@@ -81,34 +111,6 @@ export const deleteProductAsync = createAsyncThunk(
         }
     }
 );
-
-const initialState = {
-    items: [],
-    pagination : {
-        currentPage: 1,
-        totalPage: null,
-        limit: 10
-    },
-    status: {
-        getAll: 'idle',
-        getSome: 'idle',
-        getOne: 'idle',
-        addOne: 'idle',
-        updateOne: 'idle',
-        deleteOne: 'idle'
-    },
-    error: {
-        getAll: null,
-        getSome: 'idle',
-        getOne: null,
-        addOne: null,
-        updateOne: null,
-        deleteOne: null
-    },
-    selectedProduct: null,
-    selectedIndex: null,
-    wsStatus: 'uninstantiated'
-};
 
 
 const productsSlice = createSlice({

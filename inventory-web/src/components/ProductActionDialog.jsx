@@ -57,6 +57,9 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
   const updatingProductError = useSelector((state)=> state.products.error.updateOne)
   const isAddingProduct = useSelector((state)=> state.products.status.addOne === 'pending')
   const isUpdatingProduct = useSelector((state)=> state.products.status.updateOne === 'pending')
+  const currentPage = useSelector((state) => state.products.pagination.currentPage)
+  const pageLimit = useSelector((state) => state.products.pagination.limit)
+  const totalPage = useSelector((state) => state.products.pagination.totalPage)
     // Hooks about cloudinary image
 
   const [congratulationResponse, setCongratulationResponse] = useState(null);
@@ -260,12 +263,41 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
     
     let newIndex = selectedIndex;
 
-    if (direction === 'next' && selectedIndex < products.length - 1) {
-        console.log("next button is is clicked")
-        newIndex = selectedIndex + 1;
-    } else if (direction === 'previous' && selectedIndex > 0) {
-        console.log("previous button is clicked")
-        newIndex = selectedIndex - 1;
+    // If the current index is still lower than the max index of the page
+    if (direction === 'next') {
+        // If at the last product of the current page
+        if (selectedIndex === products.length - 1) {
+          console.log('Current index isn max in the page')
+            // If there's a next page, fetch it
+            if (currentPage < totalPage) {
+                let newPage = currentPage + 1;
+                dispatch(fetchSomeProductsAsync({ page: newPage }));
+                // We don't set a selected product here; the new data will be loaded
+                // and the list will re-render, starting from the first item of the new page.
+            }
+            // If there's no next page, do nothing
+        } else {
+            // Not at the end, so just move to the next product
+            newIndex = selectedIndex + 1;
+            const newProduct = products[newIndex];
+            dispatch(setSelectedProductWithIndex({ product: newProduct, index: newIndex }));
+        }
+    } else if (direction === 'previous') {
+        // If at the first product of the current page
+        if (selectedIndex === 0) {
+            // If there's a previous page, fetch it
+            if (currentPage > 1) {
+                let newPage = currentPage - 1;
+                dispatch(fetchSomeProductsAsync({ page: newPage }));
+                // We don't set a selected product here; the new data will be loaded
+                // and the list will re-render, starting from the last item of the new page.
+            }
+        } else {
+            // Not at the beginning, so just move to the previous product
+            newIndex = selectedIndex - 1;
+            const newProduct = products[newIndex];
+            dispatch(setSelectedProductWithIndex({ product: newProduct, index: newIndex }));
+        }
     }
     // Set the new selected product in your Redux store
     if (newIndex !== selectedIndex) {
@@ -275,7 +307,7 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
           product: newProduct,
           index: newIndex
         }));
-        console.log(`Current product index is: ${newIndex} with id: ${newProduct.ProductId}`)
+        console.log(`Current product index is: ${newIndex} with id: ${newProduct.ProductId} and on the page ${currentPage}`)
     }
 };
   
