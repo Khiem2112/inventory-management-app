@@ -16,15 +16,15 @@ class ProductBase(BaseModel):
 
 # This model is used for data coming from the client to create a new product.
 class ProductCreate(ProductBase):
-    ProductImageUrl: str
-    ProductImageId: str
+    ProductImageUrl: Optional[str] = None
+    ProductImageId: Optional[str] = None
 class ProductUpdate (BaseModel):
     ProductName: Optional[str]
     Measurement: Optional[str]
     SellingPrice: Optional[float] = None  # Using Optional since your SQL has no NOT NULL constraint
     InternalPrice: Optional[float]
-    ProductImageId: Optional[str]
-    ProductImageUrl: Optional[str]
+    ProductImageId: Optional[str] = None
+    ProductImageUrl: Optional[str] = None
 # This model is for the data that your API will return to the client.
 # It inherits from ProductBase and adds the database-generated fields.
 class ProductPublic(ProductBase):
