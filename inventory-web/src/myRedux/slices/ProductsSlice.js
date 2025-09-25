@@ -124,9 +124,13 @@ const productsSlice = createSlice({
             state.selectedProduct = null;
         },
         setSelectedProductWithIndex: (state,action) => {
-            const {product, index} = action.payload
-            state.selectedProduct = product
+            const {index} = action.payload
+            
             state.selectedIndex = index
+            state.selectedProduct = state.items[index]
+            console.log(`New product change after switch to new page ${JSON.stringify(state.selectedProduct)} 
+            with page ${state.pagination.currentPage} and index ${state.selectedIndex}`)
+
         },
         setSelectedProduct: (state,action) => {
             state.selectedProduct = action.payload

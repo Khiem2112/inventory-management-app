@@ -257,57 +257,62 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
       fileInputRef.current.click()
   }
 
-  const handleNavigation = (direction) => {
-    // A check to prevent navigation if the products list is not available
+  const handleNavigation = async (direction) => { // 1. Make it async
     if (!products || products.length === 0) return;
     
-    let newIndex = selectedIndex;
-
-    // If the current index is still lower than the max index of the page
+    // --- Logic for navigating to the NEXT Page ---
     if (direction === 'next') {
-        // If at the last product of the current page
-        if (selectedIndex === products.length - 1) {
-          console.log('Current index isn max in the page')
-            // If there's a next page, fetch it
-            if (currentPage < totalPage) {
-                let newPage = currentPage + 1;
-                dispatch(fetchSomeProductsAsync({ page: newPage }));
-                // We don't set a selected product here; the new data will be loaded
-                // and the list will re-render, starting from the first item of the new page.
+        if (selectedIndex === products.length - 1 && currentPage < totalPage) {
+            
+            let newPage = currentPage + 1;
+            
+            // 2. Await the dispatch and get the result (which contains the new products)
+            const result = await dispatch(fetchSomeProductsAsync({ page: newPage, limit: pageLimit }));
+
+            // Check if the API call was successful and contains the new items
+            if (result.meta.requestStatus === 'fulfilled' && result.payload?.items) {
+                const newProducts = result.payload.items;
+                // 3. Select the first product of the newly loaded page
+                const targetIndex = 0;
+                const newProduct = newProducts[targetIndex];
+                
+                // 4. Update the selected product state based on the new data
+                dispatch(setSelectedProductWithIndex({ product: newProduct, index: targetIndex }));
             }
-            // If there's no next page, do nothing
-        } else {
-            // Not at the end, so just move to the next product
-            newIndex = selectedIndex + 1;
+            return; // Exit after page fetch
+        } 
+        // Logic for navigating on Current Page
+        else if (selectedIndex < products.length - 1) {
+            const newIndex = selectedIndex + 1;
             const newProduct = products[newIndex];
             dispatch(setSelectedProductWithIndex({ product: newProduct, index: newIndex }));
         }
-    } else if (direction === 'previous') {
-        // If at the first product of the current page
-        if (selectedIndex === 0) {
-            // If there's a previous page, fetch it
-            if (currentPage > 1) {
-                let newPage = currentPage - 1;
-                dispatch(fetchSomeProductsAsync({ page: newPage }));
-                // We don't set a selected product here; the new data will be loaded
-                // and the list will re-render, starting from the last item of the new page.
+    } 
+    
+    // --- Logic for navigating to the PREVIOUS Page ---
+    else if (direction === 'previous') {
+        if (selectedIndex === 0 && currentPage > 1) {
+            
+            let newPage = currentPage - 1;
+
+            // 2. Await the dispatch and get the result (which contains the new products)
+            const result = await dispatch(fetchSomeProductsAsync({ page: newPage, limit: pageLimit }));
+            
+            // Check if the API call was successful and contains the new items
+            if (result.meta.requestStatus === 'fulfilled' && result.payload?.items) {
+                const newProducts = result.payload.items;
+                // 3. Select the last product of the newly loaded page
+                const targetIndex = newProducts.length - 1;                
+                // 4. Update the selected product state based on the new data
+                dispatch(setSelectedProductWithIndex({ index: targetIndex }));
             }
-        } else {
-            // Not at the beginning, so just move to the previous product
-            newIndex = selectedIndex - 1;
-            const newProduct = products[newIndex];
-            dispatch(setSelectedProductWithIndex({ product: newProduct, index: newIndex }));
+            return; // Exit after page fetch
         }
-    }
-    // Set the new selected product in your Redux store
-    if (newIndex !== selectedIndex) {
-        const newProduct = products[newIndex];
-        // Dispatch an action to update selectedProduct and selectedIndex
-        dispatch(setSelectedProductWithIndex({
-          product: newProduct,
-          index: newIndex
-        }));
-        console.log(`Current product index is: ${newIndex} with id: ${newProduct.ProductId} and on the page ${currentPage}`)
+        // Logic for navigating on Current Page
+        else if (selectedIndex > 0) {
+            const newIndex = selectedIndex - 1;
+            dispatch(setSelectedProductWithIndex({ index: newIndex }));
+        }
     }
 };
   
@@ -360,7 +365,7 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
           <Box sx={{ width: '10%', display: 'flex', justifyContent: 'center' }}>
             <IconButton
               onClick={() => handleNavigation('previous')}
-              disabled={selectedIndex === 0}
+              disabled={selectedIndex === 0 && currentPage ===1}
             >
               <NavigateBeforeIcon />
             </IconButton>
@@ -382,7 +387,7 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
           <Box sx={{ width: '10%', display: 'flex', justifyContent: 'center' }}>
             <IconButton
               onClick={() => handleNavigation('next')}
-              disabled={selectedIndex === products.length - 1}
+              disabled={selectedIndex === products.length - 1 && currentPage === totalPage}
             >
               <NavigateNextIcon />
             </IconButton>
