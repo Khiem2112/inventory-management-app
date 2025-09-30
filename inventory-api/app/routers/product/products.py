@@ -101,15 +101,7 @@ async def create_product(new_product: ProductCreate,
                    db: Session = Depends(get_db),
                    ):
   try:
-    added_product = ProductORM (
-      ProductName = new_product.ProductName,
-      Measurement = new_product.Measurement,
-      SellingPrice = new_product.SellingPrice,
-      InternalPrice = new_product.InternalPrice,
-      # Image info
-      ProductImageId = new_product.ProductImageId,
-      ProductImageUrl = new_product.ProductImageUrl
-    )
+    added_product = ProductORM(**new_product.model_dump(exclude_unset=True))
     # add product to db
     db.add(added_product)
     db.commit()
@@ -124,13 +116,14 @@ async def create_product(new_product: ProductCreate,
     )
     logger.info('have create a message')
     await manager.broadcast(message.model_dump_json())
+    return added_product
+
   except SQLAlchemyError as e:
     db.rollback()
     raise HTTPException(status_code=500, detail =f"Database error {e}")
   except Exception as e:
     db.rollback()
     raise HTTPException(status_code=500, detail= f"Unexpected error {e}")
-  return added_product
 
 @router.post("/upload-image", status_code=status.HTTP_201_CREATED)
 async def upload_product_image (upload_file: UploadFile = File(...),
@@ -177,6 +170,7 @@ async def update_product(
     # Update that product
     ## dump pydantic model to create ORM model
     update_data = product.model_dump(exclude_unset=True)
+    logger.info(f"The update data is like: {update_data}")
     # Set variable for updated Product
     for field, value in update_data.items():
       setattr(found_product, field, value)
