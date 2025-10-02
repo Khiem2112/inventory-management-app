@@ -9,6 +9,7 @@ from app.database.user_model import User as UserORM
 import sqlalchemy
 from app.routers.auth import auth, users
 from app.routers.product import products
+from app.routers.warehouse_zone import warehouse_zones
 from fastapi.middleware.cors	import CORSMiddleware
 
 
@@ -52,6 +53,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(products.router)
+app.include_router(warehouse_zones.router)
 
 # users = get_all_users()
 # print(users)
