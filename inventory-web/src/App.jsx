@@ -17,6 +17,7 @@ import { Provider } from 'react-redux';
 import store from './myRedux/store/store.js';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CloudinaryProvider } from './context/CloudinaryContext.jsx';
+import WarehousePage from './pages/WarehousePage.jsx';
 // Create new Query Client
 const queryClient = new QueryClient()
 function App() {
@@ -35,6 +36,7 @@ function App() {
           <Route path = "/products-fetch" element = {<ProductDisplayFetch/>}/> */}
           <Route path = '/products' element = {<ProtectedRoute><ProductsList/></ProtectedRoute>}/>
           <Route path = '/test' element = {<CloudinaryTest/>}/>
+          <Route path = '/warehouse' element = {<WarehousePage/>} />
         </Routes>
     </ThemeProvider>
     </AuthProvider>
