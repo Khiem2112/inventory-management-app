@@ -26,14 +26,16 @@ logger = setup_logger()
 manager = ConnectionManager()
 # Get all products
 @router.get('/all/', 
-            response_model= List[ProductPublic], 
+            # response_model= List[ProductPublic], 
             status_code=status.HTTP_200_OK, 
             description="Fetch all product records")  
 def get_products_all (current_user: UserORM = Depends(get_current_user), db: Session = Depends(get_db)):
   # Get all products
   try:
     query = db.query(ProductORM)
+    logger.info(f"Get the query to fetch all products: {query}")
     products = query.all()
+    logger.info(f"Can receive the products list: {products[:4]}")
     return products
   except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail=f"Database error: {e}")

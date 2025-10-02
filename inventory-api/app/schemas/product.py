@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from pydantic.fields import FieldInfo, PydanticUndefined
 from fastapi import UploadFile
 from datetime import datetime
-from typing import Optional, TypeVar, Type, Any, get_args, get_origin
+from typing import Optional, TypeVar, Type, Any, get_args, get_origin, Dict
 from enum import Enum
 
 # --- REUSABLE ATTRIBUTE BLOCKS (MIXINS) ---
