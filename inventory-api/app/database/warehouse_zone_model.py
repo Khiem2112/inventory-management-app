@@ -22,5 +22,6 @@ class Zone(Base):
   IsStockable: Mapped[bytes] = mapped_column(Boolean, nullable= False, default=True)
   IsSecurityCage: Mapped[bytes] = mapped_column(Boolean, nullable= False, default=True)
   ZoneType: Mapped[ZoneType] = mapped_column(Enum(ZoneType), default=ZoneType.Storage)
+  ZoneImageUrl: Mapped[str] = mapped_column(String, nullable=True)
 
   

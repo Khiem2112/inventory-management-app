@@ -92,7 +92,7 @@ const WarehousePage = () => {
         Warehouse Zones Overview
       </Typography>
 
-      <Grid container spacing={4} alignItems="stretch">
+      <Grid container spacing={5} alignItems="stretch" xs = {25}>
         {/* Iterate over the safely defined zonesList */}
         {zonesList.map((zone) => (
           <Grid 
@@ -107,8 +107,8 @@ const WarehousePage = () => {
               // Ensure your zone object has these properties: title, description, etc.
               title={zone?.ZoneName}
               description={zone?.Description}
-              imageUrl={zone.imageUrl}
-              imageAlt={zone.imageAlt || zone.title}
+              imageUrl={zone?.ZoneImageUrl}
+              imageAlt={zone.imageAlt || zone.ZoneName}
             />
           </Grid>
         ))}
