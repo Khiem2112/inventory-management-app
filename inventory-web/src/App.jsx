@@ -12,7 +12,7 @@ import ProductDisplayFetch from './pages/ProductFetch.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import ProtectedRoute from './utils/PrivatedRoute.jsx';
 import ProductsList from './pages/ProductList.jsx';
-import CloudinaryTest from '../practice/test.jsx';
+// import CloudinaryTest from '../practice/test.jsx';
 import { Provider } from 'react-redux';
 import store from './myRedux/store/store.js';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -35,7 +35,7 @@ function App() {
           {/* <Route path = "/products-optimized" element = {<ProductDisplayPromise/>}/>
           <Route path = "/products-fetch" element = {<ProductDisplayFetch/>}/> */}
           <Route path = '/products' element = {<ProtectedRoute><ProductsList/></ProtectedRoute>}/>
-          <Route path = '/test' element = {<CloudinaryTest/>}/>
+          {/* <Route path = '/test' element = {<CloudinaryTest/>}/> */}
           <Route path = '/warehouse' element = {<WarehousePage/>} />
         </Routes>
     </ThemeProvider>
