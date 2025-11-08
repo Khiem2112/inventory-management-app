@@ -6,3 +6,4 @@ inventory-api/node_modules/
 /node_modules
 grep_help.txt
 api.json
+*.ini
