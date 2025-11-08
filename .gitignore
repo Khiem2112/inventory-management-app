@@ -3,3 +3,6 @@ grep_help.txt
 inventory-web/node_modules/
 inventory-api/node_modules/
 *.pyc
+/node_modules
+grep_help.txt
+api.json

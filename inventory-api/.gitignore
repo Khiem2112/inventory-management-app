@@ -3,3 +3,4 @@
 /practice
 .env
 app/practice
+__pycache__
