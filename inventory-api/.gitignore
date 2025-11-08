@@ -4,3 +4,4 @@
 .env
 app/practice
 __pycache__
+*.ini
