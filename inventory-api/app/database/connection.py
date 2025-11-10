@@ -2,6 +2,7 @@ from sqlalchemy import create_engine
 # from app.core.config import settings
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy import select
+from app.core.config import settings
 # Define database models
 # app/database/models.py (Corrected version)
 
@@ -11,12 +12,13 @@ from sqlalchemy import select
 # from typing import Optional, List # Keep Optional for nullable fields
 # from DBModel import User
 import urllib
+# from app.core.config import settings
 
 # Server details
-server = '172.17.48.1,57931'
-database = 'Inventory' # or 'master'
-username = 'wsl_user'
-password = 'haidang2015'
+server = f'{settings.DATABASE_HOSTNAME},{settings.DATABASE_PORT}'
+database = settings.DATABASE_NAME
+username = settings.DATABASE_USERNAME
+password = settings.DATABASE_PASSWORD
 
 # Build the connection string.
 params = urllib.parse.quote_plus(

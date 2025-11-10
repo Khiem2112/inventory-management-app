@@ -14,9 +14,11 @@ env_path = os.path.join(env_dir,'.env')
 load_dotenv(env_path)
 
 class Settings(BaseSettings):
-    # This field will automatically be populated from the DATABASE_URL environment variable
-    # (which `python-dotenv` loads from your .env file).
-    DATABASE_URL: str
+    DATABASE_NAME: str
+    DATABASE_HOSTNAME: str
+    DATABASE_PORT: int
+    DATABASE_USERNAME: str
+    DATABASE_PASSWORD: str
     
     # Cloudinary credentials
     CLOUDINARY_CLOUD_NAME: str
