@@ -8,11 +8,11 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install dependencies and adding files
-# Use the new, complete exported file
-COPY exported-environment.yml environment.yml 
+COPY environment.yml .
 
-# Create the Conda environment
-RUN conda env create -f environment.yml && conda clean -all
+# Update base environment with our dependencies
+RUN conda env update -n base -f environment.yml && \
+    conda clean -a
 
 # Copy the rest of the application code
 COPY . /app
@@ -21,6 +21,5 @@ COPY . /app
 EXPOSE 8000
 
 # Defining run-time command configuration
-# This structure ensures the app always runs INSIDE the activated Conda env
-ENTRYPOINT ["conda", "run", "-n", "inventory-management-app", "--no-capture-output", "uvicorn"]
+ENTRYPOINT ["uvicorn"]
 CMD ["main:app", "--host", "0.0.0.0", "--port", "8000"]
