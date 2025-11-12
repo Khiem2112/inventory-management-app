@@ -1,0 +1,17 @@
+.git
+.gitignore
+
+# Python cache and virtual environments
+__pycache__/
+*.pyc
+.venv
+venv
+env
+
+# IDE / Editor config
+.vscode/
+.idea/
+
+# Local secrets or config
+.env
+*.local

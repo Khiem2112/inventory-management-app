@@ -16,6 +16,7 @@ dependencies:
   - ca-certificates=2025.9.9
   - certifi=2025.10.5
   - cffi=1.17.1
+  - uvicorn
   - charset-normalizer=3.3.2
   - comm=0.2.3
   - conda=25.7.0
