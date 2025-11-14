@@ -28,8 +28,8 @@ logger = setup_logger()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto") 
 # The JWT settings
 # Automatically generate a token
-SECRET_KEY = os.getenv('SECRET_KEY')
-ALGORITHM = os.getenv('ALGORITHM')
+SECRET_KEY = str(os.getenv('SECRET_KEY'))
+ALGORITHM = str(os.getenv('ALGORITHM'))
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv('ACCESS_TOKEN_EXPIRE_MINUTES'))
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv('REFRESH_TOKEN_EXPIRE_DAYS'))
 
@@ -57,6 +57,7 @@ def create_refresh_token(user_id: int):
   expires_at = datetime.now(timezone.utc) + expires_delta
 
   to_encode = {"UserId": user_id, "Jti": jti, "exp": expires_at}
+  logger.info(f'Encode with Agorithm {ALGORITHM}')
   refresh_token = jwt.encode(to_encode, SECRET_KEY, ALGORITHM)
   return refresh_token, jti, expires_at
 
@@ -115,12 +116,15 @@ def process_login_user (Username:str,
   except IntegrityError as e:
     db.rollback() # Rollback on error
     # Catch the specific error for a duplicate username
+    logger.error(f'Cannot crreate new refresh token: {e}')
     raise HTTPException(
       status_code=status.HTTP_400_BAD_REQUEST,
       detail=f"Cannot create the new refresh_token record: {e}"
     )
+   
   except sqlalchemy.exc.SQLAlchemyError as e:
     db.rollback()
+    logger.error(f'Database error: {e}')
     raise HTTPException(status_code=500, detail=f"Database error: {e}")
   return {
     'access_token': access_token,

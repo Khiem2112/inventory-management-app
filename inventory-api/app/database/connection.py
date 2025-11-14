@@ -14,6 +14,8 @@ from app.core.config import settings
 import urllib
 # from app.core.config import settings
 
+from app.utils.logger import setup_logger
+logger = setup_logger()
 # Server details
 server = f'{settings.DATABASE_HOSTNAME},{settings.DATABASE_PORT}'
 database = settings.DATABASE_NAME
@@ -40,7 +42,9 @@ engine = create_engine(
 def get_db():
   with Session(engine) as session:
     try:
+      logger.info("Start the database session")
       yield session
     finally:
       session.close()
+      logger.info("End database session")
 	
