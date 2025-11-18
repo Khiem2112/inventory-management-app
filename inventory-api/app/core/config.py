@@ -7,7 +7,7 @@ import cloudinary
 # This makes sure dotenv finds the .env file regardless of where this script is called from.
 # It navigates up from app/core/ to app/ to inventory-api/ and looks for .env there.
 from dotenv import load_dotenv
-IS_PRODUCTION = os.environ.get('K_SERVICE') is not None
+IS_PRODUCTION = os.environ.get('SERVICE_TYPE') is not None
 
 # Only load the .env file if we are NOT in production
 if not IS_PRODUCTION:
