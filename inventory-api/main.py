@@ -11,27 +11,17 @@ from app.routers.auth import auth, users
 from app.routers.product import products
 from app.routers.warehouse_zone import warehouse_zones
 from fastapi.middleware.cors	import CORSMiddleware
-
-
+import os
+from app.utils.logger import setup_logger
 app = FastAPI()
 router = APIRouter()
-# Set up connection to local database
-# --- Your Existing Database Connection Setup ---
-server = '172.17.48.1,57931' # 172.17.48.1 is the IP. 57931 is the port
-database = 'Inventory'
-username = 'wsl_user'
-password = 'haidang2015'
+logger = setup_logger()
 
+IS_PRODUCTION = os.environ.get('K_SERVICE') is not None
+production_status = 'on' if IS_PRODUCTION else 'off'
 
-params = urllib.parse.quote_plus(
-	"DRIVER={ODBC Driver 18 for SQL Server};"
-	f"SERVER={server};"
-	f"DATABASE={database};"
-	f"UID={username};"
-	f"PWD={password};"
-	"TrustServerCertificate=yes;"
-)
-engine = create_engine(f"mssql+pyodbc:///?odbc_connect={params}")
+logger.info(f'Start application with PRODUCTION MODE: {production_status}')
+
 
 # Exclude the FE client from firewall block
 origins = [
