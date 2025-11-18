@@ -1,7 +1,9 @@
 # app/core/config.py
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import ValidationError
 import os
 import cloudinary
+import sys
 
 # Ensure .env is loaded from the project root.
 # This makes sure dotenv finds the .env file regardless of where this script is called from.
@@ -34,7 +36,31 @@ class Settings(BaseSettings):
     )
 
 # Create an instance of the Settings class to be imported and used throughout your application.
-settings = Settings()
+try:
+    settings = Settings()
+    print("✅ Configuration loaded successfully.")
+except ValidationError as e:
+    print("="*60)
+    print("❌ CRITICAL ERROR: MISSING ENVIRONMENT VARIABLES")
+    print("="*60)
+    
+    # Loop through errors to find missing fields
+    for error in e.errors():
+        field_name = error['loc'][0]
+        error_type = error['type']
+        
+        if error_type == 'missing':
+            print(f"  - MISSING: {field_name}")
+        else:
+            # Handle other validation errors (like wrong type)
+            print(f"  - INVALID: {field_name} ({error['msg']})")
+            
+    print("="*60)
+    print("Please set these variables in Cloud Run 'Variables & Secrets'.")
+    print("="*60)
+    
+    # Exit the application with an error code so Cloud Run knows it failed
+    sys.exit(1)
 # Setting for cloudinary instances
 cloudinary.config(
   cloud_name = settings.CLOUDINARY_CLOUD_NAME, 
