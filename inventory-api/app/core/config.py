@@ -15,8 +15,6 @@ if not IS_PRODUCTION:
     env_path = os.path.join(env_dir,'.env')
     load_dotenv(env_path)
 
-load_dotenv(env_path)
-
 class Settings(BaseSettings):
     DATABASE_NAME: str
     DATABASE_HOSTNAME: str
