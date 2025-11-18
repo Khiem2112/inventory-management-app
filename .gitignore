@@ -7,3 +7,4 @@ inventory-api/node_modules/
 grep_help.txt
 api.json
 *.ini
+*desktop.ini
