@@ -7,6 +7,7 @@ import SignInForm from './components/SignInForm.jsx';
 import { Routes, Route } from 'react-router-dom';
 import Dashboard from './pages/DashBoard.jsx';
 import ProductDisplayPromise from './pages/ProductPromise.jsx';
+import PurchaseOrderList from './pages/POList.jsx';
 // import ProductDisplaySimple from './pages/ProductSimple.jsx';
 import ProductDisplayFetch from './pages/ProductFetch.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
@@ -37,6 +38,7 @@ function App() {
           <Route path = '/products' element = {<ProtectedRoute><ProductsList/></ProtectedRoute>}/>
           {/* <Route path = '/test' element = {<CloudinaryTest/>}/> */}
           <Route path = '/warehouse' element = {<WarehousePage/>} />
+          <Route path ='purchase-orders' element ={<PurchaseOrderList/>} />
         </Routes>
     </ThemeProvider>
     </AuthProvider>
