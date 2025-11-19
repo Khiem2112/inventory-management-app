@@ -1,5 +1,6 @@
 import { createContext, useEffect, useState, useContext } from "react";
 import { jwtDecode } from "jwt-decode";
+import API_CONFIG from "../config";
 
 // Step 1: Create a context object
 const AuthContext = createContext(null);
@@ -11,7 +12,7 @@ export const AuthProvider = ({ children }) => {
   const [refreshToken, setRefreshToken] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [userData, setUserData] = useState(null)
-  const [beLocation, setBELocation] = useState('http://127.0.0.1:8000')
+  const [beLocation, setBELocation] = useState(`${API_CONFIG.getEffectiveBaseUrl()}`)
 
   // re-update access_token
   useEffect(() => {

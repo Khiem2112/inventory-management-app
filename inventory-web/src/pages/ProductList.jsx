@@ -32,6 +32,7 @@ import { fetchAllProductsAsync,
          fetchSomeProductsAsync} from '../myRedux/slices/ProductsSlice';
 import useWebSocket, {ReadyState} from 'react-use-websocket';
 import { wsConnectStart, wsDisconnect } from '../myRedux/action/wsActions';
+import API_CONFIG from '../config';
 
 function ProductsList() {
   const dispatch = useDispatch();
@@ -51,7 +52,7 @@ function ProductsList() {
   console.log(`Current page is ${currentPage}`)
   const limit = useSelector(state => state.products.pagination.limit)
   const wsStatus = useSelector(state => state.products.wsStatus)
-  const WS_URL = "ws://127.0.0.1:8000/products/ws"
+  const WS_URL = `${API_CONFIG.getEffectiveBaseUrl()}`
   // The useWebSocket hook provides everything you need
     // Handle incoming messages from the WebSocket
     useEffect(()=>{
