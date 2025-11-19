@@ -1,0 +1,64 @@
+/* src/components/FilterBar/filter-bar.css */
+
+.filter-bar {
+    display: flex;
+    flex-wrap: wrap; /* Allows wrapping on smaller screens */
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 1rem;
+    background-color: #ffffff;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    margin-bottom: 1.5rem;
+}
+
+/* --- Filter Group Styling (AC2) --- */
+.filter-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.filter-group__item {
+    display: flex;
+    align-items: center;
+}
+
+.filter-group__label {
+    font-weight: 500;
+    color: #495057;
+    margin-right: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.filter-group__input {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    background-color: #fff;
+    transition: border-color 0.15s ease-in-out;
+}
+
+.filter-group__input:focus {
+    border-color: #80bdff;
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* --- Column Toggler Styling (AC1) --- */
+.filter-bar__column-toggler {
+    padding: 0.5rem 1rem;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.15s ease-in-out;
+    /* Aligns it vertically with the filter inputs */
+    height: 40px; 
+}
+
+.filter-bar__column-toggler:hover {
+    background-color: #0056b3;
+}

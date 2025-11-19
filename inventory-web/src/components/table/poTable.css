@@ -1,0 +1,80 @@
+/* src/components/ServerSideTable/server-side-table.css */
+
+.table-container {
+    /* Use Grid to manage the table and the footer */
+    display: flex;
+    flex-direction: column;
+    min-height: 400px; /* Placeholder minimum height for visual stability */
+}
+
+/* --- Data Table Styling --- */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem; /* 14px */
+}
+
+.data-table__header th {
+    background-color: #f7f9fc;
+    color: #495057;
+    text-align: left;
+    padding: 1rem 0.75rem;
+    border-bottom: 2px solid #e9ecef;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+}
+
+.data-table__body td {
+    padding: 1rem 0.75rem;
+    border-bottom: 1px solid #e9ecef;
+    vertical-align: middle;
+}
+
+.data-table__body tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* --- Pagination Styling (AC3) --- */
+.table-pagination {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 1rem;
+    border-top: 1px solid #e9ecef;
+    margin-top: auto; /* Pushes the footer to the bottom */
+}
+
+.pagination__group {
+    display: flex;
+    align-items: center;
+    margin-left: 1.5rem;
+}
+
+.pagination__label {
+    margin-right: 0.5rem;
+    color: #6c757d;
+}
+
+.pagination__select {
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+}
+
+.pagination__info {
+    margin-right: 1.5rem;
+    font-size: 0.875rem;
+    color: #343a40;
+}
+
+.pagination__record-count {
+    font-weight: 300;
+}
+
+.pagination__button {
+    background: none;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    padding: 0
+}
