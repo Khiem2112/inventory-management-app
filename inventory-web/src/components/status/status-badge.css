@@ -1,0 +1,44 @@
+/* src/components/StatusBadge/status-badge.css */
+
+.status-badge {
+    /* Base styles */
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.5rem; /* 4px 8px */
+    font-size: 0.75rem; /* 12px */
+    font-weight: 600;
+    border-radius: 9999px; /* Pill shape */
+    text-transform: capitalize;
+    user-select: none;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+/* Modifier Styles (AC5) */
+
+/* Open = Blue */
+.status-badge--open {
+    --status-color: 220, 100%, 50%; /* HSL Blue */
+    background-color: hsla(var(--status-color), 0.1);
+    color: hsl(var(--status-color));
+}
+
+/* Partially Received = Orange */
+.status-badge--partial {
+    --status-color: 35, 100%, 50%; /* HSL Orange */
+    background-color: hsla(var(--status-color), 0.15);
+    color: hsl(var(--status-color));
+}
+
+/* Fulfilled = Green */
+.status-badge--fulfilled {
+    --status-color: 142, 70%, 40%; /* HSL Green */
+    background-color: hsla(var(--status-color), 0.15);
+    color: hsl(var(--status-color));
+}
+
+/* Default */
+.status-badge--default {
+    --status-color: 200, 10%, 40%; /* HSL Neutral */
+    background-color: hsla(var(--status-color), 0.1);
+    color: hsl(var(--status-color));
+}
