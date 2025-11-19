@@ -1,11 +1,12 @@
 // src/services/api.js
 
 import axios from 'axios';
+import API_CONFIG from '../config';
 
 // 💡 1. Create an Axios instance with a base URL
 // This automatically prepends the URL to all requests
 const api = axios.create({
-  baseURL: 'http://127.0.0.1:8000',
+  baseURL: API_CONFIG.getEffectiveBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },
@@ -44,7 +45,7 @@ api.interceptors.response.use(
       const refreshToken = localStorage.getItem('refreshToken')
       if (refreshToken) {
         try {
-          const response = await axios.post('http://127.0.0.1:8000/auth/refresh-token', {
+          const response = await axios.post(`${API_CONFIG.getEffectiveBaseUrl()}/auth/refresh-token`, {
             Token: refreshToken,
           }); 
           const newAccessToken = response.data.access_token
