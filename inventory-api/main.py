@@ -10,6 +10,7 @@ import sqlalchemy
 from app.routers.auth import auth, users
 from app.routers.product import products
 from app.routers.warehouse_zone import warehouse_zones
+from app.routers.purchase_order import purchase_order
 from fastapi.middleware.cors	import CORSMiddleware
 import os
 from app.utils.logger import setup_logger
@@ -44,6 +45,7 @@ app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(products.router)
 app.include_router(warehouse_zones.router)
+app.include_router(purchase_order.router)
 
 # users = get_all_users()
 # print(users)
