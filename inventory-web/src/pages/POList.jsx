@@ -1,34 +1,14 @@
 // src/views/PurchaseOrderList.jsx (Simulated Render)
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import FilterBar from '../components/table/filterBar';
 import ServerSideTable from '../components/table/poTable';
+import {PO_COLUMNS_CONFIG, getInitialVisibleKeys } from '../services/poColumnService';
+import { getVisibleColumnsConfig } from '../services/poColumnService';
 // ... other imports
 
-const mockData = [
-    {
-        po_id: "PO-10023",
-        vendor_name: "Apple Distribution Inc.",
-        created_date: "2025-10-20T14:30:00Z",
-        status: "Partially Received",
-        total_amount: 15400.50,
-        creator_name: "John Doe"
-    },
-    {
-        po_id: "PO-10024",
-        vendor_name: "Samsung Electronics",
-        created_date: "2025-10-21T09:00:00Z",
-        status: "Open",
-        total_amount: 5500.00,
-        creator_name: "Jane Smith"
-    },
-    {
-        po_id: "PO-10025",
-        vendor_name: "Google Devices",
-        created_date: "2025-10-22T11:45:00Z",
-        status: "Fulfilled",
-        total_amount: 2899.99,
-        creator_name: "Alex Lee"
-    }
+const apiData = [
+  { "status": "Issued", "supplier_id": 1, "purchase_plan_id": 1, "CreateUserId": 1, "total_price": "10000.00", "purchase_order_id": 1, "create_date": "2025-07-30T21:30:36.623000" },
+  { "status": "Received", "supplier_id": 3, "purchase_plan_id": 2, "CreateUserId": 2, "total_price": "800.00", "purchase_order_id": 2, "create_date": "2025-07-30T21:30:36.623000" }
 ];
 
 const mockMeta = {
@@ -38,21 +18,26 @@ const mockMeta = {
 };
 
 // Assuming initial visible columns for demo
-const initialVisibleColumns = [
-    'po_id', 
-    'vendor_name', 
-    'created_date', 
-    'status', 
-    'total_amount', 
-    'creator_name'
-];
+const initialVisibleColumns = PO_COLUMNS_CONFIG
+    .filter(c => c.isVisible)
+    .map(c => c.key);
 
 const PurchaseOrderList = () => {
     const [filterState, setFilterState] = useState({});
     const [paginationState, setPaginationState] = useState({ page: 1, limit: 20 });
-    const [visibleColumns, setVisibleColumns] = useState(initialVisibleColumns);
     const [loading, setLoading] = useState(false);
 
+    // 1. Initialize state using the service function
+    const [visibleKeys, setVisibleKeys] = useState(getInitialVisibleKeys());
+    
+    // Handler logic (calls setVisibleKeys(newKeys) remains the same)
+    
+    // 2. Prepare the final, filtered configuration array for the table (CRITICAL CHANGE)
+    // Use useMemo to avoid recalculating on every render unless keys change
+    const finalTableColumns = useMemo(() => 
+        getVisibleColumnsConfig(visibleKeys), 
+        [visibleKeys]
+    );
     // Placeholder functions for demo purposes
     const handleFilterChange = (newFilters) => {
         console.log('Filters updated:', newFilters);
@@ -71,11 +56,8 @@ const PurchaseOrderList = () => {
         setPaginationState(prev => ({ ...prev, limit, page: 1 }));
         // Logic to trigger API fetch...
     };
-    
-    // Placeholder function for ColumnToggler
-    const handleColumnToggle = (updatedColumns) => {
-        console.log('Visible columns updated:', updatedColumns);
-        setVisibleColumns(updatedColumns);
+    const handleColumnToggle = (newKeys) => {
+        setVisibleKeys(newKeys);
     };
 
 
@@ -85,20 +67,21 @@ const PurchaseOrderList = () => {
             
             {/* FilterBar (AC2) and ColumnToggler (AC1) */}
             <FilterBar 
-                currentFilters={filterState} 
-                onFilterChange={handleFilterChange}
-                onColumnToggle={handleColumnToggle}
-                visibleColumns={visibleColumns}
-            />
+            // 1. Pass the full configuration for the checklist build (LABEL, isRequired)
+            allColumnsConfig={PO_COLUMNS_CONFIG}  
+            
+            // 3. Pass the handler to update the state
+            onColumnToggle={handleColumnToggle}
+        />
 
             {/* ServerSideTable (AC3, AC4, AC5) */}
             <ServerSideTable 
-                data={mockData}
+                data={apiData}
                 meta={mockMeta}
                 loading={loading}
                 onPageChange={handlePaginationChange}
                 onLimitChange={handleLimitChange}
-                visibleColumns={visibleColumns} 
+                columnsConfig={finalTableColumns}
             />
             
             {/* Visual States Check:

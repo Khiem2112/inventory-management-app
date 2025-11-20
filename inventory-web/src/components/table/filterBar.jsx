@@ -1,18 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect,useMemo, useCallback } from 'react';
 import './filterBar.css'
 import './columnToggler.css'
 // Defines all possible columns for the PO list
 // Note: 'Balance Due' is included here for completeness based on acceptance criteria, 
 // even if absent from the initial API spec.
-const allColumns = [
-    { key: 'po_id', label: 'PO Number', isRequired: true },
-    { key: 'vendor_name', label: 'Vendor' },
-    { key: 'created_date', label: 'Created Date' },
-    { key: 'status', label: 'Status' },
-    { key: 'total_amount', label: 'Total Amount' },
-    { key: 'creator_name', label: 'Creator Name' },
-    { key: 'balance_due', label: 'Balance Due' },
-];
 
 /**
  * Manages which columns are visible in the table.
@@ -21,23 +12,24 @@ const allColumns = [
  * @param {string[]} props.visibleColumns The currently active columns passed from the parent state.
  * @param {function} props.onToggle The callback to apply changes back to the parent.
  */
-const ColumnToggler = ({ visibleColumns, onToggle }) => {
+const ColumnToggler = ({ allColumnsConfig, onToggle }) => {     
     // State to manage the open/closed status of the dropdown
     const [isOpen, setIsOpen] = useState(false);
+    const activeVisibleKeys = useMemo(() => {
+        // Correctly extract the keys of columns marked as isVisible: true
+        return allColumnsConfig
+            .filter(c => c.isVisible)
+            .map(c => c.key);
+    }, [allColumnsConfig]); // Dependency: Only recalculate if the config prop changes
     
     // State to hold user selections before "Apply" is clicked (transient state)
-    const [pendingColumns, setPendingColumns] = useState(visibleColumns);
-
-    // Sync internal state when parent's visibleColumns prop changes (e.g., after initial load or reset)
-    useEffect(() => {
-        setPendingColumns(visibleColumns);
-    }, [visibleColumns]);
+    const [pendingKeys, setPendingKeys] = useState(activeVisibleKeys);
 
     const handleCheckboxChange = (key) => {
-        setPendingColumns(prev => {
+        setPendingKeys(prev => {
             if (prev.includes(key)) {
                 // Cannot deselect required columns (like PO ID if enforced)
-                const columnDef = allColumns.find(c => c.key === key);
+                const columnDef = allColumnsConfig.find(c => c.key === key);
                 if (columnDef?.isRequired) return prev; 
                 return prev.filter(col => col !== key);
             } else {
@@ -47,27 +39,27 @@ const ColumnToggler = ({ visibleColumns, onToggle }) => {
     };
 
     const handleApply = () => {
-        if (pendingColumns.length === 0) {
+        if (pendingKeys.length === 0) {
             alert("Please select at least one column.");
             return;
         }
         // 1. Send the updated column list up to the parent view state
-        onToggle(pendingColumns);
+        onToggle(pendingKeys);
         // 2. Close the dropdown
         setIsOpen(false);
     };
 
     const handleReset = () => {
         // Reset to default columns (PO ID, Vendor, Status, Amount, Creator)
-        const defaultKeys = allColumns.map(c => c.key).filter(k => 
+        const defaultKeys = allColumnsConfig.map(c => c.key).filter(k => 
             ['po_id', 'vendor_name', 'status', 'total_amount', 'creator_name'].includes(k)
         );
-        setPendingColumns(defaultKeys);
+        setPendingKeys(defaultKeys);
     };
 
     const handleCancel = () => {
         // Discard pending changes and revert to the currently active columns
-        setPendingColumns(visibleColumns);
+        setPendingKeys(activeVisibleKeys);
         setIsOpen(false);
     };
 
@@ -86,15 +78,15 @@ const ColumnToggler = ({ visibleColumns, onToggle }) => {
             {isOpen && (
                 <div id="column-checklist" className="column-toggler__flyout">
                     <ul className="flyout__checklist checklist">
-                        {allColumns.map(col => (
+                        {allColumnsConfig.map(col => (
                             <li key={col.key} className="checklist__item">
                                 <label className="checklist__label">
                                     <input
                                         type="checkbox"
                                         className="checklist__checkbox"
-                                        checked={pendingColumns.includes(col.key)}
+                                        checked={pendingKeys.includes(col.key)}
                                         onChange={() => handleCheckboxChange(col.key)}
-                                        disabled={col.isRequired && pendingColumns.includes(col.key)}
+                                        disabled={col.isRequired && pendingKeys.includes(col.key)}
                                     />
                                     {col.label}
                                 </label>
@@ -116,7 +108,7 @@ const ColumnToggler = ({ visibleColumns, onToggle }) => {
                             <button 
                                 className="actions__button actions__button--primary" 
                                 onClick={handleApply}
-                                disabled={pendingColumns.length === 0}
+                                disabled={pendingKeys.length === 0}
                             >
                                 Apply
                             </button>
@@ -129,7 +121,7 @@ const ColumnToggler = ({ visibleColumns, onToggle }) => {
 };
 
 
-const FilterBar = ({ onFilterChange, onColumnToggle, visibleColumns }) => {
+const FilterBar = ({ onFilterChange, onColumnToggle, allColumnsConfig}) => {
     return (
         <div className="filter-bar">
             
@@ -181,7 +173,7 @@ const FilterBar = ({ onFilterChange, onColumnToggle, visibleColumns }) => {
 
             {/* Column Toggler (AC1: Toggle visibility of fields) */}
             {/* Renders the placeholder component created above */}
-            <ColumnToggler onToggle={onColumnToggle} visibleColumns={visibleColumns} />
+            <ColumnToggler allColumnsConfig={allColumnsConfig} onToggle={onColumnToggle} />
         </div>
     );
 };
