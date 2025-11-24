@@ -4,41 +4,72 @@
     /* Base styles */
     display: inline-flex;
     align-items: center;
-    padding: 0.25rem 0.5rem; /* 4px 8px */
-    font-size: 0.75rem; /* 12px */
+    justify-content: center;
+    padding: 0.25rem 0.75rem; /* Slightly wider for readability */
+    font-size: 0.75rem; 
     font-weight: 600;
-    border-radius: 9999px; /* Pill shape */
+    border-radius: 9999px;
     text-transform: capitalize;
     user-select: none;
-    transition: background-color 0.2s, color 0.2s;
+    white-space: nowrap; /* Prevent wrapping on small screens */
+    transition: all 0.2s ease-in-out;
 }
 
-/* Modifier Styles (AC5) */
+/* --- Modifier Styles --- */
 
-/* Open = Blue */
-.status-badge--open {
-    --status-color: 220, 100%, 50%; /* HSL Blue */
-    background-color: hsla(var(--status-color), 0.1);
-    color: hsl(var(--status-color));
+/* 1. ISSUED (Neutral/Slate) - The starting point */
+.status-badge--issued {
+    --status-hue: 210;
+    --status-sat: 15%;
+    --status-light: 50%;
+    
+    background-color: hsla(var(--status-hue), var(--status-sat), var(--status-light), 0.15);
+    color: hsl(var(--status-hue), var(--status-sat), 40%);
+    border: 1px solid hsla(var(--status-hue), var(--status-sat), var(--status-light), 0.2);
 }
 
-/* Partially Received = Orange */
-.status-badge--partial {
-    --status-color: 35, 100%, 50%; /* HSL Orange */
-    background-color: hsla(var(--status-color), 0.15);
-    color: hsl(var(--status-color));
+/* 2. ACKNOWLEDGED (Purple/Indigo) - Vendor has seen it */
+.status-badge--acknowledged {
+    --status-hue: 250;
+    --status-sat: 85%;
+    --status-light: 60%;
+
+    background-color: hsla(var(--status-hue), var(--status-sat), var(--status-light), 0.1);
+    color: hsl(var(--status-hue), var(--status-sat), var(--status-light));
 }
 
-/* Fulfilled = Green */
-.status-badge--fulfilled {
-    --status-color: 142, 70%, 40%; /* HSL Green */
-    background-color: hsla(var(--status-color), 0.15);
-    color: hsl(var(--status-color));
+/* 3. DELIVERED (Cyan/Teal) - Arrived at dock, strictly physical */
+.status-badge--delivered {
+    --status-hue: 180;
+    --status-sat: 75%;
+    --status-light: 40%;
+
+    background-color: hsla(var(--status-hue), var(--status-sat), var(--status-light), 0.1);
+    color: hsl(var(--status-hue), var(--status-sat), 35%);
 }
 
-/* Default */
+/* 4. RECEIVED (Orange/Amber) - In system, pending check */
+.status-badge--received {
+    --status-hue: 35;
+    --status-sat: 95%;
+    --status-light: 50%;
+
+    background-color: hsla(var(--status-hue), var(--status-sat), var(--status-light), 0.1);
+    color: hsl(var(--status-hue), var(--status-sat), 45%);
+}
+
+/* 5. CHECKED (Green) - Validated and Final */
+.status-badge--checked {
+    --status-hue: 142;
+    --status-sat: 70%;
+    --status-light: 40%;
+
+    background-color: hsla(var(--status-hue), var(--status-sat), var(--status-light), 0.15);
+    color: hsl(var(--status-hue), var(--status-sat), 35%);
+}
+
+/* Fallback */
 .status-badge--default {
-    --status-color: 200, 10%, 40%; /* HSL Neutral */
-    background-color: hsla(var(--status-color), 0.1);
-    color: hsl(var(--status-color));
+    background-color: #f3f4f6;
+    color: #6b7280;
 }
