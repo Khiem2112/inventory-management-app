@@ -4,9 +4,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship#
 from sqlalchemy import String, Integer, DateTime, CheckConstraint, text, ForeignKey # Import DateTime and text
 from datetime import datetime
 from typing import Optional, List # Keep Optional for nullable fields
-
-class Base(DeclarativeBase):
-    pass
+from app.database.base import Base
 
 class User(Base):
     __tablename__ = 'User'
