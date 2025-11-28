@@ -1,5 +1,4 @@
 export const PO_COLUMNS_CONFIG = [
-    { key: 'purchase_order_id', label: 'PO ID', isVisible: true, type: 'text' },
     { key: 'supplier_name', label: 'Supplier Name', isVisible: true, type: 'text' },
     { key: 'purchase_plan_id', label: 'Plan ID', isVisible: false, type: 'text' }, 
     { key: 'create_user_name', label: 'Create User Name', isVisible: false, type: 'text' }, 

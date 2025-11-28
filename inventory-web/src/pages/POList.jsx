@@ -91,11 +91,6 @@ const PurchaseOrderList = () => {
                 columnsConfig={finalTableColumns}
             />
             
-            {/* Visual States Check:
-              - Loading: Pass 'loading={true}'
-              - Empty: Pass 'data={[]}'
-              - Success: Current state (data filled)
-            */}
         </div>
     );
 };
