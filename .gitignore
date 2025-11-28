@@ -10,3 +10,5 @@ api.json
 *desktop.ini
 
 features requirements
+
+clean_desktop_ini.bash
