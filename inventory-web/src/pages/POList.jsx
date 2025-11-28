@@ -36,6 +36,8 @@ const PurchaseOrderList = () => {
     });
     const poData = queryResult?.data || [];
     const meta = queryResult?.meta || { current_page: 1, total_pages: 1, total_records: 0 };    
+    console.log(`Get the poData: ${JSON.stringify(poData)}`)
+    console.log(`Get the meta: ${JSON.stringify(meta)}`)
     // 2. Prepare the final, filtered configuration array for the table (CRITICAL CHANGE)
     // Use useMemo to avoid recalculating on every render unless keys change
     const finalTableColumns = useMemo(() => 
