@@ -12,22 +12,36 @@ const ServerSideTable = ({ data, limit, loading, columnsConfig }) => {
         {[...Array(limit)].map((_, index) => (
           <div key={index} className="table__skeleton-row" />
         ))}
-        <p>Loading Purchase Orders...</p>
       </div>
     );
   }
 
   // Empty State (on_empty)
-  if (data?.length === 0) {
-    return (
-      <div className="table-container table-container--empty">
-        {/* Replace with actual illustration */}
-        <div className="empty-state__illustration"></div>
-        <p className="empty-state__message">No Purchase Orders found matching your criteria.</p>
-      </div>
-    );
+  if (!data || data.length === 0) {
+     return (
+        <div className="table-container">
+            <table className="data-table">
+                <thead className="data-table__header">
+                    <tr>
+                        {columnsConfig.map(col => (
+                            <th key={col.key}>{col.label}</th>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colSpan={columnsConfig.length}>
+                            No Purchase Orders found.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+     )
   }
 
+  const emptyRowsCount = Math.max(0, limit - data.length);
+  const ROW_HEIGHT = 60;
   const RenderCellData = ({ item, colKey }) => {
         const column = columnsConfig.find(c => c.key === colKey);
         const value = item[colKey];
@@ -64,6 +78,7 @@ const ServerSideTable = ({ data, limit, loading, columnsConfig }) => {
                     </tr>
                 </thead>
                 <tbody className="data-table__body">
+                    {/* Render actual data */}
                     {data.map((item, index) => (
                         <tr key={item.purchase_order_id || index} className="body__row">
                             {/* Iterate directly over the pre-filtered config */}
@@ -74,6 +89,16 @@ const ServerSideTable = ({ data, limit, loading, columnsConfig }) => {
                             ))}
                         </tr>
                     ))}
+                    {/* Render empty data */}
+                    {emptyRowsCount > 0 &&
+                    [...Array(emptyRowsCount)].map((_, index) => (
+                    <tr key={`empty-${index}`} className="body__row body__row--empty">
+                        {/* Render empty cells if you want vertical borders, 
+                            OR just one spanning cell if you want blank space */}
+                        <td colSpan={columnsConfig.length} />
+                    </tr>
+                    ))
+                }
                 </tbody>
             </table>
 

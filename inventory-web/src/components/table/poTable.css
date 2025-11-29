@@ -12,6 +12,7 @@
     width: 100%;
     border-collapse: collapse;
     font-size: 0.875rem; /* 14px */
+    table-layout: fixed;
 }
 
 .data-table__header th {
@@ -26,13 +27,18 @@
 }
 
 .data-table__body td {
-    padding: 1rem 0.75rem;
-    border-bottom: 1px solid #e9ecef;
-    vertical-align: middle;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    /* Remove any implicit height/padding conflicts if necessary */
+    box-sizing: border-box;
 }
 
 .data-table__body tr:hover {
     background-color: #f8f9fa;
+}
+.data-table__body tr {
+    height: 60px;
 }
 
 /* --- Pagination Styling (AC3) --- */
@@ -43,6 +49,13 @@
     padding: 1rem;
     border-top: 1px solid #e9ecef;
     margin-top: auto; /* Pushes the footer to the bottom */
+}
+
+.body__row--empty td {
+    padding: 0;
+    border-bottom: 1px solid #e9ecef;
+    /* border-bottom: none;  <-- or uncomment this if you want white space */
+    pointer-events: none;
 }
 
 .pagination__group {
