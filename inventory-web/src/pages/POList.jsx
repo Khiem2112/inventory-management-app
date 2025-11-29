@@ -13,7 +13,6 @@ import TablePagination from '@mui/material/TablePagination';// ... other imports
 const PurchaseOrderList = () => {
     const [filterState, setFilterState] = useState({});
     const [paginationState, setPaginationState] = useState({ page: 1, limit: 10 });
-    const [loading, setLoading] = useState(false);
 
     // 1. Initialize state using the service function
     const [visibleKeys, setVisibleKeys] = useState(getInitialVisibleKeys());
@@ -86,7 +85,7 @@ const PurchaseOrderList = () => {
             <ServerSideTable 
                 data={poData}
                 limit={paginationState.limit}
-                loading={loading}
+                loading={isLoading}
                 columnsConfig={finalTableColumns}
             />
                         {/* --- MUI Pagination Footer --- */}
