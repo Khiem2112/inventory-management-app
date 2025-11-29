@@ -87,8 +87,9 @@ def get_purchase_order_paginated(
     return {
       "items": items_list,
       "current_page": page,
-      "total_page": total_pages,
-      "limit": limit
+      "total_pages": total_pages,
+      "limit": limit,
+      "total_records": total_records
     }
 
   except SQLAlchemyError as e:

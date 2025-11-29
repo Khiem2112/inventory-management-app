@@ -50,8 +50,9 @@ export const fetchPurchaseOrders = async (pagination, filters) => {
             data: response.data.items, // The array of POs
             meta: { 
                 current_page: response.data.current_page, 
-                total_pages: response.data.total_page || 4, 
-                total_records: response.data.total_record || 32
+                total_pages: response.data.total_pages || 4, 
+                total_records: response.data.total_records || 32,
+                limit: response.data.limit || 10
             }, // The pagination info (total_pages, etc.)
         };
     } catch (error) {

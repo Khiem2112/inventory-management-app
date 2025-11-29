@@ -4,13 +4,15 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query'; // <--- 1. I
 import FilterBar from '../components/table/filterBar';
 import ServerSideTable from '../components/table/poTable';
 import {PO_COLUMNS_CONFIG, getInitialVisibleKeys, getVisibleColumnsConfig, fetchPurchaseOrders } from '../services/poService';
+import TablePagination from '@mui/material/TablePagination';// ... other imports for filter, pagination icons
+
 // ... other imports
 
 
 
 const PurchaseOrderList = () => {
     const [filterState, setFilterState] = useState({});
-    const [paginationState, setPaginationState] = useState({ page: 1, limit: 20 });
+    const [paginationState, setPaginationState] = useState({ page: 1, limit: 10 });
     const [loading, setLoading] = useState(false);
 
     // 1. Initialize state using the service function
@@ -37,7 +39,6 @@ const PurchaseOrderList = () => {
     const poData = queryResult?.data || [];
     const meta = queryResult?.meta || { current_page: 1, total_pages: 1, total_records: 0 };    
     console.log(`Get the poData: ${JSON.stringify(poData)}`)
-    console.log(`Get the meta: ${JSON.stringify(meta)}`)
     // 2. Prepare the final, filtered configuration array for the table (CRITICAL CHANGE)
     // Use useMemo to avoid recalculating on every render unless keys change
     const finalTableColumns = useMemo(() => 
@@ -84,11 +85,27 @@ const PurchaseOrderList = () => {
             {/* ServerSideTable (AC3, AC4, AC5) */}
             <ServerSideTable 
                 data={poData}
-                meta={meta}
+                limit={paginationState.limit}
                 loading={loading}
-                onPageChange={handlePaginationChange}
-                onLimitChange={handleLimitChange}
                 columnsConfig={finalTableColumns}
+            />
+                        {/* --- MUI Pagination Footer --- */}
+            <TablePagination
+                component="div"
+                count={meta.total_records}
+                page={paginationState.page - 1} // TRANSLATION: Backend(1-based) -> MUI(0-based)
+                onPageChange={(event, newPage) => {
+                    console.log(`Event: ${event} and newPage: ${newPage} || OnPageChange`)
+                    handlePaginationChange(newPage + 1)
+                }}
+                rowsPerPage={paginationState.limit}
+                onRowsPerPageChange={(event) => {
+                    const newPage = parseInt(event.target.value, 10)
+                    console.log(`Func: onLimitChangne with input: ${newPage}`)
+                    handleLimitChange(newPage)
+                }}
+                rowsPerPageOptions={[10, 20, 50]} // Options for the dropdown
+                labelRowsPerPage="Rows:" // Optional customization
             />
             
         </div>

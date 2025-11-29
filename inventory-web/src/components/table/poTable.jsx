@@ -1,13 +1,8 @@
 // src/components/ServerSideTable/ServerSideTable.jsx
 import StatusBadge from "../status/statusBadge";
 import './poTable.css'
-import TablePagination from '@mui/material/TablePagination';// ... other imports for filter, pagination icons
 
-const ServerSideTable = ({ data, meta, loading, onPageChange, onLimitChange, columnsConfig }) => {
-  const totalRecords = meta?.total_records || 0;
-  const currentPage = meta?.current_page || 1;
-  const totalPages = meta?.total_pages || 1;
-  const limit = 20; // Assuming default limit for display calculation
+const ServerSideTable = ({ data, limit, loading, columnsConfig }) => {
 
   // Loading State (on_load)
   if (loading) {
@@ -81,21 +76,7 @@ const ServerSideTable = ({ data, meta, loading, onPageChange, onLimitChange, col
                     ))}
                 </tbody>
             </table>
-            {/* --- MUI Pagination Footer --- */}
-            <TablePagination
-                component="div"
-                count={totalRecords}
-                page={currentPage - 1} // TRANSLATION: Backend(1-based) -> MUI(0-based)
-                onPageChange={(event, newPage) => {
-                    onPageChange(newPage + 1); // TRANSLATION: MUI(0-based) -> Backend(1-based)
-                }}
-                rowsPerPage={limit}
-                onRowsPerPageChange={(event) => {
-                    onLimitChange(parseInt(event.target.value, 10));
-                }}
-                rowsPerPageOptions={[10, 20, 50]} // Options for the dropdown
-                labelRowsPerPage="Rows:" // Optional customization
-            />
+
         </div>
     );
 };
