@@ -8,4 +8,7 @@ class SupplierBase(BaseModel):
   email: str = Field(..., validation_alias='Email')
   address: str = Field(..., validation_alias='Address')
   contact_person: str = Field(..., validation_alias='ContactPerson')
+  model_config = ConfigDict(from_attributes=True)
 
+class SupplierPublic(SupplierBase):
+  pass

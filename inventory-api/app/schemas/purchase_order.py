@@ -1,10 +1,12 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.pagination import PaginationMetaData
+from app.schemas.supplier import SupplierPublic
+from app.schemas.user import UserPublic
 
 class PurchaseOrderBase(BaseModel):
     status: str = Field(..., validation_alias="Status")
@@ -34,6 +36,16 @@ class PurchaseOrderPublic(PurchaseOrderBase):
     supplier_name:str = Field(..., validation_alias='SupplierName')
     model_config = ConfigDict(populate_by_name=True, extra='ignore')
     create_user_name: str = Field(..., validation_alias='CreateUserName')
+    
+class PurchaseOrderMetaDataItem(BaseModel):
+    id: int = Field(..., description="ID of related fields")
+    label: int = Field(..., description= "Name of meta data instance")
+
+class PurchaseOrderMetaData(BaseModel):
+    supplier_types: list
 
 class PurchaseOrderResponse(PaginationMetaData):
-    items: list[PurchaseOrderPublic]
+    items: list[PurchaseOrderPublic] | None = Field(..., description="List of purchase orders user fetch in a single page")
+    suppliers: Optional[list[SupplierPublic]] | None= Field(default=None, description="List of unique suppliers")
+    users: Optional[list[UserPublic]] | None= Field(default=None, description="List of unique users", )
+    statuses: list | None = Field(default=None, description="List of unique statuses")
