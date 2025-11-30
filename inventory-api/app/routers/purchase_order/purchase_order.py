@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends, status, HTTPException, Query
 from app.utils.dependencies import get_db, get_current_user
 from app.utils.logger import setup_logger
 from app.database.purchase_order_model import PurchaseOrder as PurchaseOrderORM
+from app.database.supplier_model import Supplier as SupplierORM
+from app.database.user_model import User as UserORM 
 from app.schemas.purchase_order import PurchaseOrderRead,PurchaseOrderPublic, PurchaseOrderResponse
-from app.schemas.user import UserBase as UserORM
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import desc
@@ -84,12 +85,27 @@ def get_purchase_order_paginated(
         "create_user_name": po.CreateUser.Name if po.CreateUser else "Unknown"
       })
     # 6. Return Structure: Items + Meta
+    """
+    Get related metadata:
+    - suppliers
+    - users
+    - statuses
+    """   
+    # Get list of suppliers
+    suppliers_list = db.query(SupplierORM).all()
+    # Get list of users
+    users_list = db.query(UserORM).all()
+    # Get list of unique statuses
+    statuses_list = [s[0] for s in db.query(PurchaseOrderORM.Status).distinct().all()]
     return {
       "items": items_list,
       "current_page": page,
       "total_pages": total_pages,
       "limit": limit,
-      "total_records": total_records
+      "total_records": total_records,
+      "suppliers": suppliers_list if suppliers_list else None,
+      "users": users_list if users_list else None,
+      "statuses": statuses_list if statuses_list else None,
     }
 
   except SQLAlchemyError as e:
