@@ -37,6 +37,9 @@ const PurchaseOrderList = () => {
     });
     const poData = queryResult?.data || [];
     const meta = queryResult?.meta || { current_page: 1, total_pages: 1, total_records: 0 };    
+    const suppliersList = queryResult?.meta.suppliers || []
+    const usersList = queryResult?.meta.users || []
+    const statusesList = queryResult?.meta.statuses || []
     console.log(`Get the poData: ${JSON.stringify(poData)}`)
     // 2. Prepare the final, filtered configuration array for the table (CRITICAL CHANGE)
     // Use useMemo to avoid recalculating on every render unless keys change
@@ -73,9 +76,13 @@ const PurchaseOrderList = () => {
             )}
             
             {/* FilterBar (AC2) and ColumnToggler (AC1) */}
+            {console.log(`Load statuses list to FilterBar: ${JSON.stringify(statusesList)}`)}
             <FilterBar 
             // 1. Pass the full configuration for the checklist build (LABEL, isRequired)
             allColumnsConfig={PO_COLUMNS_CONFIG}  
+            suppliers={suppliersList}
+            statuses={statusesList}
+            users={usersList}
             
             // 3. Pass the handler to update the state
             onColumnToggle={handleColumnToggle}
