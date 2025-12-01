@@ -52,6 +52,20 @@ const PurchaseOrderList = () => {
         setFilterState(prev => ({ ...prev, ...newFilters }));
         setPaginationState(prev => ({ ...prev, page: 1 })); // Reset to page 1
     };
+    const handleSupplierFiltering = (chosenSupplierID) => {
+        setFilterState(prev => {
+            return (
+                {...prev, vendor_id: chosenSupplierID}
+            )
+        })
+    } 
+    const handleStatusFilterirng = (chosenStatus) => {
+        setFilterState(prev => {
+            return (
+                {...prev, status: chosenStatus}
+            )
+        })
+    }
 
     const handlePaginationChange = (newPage) => {
         setPaginationState(prev => ({ ...prev, page: newPage }));
@@ -79,7 +93,9 @@ const PurchaseOrderList = () => {
             {console.log(`Load statuses list to FilterBar: ${JSON.stringify(statusesList)}`)}
             <FilterBar 
             // 1. Pass the full configuration for the checklist build (LABEL, isRequired)
-            allColumnsConfig={PO_COLUMNS_CONFIG}  
+            allColumnsConfig={PO_COLUMNS_CONFIG}
+            onStatusChange={handleStatusFilterirng}
+            onSupplierChange={handleSupplierFiltering} 
             suppliers={suppliersList}
             statuses={statusesList}
             users={usersList}

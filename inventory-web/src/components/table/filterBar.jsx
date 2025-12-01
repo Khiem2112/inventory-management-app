@@ -121,7 +121,7 @@ const ColumnToggler = ({ allColumnsConfig, suppliers, users, statuses, onToggle 
 };
 
 
-const FilterBar = ({ onFilterChange, onColumnToggle, allColumnsConfig, suppliers, statuses, users}) => {
+const FilterBar = ({ onSupplierChange, onStatusChange, onColumnToggle, allColumnsConfig, suppliers, statuses, users}) => {
     const [selectedSupplier, setSelectSupplier] = useState({})
     const [selectedStatus, setSelectedStatus] = useState({})
     const [selectedUser, setSelectedUser] = useState({})
@@ -142,6 +142,8 @@ const FilterBar = ({ onFilterChange, onColumnToggle, allColumnsConfig, suppliers
                             const newID = Number(e.target.value)
                             const newSupplierRecord = suppliers.find(supplier => supplier.supplier_id === newID)
                             setSelectSupplier(newSupplierRecord)
+                            // Call update on new supplier
+                            onSupplierChange(newID)
                             }}
                         defaultValue=""
                     >
@@ -170,6 +172,8 @@ const FilterBar = ({ onFilterChange, onColumnToggle, allColumnsConfig, suppliers
                         onChange={(e) => {
                             const newStatus = String(e.target.value)
                             setSelectedStatus(newStatus)
+                            // Call to update table based on newStatus
+                            onStatusChange(newStatus)
                         }}
                         defaultValue=""
                     >
