@@ -52,7 +52,10 @@ export const fetchPurchaseOrders = async (pagination, filters) => {
                 current_page: response.data.current_page, 
                 total_pages: response.data.total_pages || 4, 
                 total_records: response.data.total_records || 32,
-                limit: response.data.limit || 10
+                limit: response.data.limit || 10,
+                suppliers: response.data.suppliers,
+                users: response.data.users,
+                statuses: response.data.statuses
             }, // The pagination info (total_pages, etc.)
         };
     } catch (error) {

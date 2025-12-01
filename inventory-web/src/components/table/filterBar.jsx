@@ -12,7 +12,7 @@ import './columnToggler.css'
  * @param {string[]} props.visibleColumns The currently active columns passed from the parent state.
  * @param {function} props.onToggle The callback to apply changes back to the parent.
  */
-const ColumnToggler = ({ allColumnsConfig, onToggle }) => {     
+const ColumnToggler = ({ allColumnsConfig, suppliers, users, statuses, onToggle }) => {     
     // State to manage the open/closed status of the dropdown
     const [isOpen, setIsOpen] = useState(false);
     const activeVisibleKeys = useMemo(() => {
@@ -121,7 +121,10 @@ const ColumnToggler = ({ allColumnsConfig, onToggle }) => {
 };
 
 
-const FilterBar = ({ onFilterChange, onColumnToggle, allColumnsConfig}) => {
+const FilterBar = ({ onFilterChange, onColumnToggle, allColumnsConfig, suppliers, statuses, users}) => {
+    const [selectedSupplier, setSelectSupplier] = useState({})
+    const [selectedStatus, setSelectedStatus] = useState({})
+    const [selectedUser, setSelectedUser] = useState({})
     return (
         <div className="filter-bar">
             
@@ -134,28 +137,51 @@ const FilterBar = ({ onFilterChange, onColumnToggle, allColumnsConfig}) => {
                     <select 
                         id="vendor-filter"
                         className="filter-group__input"
-                        onChange={(e) => onFilterChange({ vendor_id: e.target.value })}
+                        value={selectedSupplier?.supplier_id || ""}
+                        onChange={(e) => {
+                            const newID = Number(e.target.value)
+                            const newSupplierRecord = suppliers.find(supplier => supplier.supplier_id === newID)
+                            setSelectSupplier(newSupplierRecord)
+                            }}
                         defaultValue=""
                     >
-                        <option value="">All Vendors</option>
-                        <option value="vendor-apple">Apple Distribution Inc.</option>
-                        <option value="vendor-samsung">Samsung Electronics</option>
+                        {suppliers.map(supplier => {
+                            return (
+                                <option
+                                id = {supplier.supplier_id}
+                                value={supplier.supplier_id}
+                                >{supplier.name || "Unknown supplier"}</option>
+                            )
+                        })}
+                        {/* Place the not selected option */}
+                        <option value="">All Suppliers</option>
                     </select>
                 </div>
 
+
                 {/* Filtering control for Status (AC2: Filter by Status) */}
+
                 <div className="filter-group__item">
                     <label className="filter-group__label" htmlFor="status-filter">Status:</label>
                     <select 
                         id="status-filter"
                         className="filter-group__input"
-                        onChange={(e) => onFilterChange({ status: e.target.value })}
+                        value={selectedStatus || ""}
+                        onChange={(e) => {
+                            const newStatus = String(e.target.value)
+                            setSelectedStatus(newStatus)
+                        }}
                         defaultValue=""
                     >
+                        {statuses.map(status => {
+                            console.log(`Observe single status: ${JSON.stringify(status)}`)
+                            return (
+                                <option id={status} value={status}>
+                                    {status}
+                                </option>
+                            )
+                        })}
                         <option value="">All Statuses</option>
-                        <option value="Open">Open</option>
-                        <option value="Partially Received">Partially Received</option>
-                        <option value="Fulfilled">Fulfilled</option>
                     </select>
                 </div>
 

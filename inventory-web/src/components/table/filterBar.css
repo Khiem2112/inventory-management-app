@@ -35,6 +35,7 @@
     padding: 0.5rem 0.75rem;
     border: 1px solid #ced4da;
     border-radius: 4px;
+    color: black;
     background-color: #fff;
     transition: border-color 0.15s ease-in-out;
 }
