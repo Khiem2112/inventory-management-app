@@ -6,38 +6,39 @@ from fastapi import UploadFile
 from datetime import datetime
 from typing import Optional, TypeVar, Type, Any, get_args, get_origin, Dict
 from enum import Enum
-
+from app.schemas.base import AutoWriteSchema, AutoReadSchema
+from app.schemas.pagination import PaginationMetaData
 # --- REUSABLE ATTRIBUTE BLOCKS (MIXINS) ---
 
 # Block 1: Product Identity (Primary Keys and Identifiers)
 class IdentityMixin(BaseModel):
-    ProductId: Optional[int] = None # Optional for creation, required for updates/returns
-    ModelNumber_SKU: str
-    ProductName: str
+    product_id: Optional[int] = None # Optional for creation, required for updates/returns
+    model_number_sku: str = Field(...)
+    product_name: str
 
 # Block 2: Core Metrics (Pricing and Measurement)
 class CoreMetricsMixin(BaseModel):
-    Measurement: str
-    SellingPrice: Optional[float] = None
-    InternalPrice: float
+    measurement: str
+    selling_price: Optional[float] = None
+    internal_price: float
 
 # Block 3: General & Technical Specifications
 class SpecsMixin(BaseModel):
-    Category: str
-    ProductSeries: str
-    Manufacturer: Optional[str] = None
-    PackageWeight_KG: Optional[float] = None
-    Dimensions_H_CM: Optional[float] = None
-    Dimensions_W_CM: Optional[float] = None
-    Dimensions_D_CM: Optional[float] = None
-    WarrantyPeriod_Days: Optional[int] = None
+    category: str
+    product_series: Optional[str] = None
+    manufacturer: Optional[str] = None
+    package_weight_kg: Optional[float] = Field(...)
+    dimensions_h_cm: Optional[float] = Field(...)
+    dimensions_w_cm: Optional[float] = Field(...)
+    dimensions_d_cm: Optional[float] = Field(...)
+    warranty_period_days: Optional[int] = None
     
 # Block 4: Media & Inventory (Upload/Management fields)
 class MediaInventoryMixin(BaseModel):
-    ProductImageId: Optional[str] = None
-    ProductImageUrl: Optional[str] = None
-    SafetyStock: Optional[int] = None
-    PrimarySupplierID: Optional[int] = None
+    product_image_id: Optional[str] = None
+    product_image_url: Optional[str] = None
+    safety_stock: Optional[int] = None
+    primary_supplier_id: Optional[int] = Field(...)
 
 # -------------------------------------------------------------
 
@@ -50,63 +51,14 @@ class ProductBase(
     MediaInventoryMixin
 ):
     """The single source of truth containing all product attributes."""
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True,
+                              populate_by_name=True)
 
 # This model is used for data coming from the client to create a new product.
-class ProductCreate(ProductBase):
+class ProductCreate(ProductBase, AutoWriteSchema):
     # Overrides ProductId from Base, setting it as excluded
     # It must NOT be provided by the client, but is needed for the full schema
-    ProductId: None = Field(default=None) 
-    
-    # Example: You might want to make some Optional fields REQUIRED for creation
-    # ModelNumber_SKU: str # Already done via Mixin, but you could override here.
-    
-# Create a new Base for updates to make all fields Optional
-# def make_optional(field_name: str, field: FieldInfo) -> FieldInfo:
-#     """Transforms a FieldInfo object to be Optional and have a default of None
-#        by replacing it with a new FieldInfo object based on the original metadata.
-#     """
-    
-#     # 1. Determine the new annotation: Optional[OriginalType]
-#     original_annotation = field.annotation
-#     optional_annotation = Optional[original_annotation]
-    
-#     # 2. Extract the original Field metadata (title, description, etc.)
-#     # We must pass these as keyword arguments to Field()
-    
-#     # Prepare metadata to be passed to Field()
-#     metadata = {
-#         'default': None,  # Force the default value to None
-#         'alias': field.alias,
-#         'title': field.title,
-#         'description': field.description,
-#         # Get other validation metadata (e.g., gt, lt, max_length)
-#         # by checking the FieldInfo's metadata list.
-#         'metadata': field.metadata, 
-#     }
-    
-#     # Use the pydantic.Field() function to create a new FieldInfo object.
-#     # We then use the new annotation to create the final FieldInfo object.
-#     return FieldInfo.from_annotation(
-#         annotation=optional_annotation,
-#         **{k: v for k, v in metadata.items() if v is not PydanticUndefined}
-#     )
-
-# class UpdateSchema(ProductBase):
-#     """Base class for updating, dynamically making all fields Optional."""
-    
-#     @classmethod
-#     def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
-#         # Loop through all fields inherited from ProductBase
-#         for field_name, field in cls.model_fields.items():
-#             # Skip fields that are explicitly excluded (like the one you might add in ProductUpdate)
-#             if field.exclude:
-#                  continue
-            
-#             # Replace the field with the optional version
-#             cls.model_fields[field_name] = make_optional(field_name, field)
-            
-#         super().__pydantic_init_subclass__(**kwargs)
+    product_id: None = Field(default=None)
         
 T = TypeVar('T', bound=BaseModel)
 
@@ -174,7 +126,7 @@ def make_optional_all(cls: Type[T]) -> Type[T]:
 # ProductUpdate is the dynamically generated class where ALL fields are Optional[Type] = None
 ProductUpdateBase = make_optional_all(ProductBase)
 
-class ProductUpdate(ProductUpdateBase):
+class ProductUpdate(ProductUpdateBase, AutoWriteSchema):
     """
     Final schema for updating product data.
     All fields are optional because they inherit from ProductUpdateBase.
@@ -182,14 +134,21 @@ class ProductUpdate(ProductUpdateBase):
     """
     # Overwrite ProductId to be excluded for the request body, 
     # as the ID comes from the URL path.
-    ProductId: Optional[int] = Field(default=None, exclude=True)
-class ProductPublic(ProductBase):
+    product_id: Optional[int] = Field(default=None, exclude=True)
+class ProductPublic(ProductBase, AutoReadSchema):
     """Schema for data returned to the client, excluding sensitive fields."""
-    
+    # Overwrite validation alias for weird case
+    model_number_sku: str = Field(..., validation_alias="ModelNumber_SKU")
+    package_weight_kg: Optional[float] = Field(..., validation_alias="PackageWeight_KG")
+    dimensions_h_cm: Optional[float] = Field(..., validation_alias="Dimensions_H_CM")
+    dimensions_w_cm: Optional[float] = Field(..., validation_alias="Dimensions_W_CM")
+    dimensions_d_cm: Optional[float] = Field(..., validation_alias="Dimensions_D_CM")
+    warranty_period_days: Optional[int] = Field(..., validation_alias="WarrantyPeriod_Days")
     # Exclude sensitive internal data from the final JSON output
-    InternalPrice: Optional[float] = Field(default=None, exclude=True)
-    PrimarySupplierID: Optional[int] = Field(default=None, exclude=True)
-    SafetyStock: Optional[int] = Field(default=None, exclude=True)
+    internal_price: Optional[float] = Field(default=None, exclude=True)
+    primary_supplier_id: Optional[int] = Field(default=None, exclude=True, validation_alias="PrimarySupplierID")
+    safety_stock: Optional[int] = Field(default=None, exclude=True)
+
 
 class ProductBroadcastType(Enum):
     Add= "product_added"
@@ -201,3 +160,5 @@ class ProductBroadcastMessage(BaseModel):
     type: ProductBroadcastType
     payload: Optional[ProductPublic] = None  # Use a flexible dict for the payload
     model_config = ConfigDict(use_enum_values=True)
+class ProductPaginationResponse(PaginationMetaData):
+    items: list[ProductPublic] = Field(..., description = "List of products in one page")

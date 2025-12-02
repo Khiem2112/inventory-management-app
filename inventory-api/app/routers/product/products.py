@@ -1,7 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query, WebSocket, WebSocketDisconnect, UploadFile, Form, File
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-from app.schemas.product import ProductPublic, ProductBase, ProductCreate, ProductUpdate, ProductBroadcastMessage, ProductBroadcastType
+from app.schemas.product import (ProductPublic, 
+                                 ProductBase, 
+                                 ProductCreate, 
+                                 ProductUpdate,
+                                 ProductBroadcastMessage,
+                                 ProductBroadcastType,
+                                 ProductPaginationResponse)
 from app.utils.dependencies import get_current_user
 from app.database.connection import get_db
 from app.database.user_model import User as UserORM
@@ -26,7 +32,7 @@ logger = setup_logger()
 manager = ConnectionManager()
 # Get all products
 @router.get('/all/', 
-            # response_model= List[ProductPublic], 
+            response_model= List[ProductPublic], 
             status_code=status.HTTP_200_OK, 
             description="Fetch all product records")  
 def get_products_all (current_user: UserORM = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -44,8 +50,9 @@ def get_products_all (current_user: UserORM = Depends(get_current_user), db: Ses
     
 # Get some products with parameter
 @router.get('/',
-            status_code=status.HTTP_200_OK, 
-            # description="Get products based on page number"
+            status_code=status.HTTP_200_OK,
+            response_model=ProductPaginationResponse,
+            description="Get products based on page number"
             )
 def get_products_paginated (current_user: UserORM = Depends(get_current_user),
                   db:Session = Depends(get_db),
@@ -61,7 +68,8 @@ def get_products_paginated (current_user: UserORM = Depends(get_current_user),
       "items" : products,
       "current_page" : page,
       "limit" : limit,
-      "total_page" : total_page,
+      "total_pages" : total_page,
+      "total_records": total_products
     }
   except SQLAlchemyError as e:
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Database error: {e}")
@@ -103,7 +111,35 @@ async def create_product(new_product: ProductCreate,
                    db: Session = Depends(get_db),
                    ):
   try:
-    added_product = ProductORM(**new_product.model_dump(exclude_unset=True))
+    added_product = ProductORM(
+      ProductId = new_product.product_id,
+      ModelNumber_SKU = new_product.model_number_sku,
+      ProductName = new_product.product_name,
+      
+      # General info
+      Category = new_product.category,
+      ProductSeries = new_product.product_series,
+      Manufacturer = new_product.manufacturer,
+      Measurement = new_product.measurement,
+      SellingPrice = new_product.selling_price,
+      InternalPrice = new_product.internal_price,
+      
+      # Media
+      ProductImageId = new_product.product_image_id,
+      ProductImageUrl = new_product.product_image_url,
+      
+      # Technical stats
+      PackageWeight_KG = new_product.package_weight_kg,
+      Dimensions_H_CM = new_product.dimensions_h_cm,
+      Dimensions_W_CM= new_product.dimensions_w_cm,
+      Dimensions_D_CM = new_product.dimensions_d_cm,
+      
+      # Additional
+      SafetyStock = new_product.safety_stock,
+      WarrantyPeriod_Days = new_product.warranty_period_days,
+      PrimarySupplierID = new_product.primary_supplier_id
+    )
+    
     # add product to db
     db.add(added_product)
     db.commit()
@@ -157,42 +193,95 @@ async def upload_product_image (upload_file: UploadFile = File(...),
 
 @router.put('/{product_id}', response_model=ProductPublic, status_code=status.HTTP_200_OK)
 async def update_product(
-  product: ProductUpdate,
-  product_id: int,
-  current_user: UserORM = Depends(get_current_user),
-  db: Session = Depends(get_db)
+    product: ProductUpdate,
+    product_id: int,
+    current_user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
-  try:
-    # Find the product to be updated
-    query = db.query(ProductORM).filter(ProductORM.ProductId == product_id)
-    found_product = query.one_or_none()
-    # Check if we find any product
-    if not found_product:
-      raise HTTPException(status_code=400, detail="Cannot found user")
-    # Update that product
-    ## dump pydantic model to create ORM model
-    update_data = product.model_dump(exclude_unset=True)
-    logger.info(f"The update data is like: {update_data}")
-    # Set variable for updated Product
-    for field, value in update_data.items():
-      setattr(found_product, field, value)
-    db.add(found_product)
-    db.commit()
-    db.refresh(found_product)
-    # Broadcast an update message
-    broadcast_data = ProductPublic.model_validate(found_product)
-    message = ProductBroadcastMessage(
-      type =ProductBroadcastType.Update,
-      payload= broadcast_data.model_dump()
-    )
-    await manager.broadcast(message.model_dump_json())
-  except SQLAlchemyError as e:
-    db.rollback()
-    raise HTTPException(status_code=500, detail=f'Database error: {e}')
-  except Exception as e:
-    db.rollback()
-    raise HTTPException(status_code=500, detail=f'Unexpected error: {e}')
-  return found_product
+    try:
+        # 1. Find the product
+        query = db.query(ProductORM).filter(ProductORM.ProductId == product_id)
+        found_product = query.one_or_none()
+
+        if not found_product:
+            raise HTTPException(status_code=404, detail=f"Product with ID {product_id} not found.")
+
+        # 2. Get the incoming Pydantic data (only fields that were set)
+        #    We use this dictionary to check if a value was actually provided in the request
+        update_data = product.model_dump(exclude_unset=True)
+
+        # 3. EXPLICIT MANUAL MAPPING AND UPDATE
+        #    If the field was provided in the Pydantic input (checked via update_data keys),
+        #    manually map the snake_case Pydantic field to the PascalCase ORM attribute.
+        
+        # Identity
+        if 'product_id' in update_data:
+            found_product.ProductId = product_id
+        if 'model_number_sku' in update_data:
+            found_product.ModelNumber_SKU = product.model_number_sku
+        if 'product_name' in update_data:
+            found_product.ProductName = product.product_name
+        
+        # General info
+        if 'category' in update_data:
+            found_product.Category = product.category
+        if 'product_series' in update_data:
+            found_product.ProductSeries = product.product_series
+        if 'manufacturer' in update_data:
+            found_product.Manufacturer = product.manufacturer
+        if 'measurement' in update_data:
+            found_product.Measurement = product.measurement
+        if 'selling_price' in update_data:
+            found_product.SellingPrice = product.selling_price
+        if 'internal_price' in update_data:
+            found_product.InternalPrice = product.internal_price
+            
+        # Media
+        if 'product_image_id' in update_data:
+            found_product.ProductImageId = product.product_image_id
+        if 'product_image_url' in update_data:
+            found_product.ProductImageUrl = product.product_image_url
+            
+        # Technical stats
+        if 'package_weight_kg' in update_data:
+            found_product.PackageWeight_KG = product.package_weight_kg
+        if 'dimensions_h_cm' in update_data:
+            found_product.Dimensions_H_CM = product.dimensions_h_cm
+        if 'dimensions_w_cm' in update_data:
+            found_product.Dimensions_W_CM = product.dimensions_w_cm
+        if 'dimensions_d_cm' in update_data:
+            found_product.Dimensions_D_CM = product.dimensions_d_cm
+            
+        # Additional
+        if 'safety_stock' in update_data:
+            found_product.SafetyStock = product.safety_stock
+        if 'warranty_period_days' in update_data:
+            found_product.WarrantyPeriod_Days = product.warranty_period_days
+        if 'primary_supplier_id' in update_data:
+            found_product.PrimarySupplierID = product.primary_supplier_id
+
+
+        # 4. Commit the changes
+        db.add(found_product)
+        db.commit()
+        db.refresh(found_product)
+        
+        # Broadcast an update message
+        broadcast_data = ProductPublic.model_validate(found_product)
+        message = ProductBroadcastMessage(
+            type = ProductBroadcastType.Update,
+            payload= broadcast_data.model_dump()
+        )
+        await manager.broadcast(message.model_dump_json())
+        
+        return found_product
+
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f'Database error: {e}')
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f'Unexpected error: {e}')
 
 @router.put('/{product_id}/image')
 async def update_product_image(
@@ -260,15 +349,6 @@ async def delete_product(
       raise HTTPException(status_code=404, detail="Not found product")
     db.delete(product_orm)
     db.commit()
-    # broadcast message to all cients
-    broadcast_data = ProductPublic.model_validate(product_orm)
-    message = ProductBroadcastMessage(
-      type = ProductBroadcastType.Delete,
-      payload={
-        "product_id": product_id
-      }
-    )
-    await manager.broadcast(message.model_dump_json())
     return {
       'message': f'Successfully deleted product_id {product_id}'
     }
