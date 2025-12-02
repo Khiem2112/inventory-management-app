@@ -72,7 +72,7 @@ function Dashboard() {
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                 <PersonIcon sx={{ mr: 1, color: '#42a5f5' }} />
                 <Typography variant="body1">
-                  <strong>Username:</strong> {userDetailData?.Username}
+                  <strong>Username:</strong> {userDetailData?.username}
                 </Typography>
               </Box>
             </Grid>
@@ -80,7 +80,7 @@ function Dashboard() {
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                 <BadgeIcon sx={{ mr: 1, color: '#42a5f5' }} />
                 <Typography variant="body1">
-                  <strong>Full Name:</strong> {userDetailData?.Name}
+                  <strong>Full Name:</strong> {userDetailData?.name}
                 </Typography>
               </Box>
             </Grid>
@@ -88,7 +88,7 @@ function Dashboard() {
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                 <LocalPhoneIcon sx={{ mr: 1, color: '#42a5f5' }} />
                 <Typography variant="body1">
-                  <strong>Phone:</strong> {userDetailData?.Phone}
+                  <strong>Phone:</strong> {userDetailData?.phone}
                 </Typography>
               </Box>
             </Grid>
@@ -96,7 +96,7 @@ function Dashboard() {
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                 <KeyIcon sx={{ mr: 1, color: '#42a5f5' }} />
                 <Typography variant="body1">
-                  <strong>Role ID:</strong> {userDetailData?.RoleId}
+                  <strong>Role ID:</strong> {userDetailData?.role_id}
                 </Typography>
               </Box>
             </Grid>
@@ -104,7 +104,7 @@ function Dashboard() {
               {/* This is how we'd display more fields */}
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                 <Typography variant="body2" sx={{ fontStyle: 'italic', color: '#888' }}>
-                  User ID: {userDetailData?.UserId}
+                  User ID: {userDetailData?.user_id}
                 </Typography>
               </Box>
             </Grid>
