@@ -64,8 +64,8 @@ def create_refresh_token(user_id: int):
 @router.post('/login')
 def login_user_with_json(UserLogin: UserLogin = None,
                db:Session = Depends(get_db)):
-  return process_login_user(Username=UserLogin.Username,
-                            Password=UserLogin.Password,
+  return process_login_user(Username=UserLogin.username,
+                            Password=UserLogin.password,
                             db = db)
 @router.post('/get-token')
 def login_user_with_form(UserForm: OAuth2PasswordRequestForm = Depends(),

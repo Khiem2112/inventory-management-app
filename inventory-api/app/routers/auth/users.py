@@ -43,17 +43,17 @@ def create_user (user_data: UserCreate,
                  db:Session = Depends(get_db)):
 	try:
 		# Check if the username exists
-		query = db.query(UserORM).filter(UserORM.Username == user_data.Username)
+		query = db.query(UserORM).filter(UserORM.Username == user_data.username)
 		found_user = query.one_or_none()
 		if found_user:
 			raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already registered")
-		input_hashed_password = pwd_context.hash(user_data.Password)
+		input_hashed_password = pwd_context.hash(user_data.password)
 		new_user = UserORM(
-            Username=user_data.Username,
+            Username=user_data.username,
             PasswordHash=input_hashed_password,
-            Name=user_data.Name,
-            Phone=user_data.Phone,
-            RoleId=user_data.RoleId,
+            Name=user_data.name,
+            Phone=user_data.phone,
+            RoleId=user_data.role_id,
         )
 		db.add(new_user)
 		db.commit()
@@ -74,40 +74,23 @@ def create_user (user_data: UserCreate,
 	return new_user	
 
 @router.patch("/{user_id}", response_model=UserPublic)
-def update_user(
-  user_id: int,
-  user_data: UserUpdate,
-  current_user: UserORM= Depends(get_current_user),
-  db: Session = Depends(get_db)
-):
-  """
-  Update an existing user.
-  """
+def update_user(user_id: int, user_update: UserUpdate, db: Session = Depends(get_db)):
   try:
-    # 1. Find the user to update
-    user = db.query(UserORM).filter(UserORM.UserId == user_id).one_or_none()
-    if user is None:
-      raise HTTPException(status_code=404, detail="User not found.")
+    # 1. Get ORM Object
+    user_orm = db.query(UserORM).filter(UserORM.UserId == user_id).first()
+    if not user_orm:
+      raise HTTPException(status_code=404, detail="User not found")
 
-    # 2. Get the new data from the request body
-    #    We use exclude_unset=True to only get the fields that were provided
-    update_data = user_data.model_dump(exclude_unset=True)
+    # 2. THE INTERMEDIATE LAYER IN ACTION
+    # The schema converts itself and updates the ORM object
+    user_orm = user_update.apply_to_orm(user_orm, pwd_context=pwd_context)
 
-    # 3. Update the user object with the new data
-    for field, value in update_data.items():
-      setattr(user, field, value)
-        
-    # You'll need to hash the password if it was updated
-    if 'Password' in update_data:
-      user.PasswordHash = pwd_context.hash(user.Password)
-      # delete the Password attribute so it doesn't get set on the user object
-      del user.Password
-    # 4. Commit the changes
-    db.add(user)
+    # 3. Save
     db.commit()
-    db.refresh(user)
-
-    return user
+    db.refresh(user_orm)
+    
+    # 4. Return (FastAPI uses AutoReadSchema to convert Pascal -> Snake for JSON)
+    return user_orm
   except sqlalchemy.exc.SQLalchemyError as e:
     db.rollback()
     raise HTTPException(status_code=500, detail=f"Database error: {e}")
