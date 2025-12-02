@@ -8,6 +8,7 @@ class ZoneType(PyEnum):
   Receiving = "Receiving"
   Storage = "Storage"
   Quarantine = "Quarantine"
+  Shipping = "Shipping"
   
 
 # Declare the base

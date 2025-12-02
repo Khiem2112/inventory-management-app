@@ -142,13 +142,13 @@ const productsSlice = createSlice({
         assignSelectedProduct: (state, action) => {
         state.selectedProduct = action.payload;
         state.selectedIndex = state.items.findIndex(
-            item => item.ProductId === action.payload.ProductId
+            item => item.ProductId === action.payload.product_id
         );
         },
         productUpdated: (state, action) => {
         // Find the product and update it or add it if it's new
             const index = state.items.findIndex(
-                (product) => product.ProductId === action.payload.ProductId
+                (product) => product.ProductId === action.payload.product_id
             );
             if (index !== -1) {
                 state.items[index] = action.payload; // Update existing product
@@ -183,7 +183,7 @@ const productsSlice = createSlice({
                 // Set pagination state
                 state.pagination.currentPage = action.payload.current_page
                 state.pagination.limit = action.payload.limit
-                state.pagination.totalPage = action.payload.total_page
+                state.pagination.totalPage = action.payload.total_pages
             })
             .addCase(fetchSomeProductsAsync.rejected, (state, action) => {
                 state.status.getSome = 'failed';
@@ -195,7 +195,7 @@ const productsSlice = createSlice({
                 state.selectedProduct = action.payload;
                 // Find and set the index
                 state.selectedIndex = state.items.findIndex(
-                    item => item.ProductId === action.payload.ProductId
+                    item => item.ProductId === action.payload.product_id
                 );
             })
             .addCase(fetchOneProductAsync.rejected, (state, action) => {
@@ -209,7 +209,7 @@ const productsSlice = createSlice({
             // Handling updateProductAsync
             .addCase(updateProductAsync.fulfilled, (state, action) => {
                 const index = state.items.findIndex(
-                (product) => product.ProductId === action.payload.ProductId
+                (product) => product.ProductId === action.payload.product_id
             );
 
             // If the product is found, update it

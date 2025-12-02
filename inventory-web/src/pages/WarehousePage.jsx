@@ -105,10 +105,10 @@ const WarehousePage = () => {
           >
             <ZoneCard
               // Ensure your zone object has these properties: title, description, etc.
-              title={zone?.ZoneName}
-              description={zone?.Description}
-              imageUrl={zone?.ZoneImageUrl}
-              imageAlt={zone.imageAlt || zone.ZoneName}
+              title={zone?.Zone_name}
+              description={zone?.description}
+              imageUrl={zone?.zone_image_url}
+              imageAlt={zone.imageAlt || zone.zone_name}
             />
           </Grid>
         ))}
