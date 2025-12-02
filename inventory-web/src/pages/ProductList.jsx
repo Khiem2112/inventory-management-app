@@ -279,12 +279,12 @@ const webSocketConnectionStatusUI = () => {
               ) : (
                 productItems?.map((product) => ( // The 'map' function iterates over each item in the 'productItems' array
                   <TableRow 
-                    key={product.ProductId} // 'key' is a unique identifier for each row, required by React for performance
+                    key={product.product_id} // 'key' is a unique identifier for each row, required by React for performance
                   >
-                    <TableCell>{product.ProductName}</TableCell>
-                    <TableCell>{product.Measurement}</TableCell>
-                    <TableCell>${product.SellingPrice}</TableCell>
-                    <TableCell>${product.InternalPrice}</TableCell>
+                    <TableCell>{product.product_name}</TableCell>
+                    <TableCell>{product.measurement}</TableCell>
+                    <TableCell>${product.selling_price}</TableCell>
+                    <TableCell>${product.internal_price}</TableCell>
                     <TableCell>
                       <IconButton aria-label ='modify' onClick={() => {handleModifyProduct(product)}}>
                         <EditIcon/>

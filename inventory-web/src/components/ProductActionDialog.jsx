@@ -100,15 +100,15 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
   useEffect(() => {
     if (tag === 'modify') {
       console.log(`Loaded the Dialog with product data: ${JSON.stringify(product)}`)
-      setCurrentProductId(product?.ProductId)
-      setCurrentProductName(product?.ProductName);
-      setCurrentMeasurement(product?.Measurement);
-      setCurrentSellingPrice(product?.SellingPrice);
-      setCurrentInternalPrice(product?.InternalPrice);
+      setCurrentProductId(product?.product_id)
+      setCurrentProductName(product?.product_name);
+      setCurrentMeasurement(product?.measurement || 'PCS');
+      setCurrentSellingPrice(product?.selling_price);
+      setCurrentInternalPrice(product?.internal_price);
       setProductImage({
         file:null,
-        url: product?.ProductImageUrl,
-        id: product?.ProductImageId
+        url: product?.product_image_url,
+        id: product?.product_image_id
       })
       setMessage(null)
       clearMessageBar()
@@ -216,11 +216,11 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
         console.log("Error when updating product image: ", error)
       }
       console.log(`Full product data is: ${JSON.stringify(product)}`)
-      console.log(`Product id is: ${product.ProductId}`)
+      console.log(`Product id is: ${product.product_id}`)
       console.log(`Product data is: ${JSON.stringify(productData)}`)
-      console.log(`Thunk to update product data is: ${updateProductAsync(product.ProductId, productData)}`)
+      console.log(`Thunk to update product data is: ${updateProductAsync(product.product_id, productData)}`)
       const promise = await dispatch(updateProductAsync({
-        productId: product.ProductId,
+        productId: product.product_id,
         updatedProductData: productData
       }
       ));
@@ -231,7 +231,7 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
 
       promise.then(result => {
         console.log(`update error is: ${updatingProductError}`)
-        setUpdateSuccessMessage(result.payload|| `Successfully update product ${product.ProductId}`)
+        setUpdateSuccessMessage(result.payload|| `Successfully update product ${product.product_id}`)
       })
       setUpdateSuccessMessage('hehehee')
     }
@@ -381,7 +381,7 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
               whiteSpace: 'nowrap'
             }}
           >
-            {tag === 'add' ? 'Add New Product' : `Modify ${product?.ProductName}`}
+            {tag === 'add' ? 'Add New Product' : `Modify ${product?.product_name}`}
           </Typography>
 
           <Box sx={{ width: '10%', display: 'flex', justifyContent: 'center' }}>
@@ -425,9 +425,9 @@ const ProductActionDialog = ({ open, onClose, tag}) => {
           <FormControl fullWidth margin="normal">
             <InputLabel>Measurement Unit</InputLabel>
             <Select value={currentMeasurement} label="Measurement Unit" onChange={(e) => setCurrentMeasurement(e.target.value)}>
-              <MenuItem value="kg">kg</MenuItem>
+              <MenuItem value="KG">kg</MenuItem>
               <MenuItem value="L">L</MenuItem>
-              <MenuItem value="pcs">pcs</MenuItem>
+              <MenuItem value="PCS">pcs</MenuItem>
             </Select>
           </FormControl>
           <TextField label="Selling Price" fullWidth margin="normal" type="number" value={currentSellingPrice} onChange={(e) => setCurrentSellingPrice(e.target.value)} />
