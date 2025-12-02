@@ -145,7 +145,7 @@ class ProductPublic(ProductBase, AutoReadSchema):
     dimensions_d_cm: Optional[float] = Field(..., validation_alias="Dimensions_D_CM")
     warranty_period_days: Optional[int] = Field(..., validation_alias="WarrantyPeriod_Days")
     # Exclude sensitive internal data from the final JSON output
-    internal_price: Optional[float] = Field(default=None, exclude=True)
+    internal_price: Optional[float] = Field(default=None, exclude=False)
     primary_supplier_id: Optional[int] = Field(default=None, exclude=True, validation_alias="PrimarySupplierID")
     safety_stock: Optional[int] = Field(default=None, exclude=True)
 
