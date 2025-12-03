@@ -162,8 +162,9 @@ def refresh_token(request_data: RefreshToken, db: Session = Depends(get_db)):
     old_refresh_token, found_user = result
     if not old_refresh_token:
       raise HTTPException(status_code=401, detail='Invalid or used refresh token')
+    logger.info(f'Can see the refresh token: {request_data.Token } and the hash: {old_refresh_token.TokenHash}')
     if not pwd_context.verify(request_data.Token, old_refresh_token.TokenHash):
-      raise HTTPException(status_code=401, detail='Invalid or used refresh token')
+      raise HTTPException(status_code=401, detail='Invalid or used refresh token | can not veify hash')
     # Remove existing refresh token
     db.delete(old_refresh_token)
     db.commit()
@@ -180,10 +181,12 @@ def refresh_token(request_data: RefreshToken, db: Session = Depends(get_db)):
     new_access_token = create_access_token(input_data= new_access_token_payload, 
                                            time_delta=timedelta(ACCESS_TOKEN_EXPIRE_MINUTES))
     new_refresh_token, new_jti, new_expires_at = create_refresh_token(user_id=UserId)
+    # We must hashed the new refresh token before save to db
+    new_refresh_token_hash = pwd_context.hash(new_refresh_token)
     # Save new record to db
     new_refresh_token_record = RefreshTokenORM(
       Jti=new_jti,
-      TokenHash=new_refresh_token,
+      TokenHash=new_refresh_token_hash,
       UserId=found_user.UserId,
       ExpiresAt = new_expires_at
   )
