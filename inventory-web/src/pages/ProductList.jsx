@@ -69,34 +69,7 @@ function ProductsList() {
     };
     console.log(`Current status is: ${wsStatus}`)
     const currentStatus = statusStyles[wsStatus]
-const webSocketConnectionStatusUI = () => {
-  return <> 
-    <Box sx={{
-        p: 3,
-        // Add a Box at the top for the status bar
-        // It will have a fixed position to stay visible on scroll
-        position: 'sticky',
-        top: 0,
-        zIndex: 10,
-        bgcolor: currentStatus.color,
-        color: 'white',
-        textAlign: 'center',
-        py: 1.5,
-      }}
-    >
-      <Typography variant="body1">
-        WebSocket Status: **{currentStatus.text}**
-      </Typography>
-    </Box>
-    <Box
-      sx={{
-        p: 3,
-      }}
-    >
-      {/* ... your existing header Box and Paper component */}
-    </Box>
-  </>
-};
+
   // console.log(`Full products object stored is: ${JSON.stringify(currentProductsState, null, 2)}`) // Just or seeing or products store object
   const handleOpenAddDialog = () => {
     setIsDialogOpen(true);
@@ -197,7 +170,6 @@ const webSocketConnectionStatusUI = () => {
         >
           Inventory Products
         </Typography>
-        {webSocketConnectionStatusUI()}
         <Box 
           sx={{ 
             display: 'flex', 
