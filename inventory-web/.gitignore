@@ -26,3 +26,5 @@ dist-ssr
 practice
 node_modules
 src/dummy_resource/
+src/pages/ProductPromise.jsx
+src/pages/ProductSimple.jsx
