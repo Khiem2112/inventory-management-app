@@ -40,11 +40,11 @@ engine = create_engine(
 )
 
 def get_db():
-  with Session(engine) as session:
-    try:
-      logger.info("Start the database session")
-      yield session
-    finally:
-      session.close()
-      logger.info("End database session")
-	
+  session = Session(engine)
+  try:
+    logger.info("Start the database session")
+    yield session
+  finally:
+    session.close()
+    logger.info("End database session")
+
