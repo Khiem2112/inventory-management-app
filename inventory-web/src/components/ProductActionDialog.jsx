@@ -5,9 +5,7 @@ import {
   Stack
 } from "@mui/material";
 import { useEffect, useState, useRef } from "react";
-import { useMutation } from "@tanstack/react-query";
-import useAddNewProduct from "../hooks/Product/useAddNewProduct";
-import useUpdateProduct from "../hooks/Product/useUpdateProduct";
+
 import CloseIcon from '@mui/icons-material/Close';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
@@ -24,12 +22,6 @@ import {
   setSelectedProductWithIndex,
   resetSelectedProductWithIndex } from "../myRedux/slices/ProductsSlice";
 import { useDispatch, useSelector } from "react-redux";
-import useImagePreview from "../hooks/Product/useImagePreview";
-import useGetImageCloudinary from "../hooks/Product/useGetImageCloudinary";
-import axios from "axios";
-import api from "../services/api";
-import { Cloudinary } from "@cloudinary/url-gen/index";
-import { AdvancedImage } from "@cloudinary/react";
 
 const ProductActionDialog = ({ open, onClose, tag}) => {
   // Local states for the form
