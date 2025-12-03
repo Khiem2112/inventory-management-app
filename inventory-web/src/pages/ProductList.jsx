@@ -22,7 +22,6 @@ import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ProductActionDialog from '../components/ProductActionDialog';
-import useFetchProducts from '../hooks/Product/useFetchProducts';
 import { useAuth } from '../context/AuthContext';
 import { useState, useEffect   } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
@@ -30,7 +29,6 @@ import { fetchAllProductsAsync,
          setSelectedProduct,
          assignSelectedProduct,
          fetchSomeProductsAsync} from '../myRedux/slices/ProductsSlice';
-import useWebSocket, {ReadyState} from 'react-use-websocket';
 import { wsConnectStart, wsDisconnect } from '../myRedux/action/wsActions';
 import API_CONFIG from '../config';
 
