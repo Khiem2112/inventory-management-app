@@ -1,6 +1,7 @@
 // src/Dashboard.jsx
 
 import React from 'react';
+import { useEffect } from 'react';
 import { Box, Typography, Card, CardContent, Grid, CircularProgress, Alert,Button } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
 import LocalPhoneIcon from '@mui/icons-material/LocalPhone';
@@ -13,6 +14,14 @@ import useFetchUserData from '../hooks/User/useFetchUserData';
 function Dashboard() {
   const { userData,logout } = useAuth(); // Get decoded JWT data
   const { isFetchingUserData, userDetailData, fetchUserDataError } = useFetchUserData(); // Fetch full user data
+
+  useEffect(() => {
+  console.log("🟢 Dashboard MOUNTED (Created)");
+
+  return () => {
+    console.log("🔴 Dashboard UNMOUNTED (Destroyed)");
+  };
+}, []);
 
   // Render different content based on the data fetching state
   if (isFetchingUserData) {
