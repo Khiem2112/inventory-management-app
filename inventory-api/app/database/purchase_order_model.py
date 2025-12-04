@@ -8,7 +8,7 @@ from app.database.base import Base
 
 class PurchaseOrderItem(Base):
   __tablename__ = "PurchaseOrderItem"
-  PurchaseOrderItem: Mapped[int] = mapped_column(
+  PurchaseOrderItemId: Mapped[int] = mapped_column(
     "POItemId", Integer, nullable=False, autoincrement=True, primary_key=True
   )
   Quantity: Mapped[int] = mapped_column(
