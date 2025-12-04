@@ -1,12 +1,13 @@
 # In app/database/DBModel.py
 
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy import String, Float, Integer, DateTime, FLOAT
 from datetime import datetime
+from app.database.base import Base
+from app.database.purchase_order_model import PurchaseOrderItem
 
 # You'll need to update your base class to inherit from DeclarativeBase
-class Base(DeclarativeBase):
-  pass
+
 
 class Product(Base):
   __tablename__ = "Product"
@@ -40,6 +41,11 @@ class Product(Base):
   SafetyStock: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
   WarrantyPeriod_Days: Mapped[int] = mapped_column(Integer, nullable=True, default=0)
   PrimarySupplierID :  Mapped[int] = mapped_column(Integer, nullable=True)
+  
+  # relationship
+  PurchaseOrderItems: Mapped[list["PurchaseOrderItem"]] = relationship("PurchaseOrderItem", 
+                                                                     lazy="joined", 
+                                                                     back_populates="Product")
   
   class Config:
     from_attributes = True

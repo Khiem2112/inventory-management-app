@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, status, HTTPException, Query
 from app.utils.dependencies import get_db, get_current_user
 from app.utils.logger import setup_logger
-from app.database.purchase_order_model import PurchaseOrder as PurchaseOrderORM
+from app.database.purchase_order_model import PurchaseOrder as PurchaseOrderORM, PurchaseOrderItem as PurchaseOrderItemORM
 from app.database.supplier_model import Supplier as SupplierORM
 from app.database.user_model import User as UserORM 
-from app.schemas.purchase_order import PurchaseOrderRead,PurchaseOrderPublic, PurchaseOrderResponse
+from app.schemas.purchase_order import PurchaseOrderRead,PurchaseOrderPublic, PurchaseOrderResponse, PurchaseOrderItemPublic
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import desc
+from sqlalchemy import desc, inspect
 from typing import Optional
 
 logger = setup_logger()
@@ -120,3 +120,42 @@ def get_purchase_order_paginated(
       status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
       detail="An unexpected error occurred."
     )
+    
+@router.get('/{purchase_order_id}', 
+            response_model=list[PurchaseOrderItemPublic],
+            status_code=status.HTTP_200_OK)
+def get_purchase_order_items(purchase_order_id:int,
+                             current_user:UserORM = Depends(get_current_user),
+                             db:Session = Depends(get_db)):
+  # First check if purchase order id exists
+  try:
+    purchase_order = db.query(PurchaseOrderORM).filter(PurchaseOrderORM.PurchaseOrderId==purchase_order_id).one_or_none()
+    if not purchase_order:
+      raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                          detail="Purchase Order ID does not exist")
+    query = db.query(PurchaseOrderItemORM).options(
+            # Correctly loading the 'Product' relationship on the PurchaseOrderItem
+            joinedload(PurchaseOrderItemORM.Product) 
+        ).filter(
+            # Filtering using the FOREIGN KEY COLUMN on the PurchaseOrderItem
+            PurchaseOrderItemORM.PurchaseOrderId == purchase_order_id
+        )
+    purchase_order_items = query.all()
+    print("\n--- Raw ORM Results ---")
+    for item in purchase_order_items:
+      # The inspect method reveals the state, including all loaded attributes
+      print(f"ORM Object Class: {item.__class__.__name__}")
+      print(inspect(item).attrs.keys()) # Prints all available attribute names
+      print(f"ORM Object Dict: {item.__dict__}") # Prints the internal dictionary representation
+      logger.info(f"Detail product {item.Product.__dict__}")
+      # print(f"Pydantic model mapping: {}")
+    print("-----------------------\n")
+    
+    return purchase_order_items
+  except SQLAlchemyError as e:
+    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail=f"Database error: {e}")
+  except Exception as e:
+    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail=f"Unexpected error: {e}")
+  

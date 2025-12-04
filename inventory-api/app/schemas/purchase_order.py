@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.schemas.pagination import PaginationMetaData
 from app.schemas.supplier import SupplierPublic
 from app.schemas.user import UserPublic
+from app.schemas.base import AutoReadSchema
 
 class PurchaseOrderBase(BaseModel):
     status: str = Field(..., validation_alias="Status")
@@ -49,3 +50,14 @@ class PurchaseOrderResponse(PaginationMetaData):
     suppliers: Optional[list[SupplierPublic]] | None= Field(default=None, description="List of unique suppliers")
     users: Optional[list[UserPublic]] | None= Field(default=None, description="List of unique users", )
     statuses: list | None = Field(default=None, description="List of unique statuses")
+    
+class PurchaseOrderItemBase(BaseModel):
+    purchase_order_item_id: int = Field(..., description="ID of the purchase order")
+    product_id: int = Field(..., description="The correspoding product id")
+    purchase_order_id: int = Field(...,description="The parent purchase order id")
+    quantity: int = Field(..., description="Quantity")
+    unit_price:float = Field(..., description="Unit Price we buy from supplier")
+    item_description: str = Field(..., description="Special note for purchase order item")
+    
+class PurchaseOrderItemPublic(PurchaseOrderItemBase, AutoReadSchema):
+    pass
