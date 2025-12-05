@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.schemas.pagination import PaginationMetaData
 from app.schemas.supplier import SupplierPublic
 from app.schemas.user import UserPublic
-from app.schemas.base import AutoReadSchema
+from app.schemas.base import AutoReadSchema,AutoWriteSchema
 
 class PurchaseOrderBase(BaseModel):
     status: Optional[str] = Field(default=None, validation_alias="Status")
@@ -34,12 +34,12 @@ class PurchaseOrderRead(PurchaseOrderBase):
     # This config is CRITICAL for SQLAlchemy integration
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
-class PurchaseOrderPublic(PurchaseOrderBase):
+class PurchaseOrderPublic(PurchaseOrderBase, AutoReadSchema):
     purchase_order_id: int = Field(..., validation_alias="PurchaseOrderId")
-    supplier_name:str = Field(..., validation_alias='SupplierName')
+    supplier_name:Optional[str] = Field(default=None, validation_alias='SupplierName')
     model_config = ConfigDict(populate_by_name=True, extra='ignore')
-    create_date: date = Field(..., validation_alias = "CreateDate")
-    create_user_name: str = Field(..., validation_alias='CreateUserName')
+    create_date: Optional[date|datetime] = Field(default=None, validation_alias = "CreateDate")
+    create_user_name: Optional[str] = Field(default=None, validation_alias='CreateUserName')
     
 class PurchaseOrderMetaDataItem(BaseModel):
     id: int = Field(..., description="ID of related fields")
@@ -62,8 +62,27 @@ class PurchaseOrderItemBase(BaseModel):
     unit_price:float = Field(..., description="Unit Price we buy from supplier")
     item_description: str = Field(..., description="Special note for purchase order item")
     
-class PurchaseOrderItemPublic(PurchaseOrderItemBase, AutoReadSchema):
+class PurchaseOrderItemCreate(PurchaseOrderItemBase):
+    """Schema for items coming in the create/update payload"""
     pass
+
+class PurchaseOrderInput(BaseModel):
+    """
+    The Payload for Creating or Updating a PO.
+    Contains the Header info + List of Items.
+    """
+    supplier_id: int = Field(..., description="Vendor ID")
+    is_draft: bool = Field(..., description="True = Save as Draft, False = Confirm & Send")
+    purchase_plan_id: Optional[int] = Field(default=None)
+    items: List[PurchaseOrderItemCreate] = Field(default=[], description="List of items to save")
+
+    model_config = ConfigDict(populate_by_name=True)
+    
+class PurchaseOrderItemPublic(PurchaseOrderItemBase, AutoReadSchema):
+    purchase_order_item_id: int = Field(..., description="ID of the item", validation_alias="POItemId")
+    purchase_order_id: int = Field(...,description="The parent purchase order id", validation_alias="PurchaseOrderId")
+    product_name: Optional[str] = Field(default=None, validation_alias="Product.ProductName")
+
 class PurchaseOrderItemsResponse(BaseModel):
     header: PurchaseOrderPublic = Field(..., description="General data of a purchase order")
     items: list[PurchaseOrderItemPublic] = Field(..., description="Items inside a purchase order")
