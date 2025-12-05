@@ -57,6 +57,13 @@ const PurchaseOrderList = ({
         getVisibleColumnsConfig(visibleKeys), 
         [visibleKeys]
     );
+    const handleRowClick = (poItem) => {
+        // Navigate to the detail URL
+        // AND pass the full 'poItem' object in state (Optimistic UI)
+        navigate(`/purchase-orders/${poItem.purchase_order_id}`, { 
+            state: { initialData: poItem } 
+        });
+    }
     // Placeholder functions for demo purposes
     const handleFilterChange = (newFilters) => {
         setFilterState(prev => ({ ...prev, ...newFilters }));
@@ -100,7 +107,7 @@ const PurchaseOrderList = ({
             )}
             
             {/* FilterBar (AC2) and ColumnToggler (AC1) */}
-            
+
             <FilterBar 
             // 1. Pass the full configuration for the checklist build (LABEL, isRequired)
             allColumnsConfig={PO_COLUMNS_CONFIG}
@@ -120,6 +127,8 @@ const PurchaseOrderList = ({
                 limit={paginationState.limit}
                 loading={isLoading}
                 columnsConfig={finalTableColumns}
+                onRowClick={handleRowClick}
+                selectedId={selectedId}
             />
                         {/* --- MUI Pagination Footer --- */}
             <TablePagination
