@@ -57,10 +57,11 @@ const PODetailPage = () => {
 
     // Scenario C: Error
     if (isError) {
+        console.error(`Error fetching PO: 90 | ${JSON.stringify(error)}`)
         return (
             <Box sx={{ p: 4, color: 'error.main' }}>
-                <Typography variant="h6">Error loading Purchase Order</Typography>
-                <Typography variant="body2">{error?.message}</Typography>
+                <Typography variant="h6">Error loading Purchase Order || {error?.message || "Unexpected Error code"}</Typography>
+                <Typography variant="body2">{  error?.response?.data?.detail || `Unexpected error fetching PO: ${id}`}</Typography>
             </Box>
         );
     }
