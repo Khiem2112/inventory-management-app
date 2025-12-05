@@ -77,7 +77,7 @@ def get_purchase_order_paginated(
         "purchase_order_id": po.PurchaseOrderId,
         "supplier_id": po.SupplierId,
         "create_user_id": po.CreateUserId,
-        "create_date": po.CreateDate,
+        "create_date": po.CreateDate.date(),
         "total_price": po.TotalPrice,
         "status": po.Status,
         # Safe navigation for relationships
