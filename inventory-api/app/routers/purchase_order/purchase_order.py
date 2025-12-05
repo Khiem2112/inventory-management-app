@@ -4,7 +4,13 @@ from app.utils.logger import setup_logger
 from app.database.purchase_order_model import PurchaseOrder as PurchaseOrderORM, PurchaseOrderItem as PurchaseOrderItemORM
 from app.database.supplier_model import Supplier as SupplierORM
 from app.database.user_model import User as UserORM 
-from app.schemas.purchase_order import PurchaseOrderRead,PurchaseOrderPublic, PurchaseOrderResponse, PurchaseOrderItemPublic
+from app.schemas.purchase_order import (
+  PurchaseOrderRead,
+  PurchaseOrderPublic, 
+  PurchaseOrderResponse, 
+  PurchaseOrderItemPublic,
+  PurchaseOrderItemsResponse
+  )
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import desc, inspect
@@ -122,15 +128,18 @@ def get_purchase_order_paginated(
     )
     
 @router.get('/{purchase_order_id}', 
-            response_model=list[PurchaseOrderItemPublic],
+            response_model=PurchaseOrderItemsResponse,
             status_code=status.HTTP_200_OK)
 def get_purchase_order_items(purchase_order_id:int,
                              current_user:UserORM = Depends(get_current_user),
                              db:Session = Depends(get_db)):
-  # First check if purchase order id exists
+  # First check if purchase order id exists and get header data
   try:
-    purchase_order = db.query(PurchaseOrderORM).filter(PurchaseOrderORM.PurchaseOrderId==purchase_order_id).one_or_none()
-    if not purchase_order:
+    po = db.query(PurchaseOrderORM).filter(
+      PurchaseOrderORM.PurchaseOrderId==purchase_order_id
+      ).options(joinedload(PurchaseOrderORM.Supplier),
+                joinedload(PurchaseOrderORM.CreateUser)).one_or_none()
+    if not po:
       raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                           detail="Purchase Order ID does not exist")
     query = db.query(PurchaseOrderItemORM).options(
@@ -151,7 +160,20 @@ def get_purchase_order_items(purchase_order_id:int,
       # print(f"Pydantic model mapping: {}")
     print("-----------------------\n")
     
-    return purchase_order_items
+    return {
+      'header': {
+        "purchase_order_id": po.PurchaseOrderId,
+        "supplier_id": po.SupplierId,
+        "create_user_id": po.CreateUserId,
+        "create_date": po.CreateDate.date(),
+        "total_price": po.TotalPrice,
+        "status": po.Status,
+        # Safe navigation for relationships
+        "supplier_name": po.Supplier.SupplierName if po.Supplier else "Unknown",
+        "create_user_name": po.CreateUser.Name if po.CreateUser else "Unknown"
+        },
+      'items': purchase_order_items
+    }
   except SQLAlchemyError as e:
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                         detail=f"Database error: {e}")
