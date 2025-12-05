@@ -11,10 +11,10 @@ from app.schemas.user import UserPublic
 from app.schemas.base import AutoReadSchema
 
 class PurchaseOrderBase(BaseModel):
-    status: str = Field(..., validation_alias="Status")
-    supplier_id: int = Field(..., validation_alias="SupplierId")
+    status: Optional[str] = Field(default=None, validation_alias="Status")
+    supplier_id: Optional[int] = Field(default=None, validation_alias="SupplierId")
     purchase_plan_id: Optional[int] = Field(default=None, validation_alias="PurchasePlanId")
-    create_user_id: int = Field(..., validation_alias="CreateUserId")
+    create_user_id: Optional[int] = Field(default=None, validation_alias="CreateUserId")
     total_price: Optional[Decimal] = Field(default=None, validation_alias="TotalPrice")
     
     # Pydantic V2 Config to allow population by field name or alias
@@ -64,3 +64,6 @@ class PurchaseOrderItemBase(BaseModel):
     
 class PurchaseOrderItemPublic(PurchaseOrderItemBase, AutoReadSchema):
     pass
+class PurchaseOrderItemsResponse(BaseModel):
+    header: PurchaseOrderPublic = Field(..., description="General data of a purchase order")
+    items: list[PurchaseOrderItemPublic] = Field(..., description="Items inside a purchase order")
