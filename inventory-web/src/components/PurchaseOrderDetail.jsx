@@ -114,7 +114,7 @@ const DetailHeader = ({ headerData }) => {
 // --- 2. Line Items Table (Smart Component - Fetches its own data) ---
 const LineItemsTable = ({ poId }) => {
     // This component handles the API call independently
-    const { data: lineItems, isLoading, isError } = useQuery({
+    const { data: queryData, isLoading, isError } = useQuery({
         queryKey: ['poItems', poId],
         queryFn: () => fetchPurchaseOrderItems(poId),
         enabled: !!poId, // Only fetch if we have an ID
@@ -141,6 +141,8 @@ const LineItemsTable = ({ poId }) => {
         );
     }
 
+    const header = queryData.header || {}
+    const lineItems = queryData.items || []
     // Empty State
     if (!lineItems || lineItems.length === 0) {
         return (
