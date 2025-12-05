@@ -35,7 +35,7 @@ function App() {
           <Route path = '/products' element = {<ProtectedRoute><ProductsList/></ProtectedRoute>}/>
           {/* <Route path = '/test' element = {<CloudinaryTest/>}/> */}
           <Route path = '/warehouse' element = {<WarehousePage/>} />
-          <Route path ='purchase-orders' element ={<PurchaseOrderList/>} />
+          <Route path ='purchase-orders-single' element ={<PurchaseOrderList isCompact={false}/>} />
           <Route path="purchase-orders-detail" element={<POMasterView/>}/>
           <Route path="test-po-detail" element={<TestPODetail/>}/>
           <Route path="/purchase-orders" element={<POMasterView />}>

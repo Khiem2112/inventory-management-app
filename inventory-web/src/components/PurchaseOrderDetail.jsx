@@ -21,7 +21,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 
 // Services
-import { fetchPurchaseOrderItems, PO_DETAIL_ITEMS_CONFIG } from '../services/poService';
+import {PO_DETAIL_ITEMS_CONFIG } from '../services/poService';
 import StatusBadge from '../components/status/statusBadge';
 
 // --- 1. Detail Header (Pure Component - Instant Render) ---
@@ -112,17 +112,10 @@ const DetailHeader = ({ headerData }) => {
 };
 
 // --- 2. Line Items Table (Smart Component - Fetches its own data) ---
-const LineItemsTable = ({ poId }) => {
-    // This component handles the API call independently
-    const { data: queryData, isLoading, isError } = useQuery({
-        queryKey: ['poItems', poId],
-        queryFn: () => fetchPurchaseOrderItems(poId),
-        enabled: !!poId, // Only fetch if we have an ID
-        staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-    });
+const LineItemsTable = ({ items, loading }) => {
 
     // Loading State
-    if (isLoading) {
+    if (loading && items.length === 0) {
         return (
             <Box sx={{ p: 3 }}>
                 {[1, 2, 3].map((i) => (
@@ -132,19 +125,8 @@ const LineItemsTable = ({ poId }) => {
         );
     }
 
-    // Error State
-    if (isError) {
-        return (
-            <Box sx={{ p: 3 }}>
-                <Alert severity="error">Unable to load line items.</Alert>
-            </Box>
-        );
-    }
-
-    const header = queryData.header || {}
-    const lineItems = queryData.items || []
     // Empty State
-    if (!lineItems || lineItems.length === 0) {
+    if (!items || items.length === 0) {
         return (
             <Box sx={{ p: 4, textAlign: 'center', color: 'text.secondary' }}>
                 <Typography>No line items found for this order.</Typography>
@@ -169,7 +151,7 @@ const LineItemsTable = ({ poId }) => {
                     </TableRow>
                 </TableHead>
                 <TableBody>
-                    {lineItems.map((item, index) => (
+                    {items.map((item, index) => (
                         <TableRow key={item.purchase_order_item_id || index} hover>
                             {PO_DETAIL_ITEMS_CONFIG.filter(c => c.isVisible).map((col) => {
                                 const value = item[col.key];
@@ -209,9 +191,9 @@ const LineItemsTable = ({ poId }) => {
 };
 
 // --- 3. Main Container (The Orchestrator) ---
-const PODetailView = ({ purchaseOrder }) => {
+const PODetailView = ({ header, items, itemsLoading }) => {
     // Scenario 1: No PO selected (e.g. initial load of master-detail)
-    if (!purchaseOrder) {
+    if (!header || !items) {
         return (
             <Box sx={{ 
                 height: '100%', 
@@ -233,7 +215,7 @@ const PODetailView = ({ purchaseOrder }) => {
     return (
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'white' }}>
             {/* A. Render Header Immediately (Synchronous) */}
-            <DetailHeader headerData={purchaseOrder} />
+            <DetailHeader headerData={header} />
             
             <Divider />
 
@@ -242,7 +224,7 @@ const PODetailView = ({ purchaseOrder }) => {
                 <Typography variant="subtitle2" sx={{ p: 2, bgcolor: '#fafafa', color: 'text.secondary', fontWeight: 'bold' }}>
                     LINE ITEMS
                 </Typography>
-                <LineItemsTable poId={purchaseOrder.purchase_order_id} />
+                <LineItemsTable items={items} loading={itemsLoading} />
             </Box>
         </Box>
     );

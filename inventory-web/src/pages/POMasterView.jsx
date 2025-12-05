@@ -18,7 +18,7 @@ const POMasterView = () => {
             {/* LEFT PANE: The List */}
             <Box sx={{ borderRight: '1px solid #ddd', overflowY: 'auto' }}>
                 {/* We pass a 'compact' prop to tell the list to simplify itself */}
-                <PurchaseOrderList isCompact={true} />
+                <PurchaseOrderList isCompact={false} />
             </Box>
 
             {/* RIGHT PANE: The Detail (Rendered by Router) */}
