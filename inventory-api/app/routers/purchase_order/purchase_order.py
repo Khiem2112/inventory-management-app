@@ -9,11 +9,13 @@ from app.schemas.purchase_order import (
   PurchaseOrderPublic, 
   PurchaseOrderResponse, 
   PurchaseOrderItemPublic,
-  PurchaseOrderItemsResponse
+  PurchaseOrderItemsResponse,
+  PurchaseOrderInput
   )
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import desc, inspect
+from datetime import datetime, date
 from typing import Optional
 
 logger = setup_logger()
@@ -187,4 +189,145 @@ def get_purchase_order_items(purchase_order_id:int,
   except Exception as e:
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                         detail=f"Unexpected error: {e}")
-  
+# Helper function validate po payload
+def validate_po_payload(payload: PurchaseOrderInput):
+    """
+    Centralized business rules for POs.
+    """
+    if not payload.is_draft:
+        # Strict Validation for Real/Confirmed POs
+        if not payload.items:
+            raise HTTPException(status_code=400, detail="Cannot submit a confirmed PO without items.")
+        if payload.supplier_id <= 0:
+            raise HTTPException(status_code=400, detail="Invalid Supplier ID.")
+    return True
+@router.post('/', 
+             response_model=PurchaseOrderPublic, 
+             status_code=status.HTTP_201_CREATED,
+             description="Create a NEW Purchase Order (Draft or Issued)")
+# Create new po
+def create_purchase_order(
+    payload: PurchaseOrderInput,
+    db: Session = Depends(get_db),
+    current_user: UserORM = Depends(get_current_user)
+):
+    try:
+        # 1. Validation
+        validate_po_payload(payload)
+        
+        # 2. Prepare Data
+        calculated_total = sum(item.quantity * item.unit_price for item in payload.items)
+        po_status = "Draft" if payload.is_draft else "Issued"
+
+        # 3. Create Header
+        po_orm = PurchaseOrderORM(
+            SupplierId = payload.supplier_id,
+            PurchasePlanId = payload.purchase_plan_id,
+            Status = po_status,
+            TotalPrice = calculated_total,
+            CreateUserId = current_user.UserId,
+            CreateDate = datetime.now()
+        )
+        db.add(po_orm)
+        db.flush() # Generate ID
+
+        # 4. Create Items
+        new_items_orm = []
+        for item in payload.items:
+            new_item = PurchaseOrderItemORM(
+                PurchaseOrderId = po_orm.PurchaseOrderId,
+                ProductId = item.product_id,
+                Quantity = item.quantity,
+                UnitPrice = item.unit_price,
+                ItemDescription = item.item_description
+            )
+            new_items_orm.append(new_item)
+        
+        if new_items_orm:
+            db.add_all(new_items_orm)
+
+        db.commit()
+        db.refresh(po_orm)
+        logger.info(f"Created PO {po_orm.PurchaseOrderId} with status {po_status}")
+        return po_orm
+
+    except HTTPException as e:
+        db.rollback()
+        raise e
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.error(f"Database Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Unexpected Error: {e}")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred.")
+
+# Update draft purchase order
+@router.put('/{purchase_order_id}', 
+            response_model=PurchaseOrderPublic, 
+            status_code=status.HTTP_200_OK,
+            description="Update an existing Draft PO (Replace items)")
+def update_purchase_order(
+    purchase_order_id: int,
+    payload: PurchaseOrderInput,
+    db: Session = Depends(get_db),
+    current_user: UserORM = Depends(get_current_user)
+):
+    try:
+        # 1. Validation
+        validate_po_payload(payload)
+
+        # 2. Check Existence
+        po_orm = db.query(PurchaseOrderORM).filter(PurchaseOrderORM.PurchaseOrderId == purchase_order_id).first()
+        if not po_orm:
+            raise HTTPException(status_code=404, detail="Purchase Order not found.")
+
+        # 3. Constraint: Only Drafts can be edited (unless being Issued now)
+        # If it was already Issued, we block edits to prevent history corruption.
+        if po_orm.Status == "Issued" and po_orm.Status != "Draft":
+             raise HTTPException(status_code=400, detail="Cannot edit a Purchase Order that has already been issued.")
+
+        # 4. Update Header
+        calculated_total = sum(item.quantity * item.unit_price for item in payload.items)
+        po_status = "Draft" if payload.is_draft else "Issued"
+
+        po_orm.SupplierId = payload.supplier_id
+        po_orm.PurchasePlanId = payload.purchase_plan_id
+        po_orm.Status = po_status
+        po_orm.TotalPrice = calculated_total
+        # Note: We typically don't update CreateDate or CreateUserId on edit
+
+        # 5. Update Items (Strategy: Delete All + Re-insert)
+        db.query(PurchaseOrderItemORM).filter(PurchaseOrderItemORM.PurchaseOrderId == purchase_order_id).delete()
+        
+        new_items_orm = []
+        for item in payload.items:
+            new_item = PurchaseOrderItemORM(
+                PurchaseOrderId = purchase_order_id, # Link to existing ID
+                ProductId = item.product_id,
+                Quantity = item.quantity,
+                UnitPrice = item.unit_price,
+                ItemDescription = item.item_description
+            )
+            new_items_orm.append(new_item)
+        
+        if new_items_orm:
+            db.add_all(new_items_orm)
+
+        db.commit()
+        db.refresh(po_orm)
+        logger.info(f"Updated PO {purchase_order_id} to status {po_status}")
+        return po_orm
+
+    except HTTPException as e:
+        db.rollback()
+        raise e
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.error(f"Database Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Unexpected Error: {e}")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred.")
