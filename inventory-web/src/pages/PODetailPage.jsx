@@ -29,7 +29,11 @@ const PODetailPage = () => {
         enabled: !!id, // Only run query if ID exists
         staleTime: 30 * 1000, // Keep data fresh for 30 seconds
     });
-    
+    // Handle when user close detail view
+    const handleClose = () => {
+        navigate("/purchase-orders")
+    }
+
     if (!id) {
         return (
             <Box sx={{ 
@@ -57,10 +61,11 @@ const PODetailPage = () => {
 
     // Scenario C: Error
     if (isError) {
+        console.error(`Error fetching PO: 90 | ${JSON.stringify(error)}`)
         return (
             <Box sx={{ p: 4, color: 'error.main' }}>
-                <Typography variant="h6">Error loading Purchase Order</Typography>
-                <Typography variant="body2">{error?.message}</Typography>
+                <Typography variant="h6">Error loading Purchase Order || {error?.message || "Unexpected Error code"}</Typography>
+                <Typography variant="body2">{  error?.response?.data?.detail || `Unexpected error fetching PO: ${id}`}</Typography>
             </Box>
         );
     }
@@ -74,6 +79,7 @@ const PODetailPage = () => {
             header={activeHeader} 
             items={activeItems} 
             itemsLoading={isLoading} 
+            onClose={handleClose}
         />
     );
 };

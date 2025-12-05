@@ -129,7 +129,11 @@ def get_purchase_order_paginated(
     
 @router.get('/{purchase_order_id}', 
             response_model=PurchaseOrderItemsResponse,
-            status_code=status.HTTP_200_OK)
+            status_code=status.HTTP_200_OK,
+            responses={
+        404: {"description": "Product not found"},
+        400: {"description": "Invalid Request"}
+    })
 def get_purchase_order_items(purchase_order_id:int,
                              current_user:UserORM = Depends(get_current_user),
                              db:Session = Depends(get_db)):
@@ -139,8 +143,9 @@ def get_purchase_order_items(purchase_order_id:int,
       PurchaseOrderORM.PurchaseOrderId==purchase_order_id
       ).options(joinedload(PurchaseOrderORM.Supplier),
                 joinedload(PurchaseOrderORM.CreateUser)).one_or_none()
-    if not po:
-      raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+    logger.info(f"Can get the po: {po}")
+    if po is None:
+      raise HTTPException(status_code=404,
                           detail="Purchase Order ID does not exist")
     query = db.query(PurchaseOrderItemORM).options(
             # Correctly loading the 'Product' relationship on the PurchaseOrderItem
@@ -174,6 +179,8 @@ def get_purchase_order_items(purchase_order_id:int,
         },
       'items': purchase_order_items
     }
+  except HTTPException:
+    raise
   except SQLAlchemyError as e:
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                         detail=f"Database error: {e}")

@@ -14,18 +14,21 @@ import {
     TableHead,
     TableRow,
     Skeleton,
+    Tooltip,
+    IconButton,
     Alert
 } from '@mui/material';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import PersonIcon from '@mui/icons-material/Person';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
-
 // Services
 import {PO_DETAIL_ITEMS_CONFIG } from '../services/poService';
 import StatusBadge from '../components/status/statusBadge';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack'; 
+
 
 // --- 1. Detail Header (Pure Component - Instant Render) ---
-const DetailHeader = ({ headerData }) => {
+const DetailHeader = ({ headerData, onClose }) => {
     // We map the fields directly as per your PO_COLUMNS_CONFIG keys
     // keys: purchase_order_id, supplier_name, purchase_plan_id, create_user_name, create_date, total_price, status
     
@@ -33,6 +36,19 @@ const DetailHeader = ({ headerData }) => {
 
     return (
         <Paper elevation={0} sx={{ p: 3, borderBottom: '1px solid #e0e0e0', borderRadius: 0 }}>
+            {/* The Close Button */}
+            <Tooltip title="Back to List">
+                    <IconButton 
+                        onClick={onClose}
+                        sx={{ 
+                            mr: 2, 
+                            mt: -0.5,
+                            color: 'text.secondary' 
+                        }}
+                    >
+                        <ArrowBackIcon />
+                    </IconButton>
+                </Tooltip>
             {/* Top Row: ID and Status */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
                 <Box>
@@ -191,7 +207,7 @@ const LineItemsTable = ({ items, loading }) => {
 };
 
 // --- 3. Main Container (The Orchestrator) ---
-const PODetailView = ({ header, items, itemsLoading }) => {
+const PODetailView = ({ header, items, itemsLoading, onClose }) => {
     // Scenario 1: No PO selected (e.g. initial load of master-detail)
     if (!header || !items) {
         return (
@@ -215,7 +231,7 @@ const PODetailView = ({ header, items, itemsLoading }) => {
     return (
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'white' }}>
             {/* A. Render Header Immediately (Synchronous) */}
-            <DetailHeader headerData={header} />
+            <DetailHeader headerData={header} onClose={onClose}/>
             
             <Divider />
 

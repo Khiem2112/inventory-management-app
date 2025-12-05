@@ -6,6 +6,7 @@ import ServerSideTable from '../components/table/poTable';
 import {PO_COLUMNS_CONFIG, getInitialVisibleKeys, getVisibleColumnsConfig, fetchPurchaseOrders } from '../services/poService';
 import TablePagination from '@mui/material/TablePagination';// ... other imports for filter, pagination icons
 import { useNavigate, useParams } from 'react-router-dom';
+import { Button } from '@mui/material';
 
 // ... other imports
 
@@ -107,6 +108,7 @@ const PurchaseOrderList = ({
             )}
             
             {/* FilterBar (AC2) and ColumnToggler (AC1) */}
+            
             {!isCompact && 
             <FilterBar 
             // 1. Pass the full configuration for the checklist build (LABEL, isRequired)
