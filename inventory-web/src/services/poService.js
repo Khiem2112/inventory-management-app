@@ -84,7 +84,7 @@ export const fetchPurchaseOrders = async (pagination, filters) => {
  * Fetch a single Purchase Order by ID
  * Returns { header: {...}, line_items: [...] }
  */
-export const fetchPurchaseOrderItems = async (poId) => {
+export const fetchPurchaseOrderDetail = async (poId) => {
     try {
         if (!poId) throw new Error("Purchase Order ID is required");
 
@@ -94,7 +94,10 @@ export const fetchPurchaseOrderItems = async (poId) => {
         const response = await api.get(`/purchase-order/${poId}`);
         
         // Return the array directly
-        return response.data;
+        return {
+            header: response.data?.header,
+            items: response.data?.items
+        };
 
     } catch (error) {
         console.error(`Failed to fetch items for PO ${poId}:`, error);

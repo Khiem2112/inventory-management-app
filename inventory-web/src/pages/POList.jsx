@@ -12,7 +12,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 
 const PurchaseOrderList = ({
-    isCompact = false
+    isCompact = true
 }) => {
     const [filterState, setFilterState] = useState({});
     const [paginationState, setPaginationState] = useState({ page: 1, limit: 10 });
@@ -107,7 +107,7 @@ const PurchaseOrderList = ({
             )}
             
             {/* FilterBar (AC2) and ColumnToggler (AC1) */}
-
+            {!isCompact && 
             <FilterBar 
             // 1. Pass the full configuration for the checklist build (LABEL, isRequired)
             allColumnsConfig={PO_COLUMNS_CONFIG}
@@ -120,6 +120,9 @@ const PurchaseOrderList = ({
             // 3. Pass the handler to update the state
             onColumnToggle={handleColumnToggle}
         />
+            }
+
+            
 
             {/* ServerSideTable (AC3, AC4, AC5) */}
             <ServerSideTable 
