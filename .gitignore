@@ -13,3 +13,4 @@ features requirements
 
 clean_desktop_ini.bash
 clean_desktop_ini.sh
+.vscode
