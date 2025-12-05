@@ -58,6 +58,26 @@
     pointer-events: none;
 }
 
+.body__row {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.body__row:hover {
+    background-color: #f1f3f5; /* Light gray hover */
+}
+
+/* Active/Selected State */
+.body__row--selected {
+    background-color: #e3f2fd !important; /* Light Blue */
+    border-left: 4px solid #2196f3; /* Blue accent line */
+}
+
+/* Ensure the accent line doesn't mess up cell padding */
+.body__row--selected td:first-child {
+    padding-left: calc(0.75rem - 4px); 
+}
+
 .pagination__group {
     display: flex;
     align-items: center;

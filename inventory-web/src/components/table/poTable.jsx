@@ -2,7 +2,7 @@
 import StatusBadge from "../status/statusBadge";
 import './poTable.css'
 
-const ServerSideTable = ({ data, limit, loading, columnsConfig }) => {
+const ServerSideTable = ({ data, limit, loading, columnsConfig, onRowClick, selectedId }) => {
 
   // Loading State (on_load)
   if (loading) {
@@ -78,27 +78,25 @@ const ServerSideTable = ({ data, limit, loading, columnsConfig }) => {
                     </tr>
                 </thead>
                 <tbody className="data-table__body">
-                    {/* Render actual data */}
-                    {data.map((item, index) => (
-                        <tr key={item.purchase_order_id || index} className="body__row">
-                            {/* Iterate directly over the pre-filtered config */}
-                            {columnsConfig.map(col => (
-                                <td key={col.key} className={`body__cell body__cell--${col.key}`}>
-                                    <RenderCellData item={item} colKey={col.key} /> 
-                                </td>
-                            ))}
-                        </tr>
-                    ))}
-                    {/* Render empty data */}
-                    {emptyRowsCount > 0 &&
-                    [...Array(emptyRowsCount)].map((_, index) => (
-                    <tr key={`empty-${index}`} className="body__row body__row--empty">
-                        {/* Render empty cells if you want vertical borders, 
-                            OR just one spanning cell if you want blank space */}
-                        <td colSpan={columnsConfig.length} />
-                    </tr>
-                    ))
-                }
+                    {data.map((item, index) => {
+                        // 3. Highlight Logic
+                        const isSelected = String(item.purchase_order_id) === String(selectedId);
+                        return (
+                            <tr 
+                                key={item.purchase_order_id || index} 
+                                className={`body__row ${isSelected ? 'body__row--selected' : ''}`}
+                                // 4. Click Handler
+                                onClick={() => onRowClick && onRowClick(item)}
+                                style={{ cursor: onRowClick ? 'pointer' : 'default' }}
+                            >
+                                {columnsConfig.map(col => (
+                                    <td key={col.key} className={`body__cell body__cell--${col.key}`}>
+                                        <RenderCellData item={item} colKey={col.key} /> 
+                                    </td>
+                                ))}
+                            </tr>
+                        );
+                    })}
                 </tbody>
             </table>
 
