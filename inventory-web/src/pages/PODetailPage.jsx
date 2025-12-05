@@ -29,7 +29,11 @@ const PODetailPage = () => {
         enabled: !!id, // Only run query if ID exists
         staleTime: 30 * 1000, // Keep data fresh for 30 seconds
     });
-    
+    // Handle when user close detail view
+    const handleClose = () => {
+        navigate("/purchase-orders")
+    }
+
     if (!id) {
         return (
             <Box sx={{ 
@@ -75,6 +79,7 @@ const PODetailPage = () => {
             header={activeHeader} 
             items={activeItems} 
             itemsLoading={isLoading} 
+            onClose={handleClose}
         />
     );
 };
