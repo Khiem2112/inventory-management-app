@@ -34,6 +34,7 @@ class PurchaseOrderRead(PurchaseOrderBase):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 class PurchaseOrderPublic(PurchaseOrderBase):
+    purchase_order_id: int = Field(..., validation_alias="PurchaseOrderId")
     supplier_name:str = Field(..., validation_alias='SupplierName')
     model_config = ConfigDict(populate_by_name=True, extra='ignore')
     create_user_name: str = Field(..., validation_alias='CreateUserName')
