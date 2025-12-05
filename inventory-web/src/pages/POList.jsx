@@ -5,17 +5,24 @@ import FilterBar from '../components/table/filterBar';
 import ServerSideTable from '../components/table/poTable';
 import {PO_COLUMNS_CONFIG, getInitialVisibleKeys, getVisibleColumnsConfig, fetchPurchaseOrders } from '../services/poService';
 import TablePagination from '@mui/material/TablePagination';// ... other imports for filter, pagination icons
+import { useNavigate, useParams } from 'react-router-dom';
 
 // ... other imports
 
 
 
-const PurchaseOrderList = () => {
+const PurchaseOrderList = ({
+    isCompact = false
+}) => {
     const [filterState, setFilterState] = useState({});
     const [paginationState, setPaginationState] = useState({ page: 1, limit: 10 });
 
     // 1. Initialize state using the service function
-    const [visibleKeys, setVisibleKeys] = useState(getInitialVisibleKeys());
+    const [visibleKeys, setVisibleKeys] = useState(
+        isCompact 
+        ? ['purchase_order_id', 'status', 'total_price'] 
+        : getInitialVisibleKeys()
+    );
 
     const { 
     data: queryResult, // Contains { data, meta } from your service
@@ -40,13 +47,23 @@ const PurchaseOrderList = () => {
     const suppliersList = queryResult?.meta.suppliers || []
     const usersList = queryResult?.meta.users || []
     const statusesList = queryResult?.meta.statuses || []
+    const navigate = useNavigate()
+    const {
+        id: selectedId
+    } = useParams()
     console.log(`Get the poData: ${JSON.stringify(poData)}`)
-    // 2. Prepare the final, filtered configuration array for the table (CRITICAL CHANGE)
     // Use useMemo to avoid recalculating on every render unless keys change
     const finalTableColumns = useMemo(() => 
         getVisibleColumnsConfig(visibleKeys), 
         [visibleKeys]
     );
+    const handleRowClick = (poItem) => {
+        // Navigate to the detail URL
+        // AND pass the full 'poItem' object in state (Optimistic UI)
+        navigate(`/purchase-orders/${poItem.purchase_order_id}`, { 
+            state: { initialData: poItem } 
+        });
+    }
     // Placeholder functions for demo purposes
     const handleFilterChange = (newFilters) => {
         setFilterState(prev => ({ ...prev, ...newFilters }));
@@ -81,8 +98,8 @@ const PurchaseOrderList = () => {
 
 
     return (
-        <div className="po-list-view">
-            <h2>Purchase Order List (FR-PO-001)</h2>
+        <div className={`po-list-view ${isCompact ? 'po-list-view--compact' : ''}`}>
+            {!isCompact && <h2>Purchase Order List</h2>}
             {isError && (
                 <div className="error-banner">
                     Error: {error?.message || "Unable to load purchase orders."}
@@ -90,7 +107,7 @@ const PurchaseOrderList = () => {
             )}
             
             {/* FilterBar (AC2) and ColumnToggler (AC1) */}
-            {console.log(`Load statuses list to FilterBar: ${JSON.stringify(statusesList)}`)}
+
             <FilterBar 
             // 1. Pass the full configuration for the checklist build (LABEL, isRequired)
             allColumnsConfig={PO_COLUMNS_CONFIG}
@@ -110,6 +127,8 @@ const PurchaseOrderList = () => {
                 limit={paginationState.limit}
                 loading={isLoading}
                 columnsConfig={finalTableColumns}
+                onRowClick={handleRowClick}
+                selectedId={selectedId}
             />
                         {/* --- MUI Pagination Footer --- */}
             <TablePagination

@@ -1,127 +1,249 @@
-import { useState } from "react";
-import './PurchaseOrderDetail.css'
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { 
+    Box, 
+    Typography, 
+    Grid, 
+    Chip, 
+    Divider,
+    Paper,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    Skeleton,
+    Alert
+} from '@mui/material';
+import InventoryIcon from '@mui/icons-material/Inventory';
+import PersonIcon from '@mui/icons-material/Person';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 
-export const PurchaseOrderDetail = (purchaseOrder) => {
+// Services
+import { fetchPurchaseOrderItems, PO_DETAIL_ITEMS_CONFIG } from '../services/poService';
+import StatusBadge from '../components/status/statusBadge';
 
+// --- 1. Detail Header (Pure Component - Instant Render) ---
+const DetailHeader = ({ headerData }) => {
+    // We map the fields directly as per your PO_COLUMNS_CONFIG keys
+    // keys: purchase_order_id, supplier_name, purchase_plan_id, create_user_name, create_date, total_price, status
+    
+    if (!headerData) return null;
 
-  
-let purchaseOrderHeader= {
-    PurchaseOrderId: 10,
-    CreateDate: "2025-08-02 14:00:00.000",
-    TotalPrice: 23839.77, // Calculated based on the items below
-    Status: "Issued",
-    SupplierId: 2,
-    SupplierName: "Global Parts Co.",
-    PurchasePlanId: 1,
-    CreateUserId: 1,
-    Createuser: "Cho Khiem"
-  };
+    return (
+        <Paper elevation={0} sx={{ p: 3, borderBottom: '1px solid #e0e0e0', borderRadius: 0 }}>
+            {/* Top Row: ID and Status */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
+                <Box>
+                    <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1 }}>
+                        Purchase Order
+                    </Typography>
+                    <Typography variant="h4" fontWeight="800" color="#2c3e50">
+                        #{headerData.purchase_order_id}
+                    </Typography>
+                </Box>
+                <StatusBadge status={headerData.status} />
+            </Box>
 
-// (2) List of items associated with that PO
-let items= [
-  {
-    // (3) Field names: line_id, product_name, quantity, unit_price, item_description
-    line_id: 1,
-    product_name: "Pro Wireless Earbuds",
-    quantity: 9,
-    unit_price: 159.99,
-    item_description: "Pro Wireless Earbuds - ACC-EB-PRO"
-  },
-  {
-    line_id: 2,
-    product_name: "Gamer Rig Z",
-    quantity: 3,
-    unit_price: 2499.99,
-    item_description: "Gamer Rig Z - LTP-GR-Z-01"
-  },
-  {
-    line_id: 3,
-    product_name: "ProBook X1",
-    quantity: 9,
-    unit_price: 1499.99,
-    item_description: "ProBook X1 - LTP-X1-P001"
-  },
-  {
-    line_id: 4,
-    product_name: "EconBook 13",
-    quantity: 2,
-    unit_price: 699.99,
-    item_description: "EconBook 13 - LTP-EB-13-A"
-  }
-];
+            {/* Data Grid based on PO_COLUMNS_CONFIG */}
+            <Grid container spacing={3}>
+                {/* Supplier */}
+                <Grid item xs={12} md={4}>
+                    <Typography variant="caption" color="text.secondary" display="block">
+                        Supplier Name
+                    </Typography>
+                    <Typography variant="h6" color="primary.main">
+                        {headerData.supplier_name}
+                    </Typography>
+                </Grid>
 
-let POItemMetadata = [
-  {id:"line_id", label: "Line ID", isVisible:true},
-  {id:"product_name", label: "Product Name", isVisible:true},
-  {id:"quantity", label: "Quantity", isVisible:true},
-  {id:"unit_price", label: "Unit Price", isVisible:true},
-  {id:"item_description", label: "Item Description", isVisible:true},
-];
+                {/* Total Price */}
+                <Grid item xs={6} md={4}>
+                    <Typography variant="caption" color="text.secondary" display="block">
+                        Total Price
+                    </Typography>
+                    <Typography variant="h6" fontWeight="bold">
+                        ${parseFloat(headerData.total_price || 0).toLocaleString()}
+                    </Typography>
+                </Grid>
 
-  const [POHeader, setPOHeader] = useState(purchaseOrderHeader)
-  const [itemMetadata, setItemMetadata] = useState(POItemMetadata)
-  const [POItems, setPOItems] = useState(items)
-  return (
-    <div className="purchase-order-container">
-      <section className="po-header">
+                {/* Plan ID */}
+                <Grid item xs={6} md={4}>
+                    <Typography variant="caption" color="text.secondary" display="block">
+                        Plan ID
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <InventoryIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                        <Typography variant="body1">
+                            {headerData.purchase_plan_id || 'N/A'}
+                        </Typography>
+                    </Box>
+                </Grid>
 
-        <section id="po-creation-field-group">
-          <label>Status: {POHeader.Status} </label>
-          <label>Create Date: {POHeader.CreateDate}</label>
-          <label>Create User: {POHeader.Createuser}</label>
-        </section>
+                <Grid item xs={12}>
+                    <Divider sx={{ my: 1, borderStyle: 'dashed' }} />
+                </Grid>
 
-        <section id="po-reference-field-group">
-          <label>Purchase Plan Reference: {POHeader.PurchaseOrderId}</label>
-          <label>Supplier: {POHeader.SupplierName}</label>
-        </section>
+                {/* Metadata Row */}
+                <Grid item xs={6} md={4}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <PersonIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                        <Box>
+                            <Typography variant="caption" display="block" color="text.secondary">Created By</Typography>
+                            <Typography variant="body2" fontWeight={500}>{headerData.create_user_name || 'System'}</Typography>
+                        </Box>
+                    </Box>
+                </Grid>
+                <Grid item xs={6} md={4}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <CalendarTodayIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                        <Box>
+                            <Typography variant="caption" display="block" color="text.secondary">Creation Date</Typography>
+                            <Typography variant="body2" fontWeight={500}>
+                                {headerData.create_date ? new Date(headerData.create_date).toLocaleDateString() : 'N/A'}
+                            </Typography>
+                        </Box>
+                    </Box>
+                </Grid>
+            </Grid>
+        </Paper>
+    );
+};
 
-        <section id="po-header-total-price">
-          <label>Net Price: {POHeader.TotalPrice}</label>
-        </section>
+// --- 2. Line Items Table (Smart Component - Fetches its own data) ---
+const LineItemsTable = ({ poId }) => {
+    // This component handles the API call independently
+    const { data: lineItems, isLoading, isError } = useQuery({
+        queryKey: ['poItems', poId],
+        queryFn: () => fetchPurchaseOrderItems(poId),
+        enabled: !!poId, // Only fetch if we have an ID
+        staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    });
 
-      </section>
+    // Loading State
+    if (isLoading) {
+        return (
+            <Box sx={{ p: 3 }}>
+                {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} variant="rectangular" height={50} sx={{ mb: 1, borderRadius: 1 }} />
+                ))}
+            </Box>
+        );
+    }
 
-      <section className="po-item">
-        <table>
-          <thead>
-            <tr>
-            {itemMetadata.map(column => {
-              if (column.isVisible)
-              return (
-              <th key={column.id}>{column.label}</th>
-            )
-            }
+    // Error State
+    if (isError) {
+        return (
+            <Box sx={{ p: 3 }}>
+                <Alert severity="error">Unable to load line items.</Alert>
+            </Box>
+        );
+    }
+
+    // Empty State
+    if (!lineItems || lineItems.length === 0) {
+        return (
+            <Box sx={{ p: 4, textAlign: 'center', color: 'text.secondary' }}>
+                <Typography>No line items found for this order.</Typography>
+            </Box>
+        );
+    }
+
+    return (
+        <TableContainer component={Box}>
+            <Table stickyHeader size="small">
+                <TableHead>
+                    <TableRow>
+                        {PO_DETAIL_ITEMS_CONFIG.filter(c => c.isVisible).map((col) => (
+                            <TableCell 
+                                key={col.key} 
+                                align={col.type === 'number' || col.type === 'currency' ? 'right' : 'left'}
+                                sx={{ bgcolor: '#fafafa', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.75rem' }}
+                            >
+                                {col.label}
+                            </TableCell>
+                        ))}
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    {lineItems.map((item, index) => (
+                        <TableRow key={item.purchase_order_item_id || index} hover>
+                            {PO_DETAIL_ITEMS_CONFIG.filter(c => c.isVisible).map((col) => {
+                                const value = item[col.key];
+                                
+                                // Render logic based on type
+                                let displayValue = value;
+                                if (col.type === 'currency') {
+                                    // Handle 'total_line_amount' calculation if api doesn't send it
+                                    if (col.key === 'total_line_amount') {
+                                        displayValue = `$${(item.quantity * item.unit_price).toFixed(2)}`;
+                                    } else {
+                                        displayValue = `$${parseFloat(value || 0).toFixed(2)}`;
+                                    }
+                                } else if (col.type === 'number') {
+                                    displayValue = value;
+                                }
+
+                                return (
+                                    <TableCell 
+                                        key={col.key}
+                                        align={col.type === 'number' || col.type === 'currency' ? 'right' : 'left'}
+                                    >
+                                        {col.key === 'quantity' ? (
+                                            <Chip label={displayValue} size="small" variant="outlined" />
+                                        ) : (
+                                            displayValue
+                                        )}
+                                    </TableCell>
+                                );
+                            })}
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        </TableContainer>
+    );
+};
+
+// --- 3. Main Container (The Orchestrator) ---
+const PODetailView = ({ purchaseOrder }) => {
+    // Scenario 1: No PO selected (e.g. initial load of master-detail)
+    if (!purchaseOrder) {
+        return (
+            <Box sx={{ 
+                height: '100%', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                bgcolor: '#f8f9fa',
+                color: 'text.secondary',
+                flexDirection: 'column'
+            }}>
+                <InventoryIcon sx={{ fontSize: 64, mb: 2, opacity: 0.2 }} />
+                <Typography variant="h6">No Purchase Order Selected</Typography>
+                <Typography variant="body2">Select an item from the list to view details.</Typography>
+            </Box>
+        );
+    }
+
+    // Scenario 2: PO Selected
+    return (
+        <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'white' }}>
+            {/* A. Render Header Immediately (Synchronous) */}
+            <DetailHeader headerData={purchaseOrder} />
             
-            )}
-            </tr>
+            <Divider />
 
-          </thead>
+            {/* B. Render Line Items (Asynchronous Fetch) */}
+            <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
+                <Typography variant="subtitle2" sx={{ p: 2, bgcolor: '#fafafa', color: 'text.secondary', fontWeight: 'bold' }}>
+                    LINE ITEMS
+                </Typography>
+                <LineItemsTable poId={purchaseOrder.purchase_order_id} />
+            </Box>
+        </Box>
+    );
+};
 
-          <tbody>
-            {POItems.map(item=> {
-              // Handle each purchase order item
-              return (
-                <tr key={item.line_id}>
-                  {itemMetadata.map(column => {
-                    // Handle each column in a purchase order item
-                    if (column.isVisible)
-                    return (
-                      <td>
-                        {item[column.id]}
-                      </td>
-                    )
-                  })}
-                </tr>
-              )
-            })}
-          </tbody>
-
-          
-        </table>
-
-      </section>
-
-    </div>
-  )
-}
+export default PODetailView;

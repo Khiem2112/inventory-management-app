@@ -1,6 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional, List
+from datetime import datetime, date
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -34,8 +35,10 @@ class PurchaseOrderRead(PurchaseOrderBase):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 class PurchaseOrderPublic(PurchaseOrderBase):
+    purchase_order_id: int = Field(..., validation_alias="PurchaseOrderId")
     supplier_name:str = Field(..., validation_alias='SupplierName')
     model_config = ConfigDict(populate_by_name=True, extra='ignore')
+    create_date: date = Field(..., validation_alias = "CreateDate")
     create_user_name: str = Field(..., validation_alias='CreateUserName')
     
 class PurchaseOrderMetaDataItem(BaseModel):

@@ -16,7 +16,9 @@ import store from './myRedux/store/store.js';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CloudinaryProvider } from './context/CloudinaryContext.jsx';
 import WarehousePage from './pages/WarehousePage.jsx';
-import { POLayout } from './pages/POLayout.jsx';
+import POMasterView from './pages/POMasterView.jsx';
+import PODetailPage from './pages/PODetailPage.jsx';
+import { TestPODetail } from '../test/testPurchaseOrderDetail.jsx';
 // Create new Query Client
 const queryClient = new QueryClient()
 function App() {
@@ -34,7 +36,12 @@ function App() {
           {/* <Route path = '/test' element = {<CloudinaryTest/>}/> */}
           <Route path = '/warehouse' element = {<WarehousePage/>} />
           <Route path ='purchase-orders' element ={<PurchaseOrderList/>} />
-          <Route path="purchase-orders-detail" element={<POLayout/>}/>
+          <Route path="purchase-orders-detail" element={<POMasterView/>}/>
+          <Route path="test-po-detail" element={<TestPODetail/>}/>
+          <Route path="/purchase-orders" element={<POMasterView />}>
+          <Route index element={<div style={{padding: 20}}>Select an order from the list</div>} />
+              <Route path=":id" element={<PODetailPage />} />
+          </Route>
         </Routes>
     </ThemeProvider>
     </AuthProvider>
