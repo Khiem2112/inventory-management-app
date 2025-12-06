@@ -79,7 +79,7 @@ class PurchaseOrderInput(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     
 class PurchaseOrderItemPublic(PurchaseOrderItemBase, AutoReadSchema):
-    purchase_order_item_id: int = Field(..., description="ID of the item", validation_alias="POItemId")
+    purchase_order_item_id: int = Field(..., description="ID of the item")
     purchase_order_id: int = Field(...,description="The parent purchase order id", validation_alias="PurchaseOrderId")
     product_name: Optional[str] = Field(default=None, validation_alias="Product.ProductName")
 
