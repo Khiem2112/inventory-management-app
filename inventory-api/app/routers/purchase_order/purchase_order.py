@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status, HTTPException, Query
+from fastapi import APIRouter, Depends, status, HTTPException, Query, Body
 from app.utils.dependencies import get_db, get_current_user
 from app.utils.logger import setup_logger
 from app.database.purchase_order_model import PurchaseOrder as PurchaseOrderORM, PurchaseOrderItem as PurchaseOrderItemORM
@@ -85,6 +85,7 @@ def get_purchase_order_paginated(
         "purchase_order_id": po.PurchaseOrderId,
         "supplier_id": po.SupplierId,
         "create_user_id": po.CreateUserId,
+        "purchase_plan_id": po.PurchasePlanId,
         "create_date": po.CreateDate.date(),
         "total_price": po.TotalPrice,
         "status": po.Status,
@@ -207,7 +208,7 @@ def validate_po_payload(payload: PurchaseOrderInput):
              description="Create a NEW Purchase Order (Draft or Issued)")
 # Create new po
 def create_purchase_order(
-    payload: PurchaseOrderInput,
+    payload: PurchaseOrderInput = Body(..., description="The PO creation payload"),
     db: Session = Depends(get_db),
     current_user: UserORM = Depends(get_current_user)
 ):
