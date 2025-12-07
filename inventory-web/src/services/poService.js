@@ -122,15 +122,25 @@ export const createPurchaseOrder = async (payload) => {
  * In a real app, these would hit /api/vendors?search=...
  */
 export const searchVendors = async (query) => {
-    // Simulating API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return [
-        { id: 101, name: "Acme Corp", payment_terms: "Net 30" },
-        { id: 102, name: "Global Supplies", payment_terms: "Immediate" },
-        { id: 103, name: "Tech Distributors", payment_terms: "Net 60" },
-    ].filter(v => v.name.toLowerCase().includes(query.toLowerCase()));
-};
+    try {
+        // 1. Fetch the full list
+        const response = await api.get('/supplier/all');
+        const allSuppliers = response.data; // Expecting array: [{supplier_id: 1, name: "...", ...}]
 
+        // 2. If no query, return everything (for initial dropdown list)
+        if (!query) return allSuppliers;
+
+        // 3. Client-side filtering
+        const lowerQuery = query.toLowerCase();
+        return allSuppliers.filter(vendor => 
+            vendor.name.toLowerCase().includes(lowerQuery) ||
+            String(vendor.supplier_id).includes(lowerQuery)
+        );
+    } catch (error) {
+        console.error("Failed to search vendors:", error);
+        return []; // Return empty array gracefully on error
+    }
+};
 export const searchProducts = async (query) => {
     // Simulating API delay
     await new Promise(resolve => setTimeout(resolve, 500));
