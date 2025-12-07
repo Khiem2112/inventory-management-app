@@ -122,21 +122,53 @@ export const createPurchaseOrder = async (payload) => {
  * In a real app, these would hit /api/vendors?search=...
  */
 export const searchVendors = async (query) => {
-    // Simulating API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return [
-        { id: 101, name: "Acme Corp", payment_terms: "Net 30" },
-        { id: 102, name: "Global Supplies", payment_terms: "Immediate" },
-        { id: 103, name: "Tech Distributors", payment_terms: "Net 60" },
-    ].filter(v => v.name.toLowerCase().includes(query.toLowerCase()));
-};
+    try {
+        // 1. Fetch the full list
+        const response = await api.get('/supplier/all');
+        const allSuppliers = response.data; // Expecting array: [{supplier_id: 1, name: "...", ...}]
 
+        // 2. If no query, return everything (for initial dropdown list)
+        if (!query) return allSuppliers;
+
+        // 3. Client-side filtering
+        const lowerQuery = query.toLowerCase();
+        return allSuppliers.filter(vendor => 
+            vendor.name.toLowerCase().includes(lowerQuery) ||
+            String(vendor.supplier_id).includes(lowerQuery)
+        );
+    } catch (error) {
+        console.error("Failed to search vendors:", error);
+        return []; // Return empty array gracefully on error
+    }
+};
 export const searchProducts = async (query) => {
-    // Simulating API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return [
-        { product_id: 10, name: "Standard Widget A - Blue", unit_price: 12.50, sku: "WID-A-BLU" },
-        { product_id: 22, name: "Bulk Screws", unit_price: 0.99, sku: "SCR-BULK" },
-        { product_id: 35, name: "Industrial Lubricant", unit_price: 45.00, sku: "LUB-IND" },
-    ].filter(p => p.name.toLowerCase().includes(query.toLowerCase()));
+    try {
+        // 1. Fetch full product list
+        const response = await api.get('/products/all/');
+        const allProducts = response.data; 
+        
+        // 2. Filter Client-Side
+        // We filter first to avoid mapping 10,000 items if we only need 5 matches
+        const lowerQuery = (query || "").toLowerCase();
+        const filtered = allProducts.filter(p => 
+            p.product_name.toLowerCase().includes(lowerQuery) ||
+            p.model_number_sku.toLowerCase().includes(lowerQuery)
+        );
+
+        // 3. Map to UI Structure
+        // The API returns 'selling_price' and 'internal_price'. 
+        // For a PO, we usually care about cost, so we default to 'internal_price' 
+        // or 'selling_price' depending on your business logic. Here I used 'internal_price'.
+        return filtered.map(p => ({
+            product_id: p.product_id,
+            name: p.product_name,        // Map product_name -> name
+            unit_price: p.internal_price || p.selling_price, // Fallback logic
+            sku: p.model_number_sku,     // Map model_number_sku -> sku
+            image_url: p.product_image_url
+        }));
+
+    } catch (error) {
+        console.error("Failed to search products:", error);
+        return [];
+    }
 };

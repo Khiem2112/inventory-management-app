@@ -14,7 +14,6 @@ import POLineItemsForm from '../components/form/POLineItemsForm';
 import { createPurchaseOrder, searchVendors } from '../services/poService';
 
 // Mock Plan ID for now (as per user mock request)
-const DEFAULT_PLAN_ID = 5;
 
 const POCreatePage = () => {
     const navigate = useNavigate();
@@ -25,7 +24,7 @@ const POCreatePage = () => {
         defaultValues: {
             supplier_id: null,
             supplier_obj: null, // Helper for Autocomplete UI
-            purchase_plan_id: DEFAULT_PLAN_ID,
+            purchase_plan_id: null,
             items: [] 
         }
     });
@@ -53,18 +52,24 @@ const POCreatePage = () => {
 
     // 4. Handle Submit
     const onSubmit = (data, isDraft) => {
-        // Transform form data to match API Mock
+        console.log(`Receive data when trying trying to submit po: ${JSON.stringify(data)}`)
         const payload = {
-            supplier_id: data.supplier_id,
+            supplier_id: data.supplier_obj?.supplier_id,
             is_draft: isDraft,
-            purchase_plan_id: data.purchase_plan_id,
             items: data.items.map(item => ({
-                product_id: item.product_id,
-                quantity: item.quantity,
-                unit_price: item.unit_price,
+                product_id: Number(item.product_id), //Ensure number type
+                quantity: Number(item.quantity),
+                unit_price: Number(item.unit_price),
                 item_description: item.item_description
             }))
         };
+
+        // Only add purchase_plan_id if it is a valid reference (not null/undefined/0)
+        if (data.purchase_plan_id) {
+            payload.purchase_plan_id = data.purchase_plan_id;
+        }
+
+        console.log("Submitting Payload:", JSON.stringify(payload, null, 2));
         createMutation.mutate(payload);
     };
 
