@@ -104,3 +104,39 @@ export const fetchPurchaseOrderDetail = async (poId) => {
         throw error;
     }
 };
+
+// Create Purchase Order
+
+export const createPurchaseOrder = async (payload) => {
+    try {
+        const response = await api.post('/purchase-order', payload);
+        return response.data;
+    } catch (error) {
+        console.error("Failed to create PO:", error);
+        throw error;
+    }
+};
+
+/**
+ * Lookup Helpers (Mocking these for now) ---
+ * In a real app, these would hit /api/vendors?search=...
+ */
+export const searchVendors = async (query) => {
+    // Simulating API delay
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return [
+        { id: 101, name: "Acme Corp", payment_terms: "Net 30" },
+        { id: 102, name: "Global Supplies", payment_terms: "Immediate" },
+        { id: 103, name: "Tech Distributors", payment_terms: "Net 60" },
+    ].filter(v => v.name.toLowerCase().includes(query.toLowerCase()));
+};
+
+export const searchProducts = async (query) => {
+    // Simulating API delay
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return [
+        { product_id: 10, name: "Standard Widget A - Blue", unit_price: 12.50, sku: "WID-A-BLU" },
+        { product_id: 22, name: "Bulk Screws", unit_price: 0.99, sku: "SCR-BULK" },
+        { product_id: 35, name: "Industrial Lubricant", unit_price: 45.00, sku: "LUB-IND" },
+    ].filter(p => p.name.toLowerCase().includes(query.toLowerCase()));
+};
