@@ -19,6 +19,7 @@ import WarehousePage from './pages/WarehousePage.jsx';
 import POMasterView from './pages/POMasterView.jsx';
 import PODetailPage from './pages/PODetailPage.jsx';
 import { TestPODetail } from '../test/testPurchaseOrderDetail.jsx';
+import POCreatePage from './pages/POCreatePage.jsx';
 // Create new Query Client
 const queryClient = new QueryClient()
 function App() {
@@ -42,6 +43,7 @@ function App() {
           <Route index element={<div style={{padding: 20}}>Select an order from the list</div>} />
               <Route path=":id" element={<PODetailPage />} />
           </Route>
+           <Route path="/purchase-orders/create" element={<POCreatePage/>}/>
         </Routes>
     </ThemeProvider>
     </AuthProvider>
