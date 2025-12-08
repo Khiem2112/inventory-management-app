@@ -3,7 +3,11 @@ import { ThemeProvider} from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import theme from './theme.js';
 import SignInForm from './components/SignInForm.jsx';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route,
+  RouterProvider,
+  createBrowserRouter,
+  createRoutesFromElements
+ } from 'react-router-dom';
 import Dashboard from './pages/DashBoard.jsx';
 import PurchaseOrderList from './pages/POList.jsx';
 // import ProductDisplaySimple from './pages/ProductSimple.jsx';
@@ -22,36 +26,50 @@ import { TestPODetail } from '../test/testPurchaseOrderDetail.jsx';
 import POCreatePage from './pages/POCreatePage.jsx';
 // Create new Query Client
 const queryClient = new QueryClient()
+
+// Create Router
+const router = createBrowserRouter(
+  createRoutesFromElements(
+    <>
+      <Route path="/sign-in" element={<SignInForm />} />
+      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/products" element={<ProtectedRoute><ProductsList /></ProtectedRoute>} />
+      
+      {/* Functional Pages */}
+      <Route path="/warehouse" element={<WarehousePage />} />
+      <Route path="/purchase-orders-single" element={<PurchaseOrderList isCompact={false} />} />
+      <Route path="/test-po-detail" element={<TestPODetail />} />
+      
+      {/* Nested Route for Master/Detail View */}
+      <Route path="/purchase-orders" element={<POMasterView />}>
+        <Route index element={<div style={{ padding: 20 }}>Select an order from the list</div>} />
+        <Route path=":id" element={<PODetailPage />} />
+      </Route>
+
+      {/* The Page using useBlocker */}
+      <Route path="/purchase-orders/create" element={<POCreatePage />} />
+      
+      {/* Legacy Route */}
+      <Route path="/purchase-orders-detail" element={<POMasterView />} />
+    </>
+  )
+);
+
 function App() {
   return (
-      <QueryClientProvider client ={queryClient}>
-      <Provider store = {store}>
-      <CloudinaryProvider>
-      <AuthProvider>
-      <ThemeProvider theme={theme}>
-      <CssBaseline /> {/* Resets CSS and applies base Material Design styles */}
-        <Routes>
-          <Route path = "/sign-in" element = {<SignInForm/>}/>
-            <Route path = "/dashboard" element = {<ProtectedRoute><Dashboard/></ProtectedRoute>}/>
-          <Route path = '/products' element = {<ProtectedRoute><ProductsList/></ProtectedRoute>}/>
-          {/* <Route path = '/test' element = {<CloudinaryTest/>}/> */}
-          <Route path = '/warehouse' element = {<WarehousePage/>} />
-          <Route path ='purchase-orders-single' element ={<PurchaseOrderList isCompact={false}/>} />
-          <Route path="purchase-orders-detail" element={<POMasterView/>}/>
-          <Route path="test-po-detail" element={<TestPODetail/>}/>
-          <Route path="/purchase-orders" element={<POMasterView />}>
-          <Route index element={<div style={{padding: 20}}>Select an order from the list</div>} />
-              <Route path=":id" element={<PODetailPage />} />
-          </Route>
-           <Route path="/purchase-orders/create" element={<POCreatePage/>}/>
-        </Routes>
-    </ThemeProvider>
-    </AuthProvider>
-      </CloudinaryProvider>
-      
-    </Provider>
-    </QueryClientProvider>    
-    
+    <QueryClientProvider client={queryClient}>
+      <Provider store={store}>
+        <CloudinaryProvider>
+          <AuthProvider>
+            <ThemeProvider theme={theme}>
+              <CssBaseline /> 
+              {/* CHANGE: Use RouterProvider instead of <Routes> */}
+              <RouterProvider router={router} />
+            </ThemeProvider>
+          </AuthProvider>
+        </CloudinaryProvider>
+      </Provider>
+    </QueryClientProvider>
   );
 }
 

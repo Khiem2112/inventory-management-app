@@ -3,7 +3,7 @@ import { useFieldArray, useFormContext } from 'react-hook-form';
 import { 
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, 
     IconButton, TextField, Autocomplete, Box, Button, Typography, Paper,
-    CircularProgress, Tooltip, Avatar
+    CircularProgress, Tooltip, Avatar, Snackbar, Alert
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
@@ -19,6 +19,8 @@ const POLineItemsForm = () => {
     // Local state for product options to avoid re-fetching on every row
     const [productOptions, setProductOptions] = useState([]);
     const [loadingProducts, setLoadingProducts] = useState(false);
+    // Product duplicate error
+    const [duplicateError, setDuplicateError] = useState({ open: false, message: '' });
 
     // Fetch products once when component mounts or on first interaction
     // Optimization: Since the API returns ALL products, we fetch once and let MUI filter client-side.
@@ -37,6 +39,11 @@ const POLineItemsForm = () => {
         }
     };
 
+    // Make close the current duplicate error
+    const handleCloseToast = () => {
+        setDuplicateError({ ...duplicateError, open: false });
+    };
+
     const handleProductSelect = (index, product) => {
     // Helper to clear the line
     const emptyLine = () => {
@@ -52,23 +59,24 @@ const POLineItemsForm = () => {
     }
 
     // 2. Get LIVE data (Crucial Fix: Use getValues instead of fields)
-    const currentItems = getValues("items"); 
+    const currentItems = getValues("items") || []; 
     
     // 3. Check for duplicates
     // We look for ANY item that has the same ID but is NOT the current row
     const isDuplicate = currentItems.some((item, idx) => 
-        idx !== index && item.product_id === product.product_id
+        idx !== index && String(item.product_id) === String(product.product_id)
     );
 
     if (isDuplicate) {
         // DUPLICATE FOUND
-        console.log(`Duplicate found: ${product.name}`);
-        alert(`The product "${product.name}" has already been selected.`);
-        
-        // Clear the input so it doesn't stay selected
-        // (Optional: You might want to delay this or clear specific fields)
-        emptyLine();
-        return; 
+        setDuplicateError({
+                open: true,
+                message: `The product "${product.name}" is already in the list.`
+            });
+            
+            // Clear the selection
+            emptyLine();
+            return; 
     }
 
     // 4. NO DUPLICATE - Proceed to set values
@@ -236,6 +244,17 @@ const POLineItemsForm = () => {
                     </TableBody>
                 </Table>
             </TableContainer>
+            {/* Toast Notification for Duplicates */}
+            <Snackbar 
+                open={duplicateError.open} 
+                autoHideDuration={4000} 
+                onClose={handleCloseToast}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+                <Alert onClose={handleCloseToast} severity="warning" sx={{ width: '100%' }}>
+                    {duplicateError.message}
+                </Alert>
+            </Snackbar>
         </Paper>
     );
 };
