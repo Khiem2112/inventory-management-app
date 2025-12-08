@@ -96,6 +96,10 @@ const PurchaseOrderList = ({
     const handleColumnToggle = (newKeys) => {
         setVisibleKeys(newKeys);
     };
+    // Handle to vreate new PO
+    const handleNavigateCreatePO = () => {
+        navigate('create')
+    }
 
 
     return (
@@ -106,6 +110,16 @@ const PurchaseOrderList = ({
                     Error: {error?.message || "Unable to load purchase orders."}
                 </div>
             )}
+            <Button
+            variant="contained"
+            sx={{
+                justifyContent:'space-between',
+                fontWeight:'bold'
+            }}
+            onClick={handleNavigateCreatePO}
+            >
+                Create New PO
+            </Button>
             
             {/* FilterBar (AC2) and ColumnToggler (AC1) */}
             
