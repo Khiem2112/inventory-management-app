@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useForm, FormProvider, useWatch } from 'react-hook-form';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useBlocker, useBeforeUnload } from 'react-router-dom';
 import { 
     Box, Typography, Grid, Paper, Button, Autocomplete, TextField, 
-    Divider, CircularProgress, Alert, Snackbar 
+    Divider, CircularProgress, Alert, Snackbar, 
+    Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import SendIcon from '@mui/icons-material/Send';
@@ -29,13 +30,16 @@ const POCreatePage = () => {
         }
     });
 
+    // Get formState from methods
+    const { formState: { isDirty, isSubmitSuccessful } } = methods;
+
     // 2. Setup Mutation (Create API)
     const createMutation = useMutation({
         mutationFn: createPurchaseOrder,
         onSuccess: (data) => {
             // AC: Redirect to Detail View on success
             // Assuming API returns { purchase_order_id: 123, ... }
-            navigate(`/purchase-orders/${data.purchase_order_id}`);
+            navigate(`/purchase-orders/${data.purchase_order_id}`, { replace: true });
         },
         onError: (error) => {
             // Handle error (show toast/alert)
@@ -71,6 +75,74 @@ const POCreatePage = () => {
 
         console.log("Submitting Payload:", JSON.stringify(payload, null, 2));
         createMutation.mutate(payload);
+    };
+
+    // unsaved guard
+    useBeforeUnload(
+        useCallback((e) => {
+            if (isDirty && !isSubmitSuccessful) {
+                e.preventDefault();
+                e.returnValue = ''; // Trigger browser's native "Leave site?" dialog
+            }
+        }, [isDirty, isSubmitSuccessful])
+    );
+
+    // 2. In-App Navigation Guard (Handles Back Button / Cancel Click)
+    // useBlocker comes from react-router-dom v6.19+
+    const blocker = useBlocker(
+        ({ currentLocation, nextLocation }) =>
+            isDirty && 
+            !isSubmitSuccessful && 
+            currentLocation.pathname !== nextLocation.pathname
+    );
+
+    // Dialog State derived from blocker
+    const showExitDialog = blocker.state === "blocked";
+
+    const handleDiscardAndLeave = () => {
+        if (blocker.state === "blocked") {
+            blocker.proceed(); // Allow the navigation to continue
+        } else {
+            navigate('/purchase-orders'); // Fallback for manual Cancel click if blocker didn't catch
+        }
+    };
+
+    const handleSaveDraftAndLeave = () => {
+        console.log(`Calling handle save and navigating`)
+        // Trigger the form submit with isDraft = true
+        methods.handleSubmit((data) => {
+            // We define a special onSuccess for this flow to proceed with navigation
+            const payload = {
+                // ... replicate payload logic or extract it to a helper ...
+                supplier_id: data.supplier_obj?.supplier_id, 
+                is_draft: true, // FORCE DRAFT
+                items: data.items.map(item => ({
+                    product_id: Number(item.product_id), 
+                    quantity: Number(item.quantity),
+                    unit_price: Number(item.unit_price),
+                    item_description: item.item_description
+                }))
+            };
+            if (data.purchase_plan_id) payload.purchase_plan_id = data.purchase_plan_id;
+
+            // Run mutation
+            createMutation.mutate(payload, {
+                onSuccess: (responseData) => {
+                    // Once saved, we allow the original navigation to proceed
+                    if (blocker.state === "blocked") {
+                        blocker.proceed();
+                    } else {
+                        navigate(`/purchase-orders/${responseData.purchase_order_id}`);
+                    }
+                }
+            });
+        })();
+    };
+
+    const handleStayOnPage = () => {
+        if (blocker.state === "blocked") {
+            blocker.reset(); // Return to normal state
+        }
     };
 
     return (
@@ -189,6 +261,41 @@ const POCreatePage = () => {
                         </Paper>
                     </Grid>
                 </Grid>
+
+                {/* --- EXIT GUARD DIALOG --- */}
+                    <Dialog
+                        open={showExitDialog}
+                        onClose={handleStayOnPage}
+                        aria-labelledby="alert-dialog-title"
+                        aria-describedby="alert-dialog-description"
+                    >
+                        <DialogTitle id="alert-dialog-title">
+                            {"Unsaved Changes"}
+                        </DialogTitle>
+                        <DialogContent>
+                            <DialogContentText id="alert-dialog-description">
+                                You have unsaved changes in this Purchase Order. <br/>
+                                Would you like to save it as a <strong>Draft</strong> before leaving?
+                            </DialogContentText>
+                        </DialogContent>
+                        <DialogActions>
+                            <Button onClick={handleStayOnPage} color="inherit">
+                                Cancel
+                            </Button>
+                            <Button onClick={handleDiscardAndLeave} color="error">
+                                Discard & Leave
+                            </Button>
+                            <Button 
+                                onClick={handleSaveDraftAndLeave} 
+                                variant="contained" 
+                                color="primary" 
+                                autoFocus
+                                disabled={createMutation.isPending}
+                            >
+                                {createMutation.isPending ? "Saving..." : "Save Draft"}
+                            </Button>
+                        </DialogActions>
+                    </Dialog>
             </Box>
         </FormProvider>
     );
