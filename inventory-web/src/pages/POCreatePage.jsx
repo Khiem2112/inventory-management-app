@@ -155,6 +155,12 @@ const POCreatePage = () => {
                                 <Typography variant="h6" color="primary">${calculateTotal().toFixed(2)}</Typography>
                             </Box>
 
+                            {calculateTotal() > 5000 && (
+                                <Alert severity="warning" sx={{ mb: 2 }}>
+                                    High Value PO: Approval will be required for ${calculateTotal()}
+                                </Alert>
+                            )}
+
                             {/* AC5: Actions */}
                             <Grid container spacing={2}>
                                 <Grid item xs={6}>

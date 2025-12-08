@@ -10,7 +10,7 @@ import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import { searchProducts } from '../../services/poService';
 
 const POLineItemsForm = () => {
-    const { control, register, watch, setValue } = useFormContext();
+    const { control, register, watch, setValue, getValues} = useFormContext();
     const { fields, append, remove } = useFieldArray({
         control,
         name: "items"
@@ -38,25 +38,50 @@ const POLineItemsForm = () => {
     };
 
     const handleProductSelect = (index, product) => {
-        if (!product) {
-            // Clear fields if selection is cleared
-            setValue(`items.${index}.product_id`, '');
-            setValue(`items.${index}.item_description`, '');
-            setValue(`items.${index}.unit_price`, 0);
-            return;
-        }
-        
-        // Map API response fields to Form fields
-        setValue(`items.${index}.product_id`, product.product_id);
-        setValue(`items.${index}.item_description`, product.name);
-        setValue(`items.${index}.unit_price`, product.unit_price);
-        
-        // If quantity is empty/zero, default to 1 for better UX
-        const currentQty = watch(`items.${index}.quantity`);
-        if (!currentQty || currentQty <= 0) {
-            setValue(`items.${index}.quantity`, 1);
-        }
+    // Helper to clear the line
+    const emptyLine = () => {
+        setValue(`items.${index}.product_id`, '');
+        setValue(`items.${index}.item_description`, '');
+        setValue(`items.${index}.unit_price`, 0); // Or undefined/null based on requirements
     };
+
+    // 1. Handle Clear Action
+    if (!product) {
+        emptyLine();
+        return;
+    }
+
+    // 2. Get LIVE data (Crucial Fix: Use getValues instead of fields)
+    const currentItems = getValues("items"); 
+    
+    // 3. Check for duplicates
+    // We look for ANY item that has the same ID but is NOT the current row
+    const isDuplicate = currentItems.some((item, idx) => 
+        idx !== index && item.product_id === product.product_id
+    );
+
+    if (isDuplicate) {
+        // DUPLICATE FOUND
+        console.log(`Duplicate found: ${product.name}`);
+        alert(`The product "${product.name}" has already been selected.`);
+        
+        // Clear the input so it doesn't stay selected
+        // (Optional: You might want to delay this or clear specific fields)
+        emptyLine();
+        return; 
+    }
+
+    // 4. NO DUPLICATE - Proceed to set values
+    setValue(`items.${index}.product_id`, product.product_id);
+    setValue(`items.${index}.item_description`, product.name);
+    setValue(`items.${index}.unit_price`, product.unit_price);
+
+    // 5. Default Quantity Logic (Using getValues for consistency)
+    const currentQty = getValues(`items.${index}.quantity`);
+    if (!currentQty || currentQty <= 0) {
+        setValue(`items.${index}.quantity`, 1);
+    }
+};
 
     return (
         <Paper variant="outlined" sx={{ mt: 3, mb: 3 }}>
