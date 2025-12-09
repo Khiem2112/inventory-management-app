@@ -11,6 +11,9 @@ const StatusBadge = ({ status }) => {
   // 2. Define the Configuration Map
   // Keys match the normalized input; Values match the CSS modifier class
   const STATUS_MAP = {
+    'draft' : 'draft',
+    'pending': 'pending',
+    'cancelled': 'cancelled',
     'issued': 'issued',
     'acknowledged': 'acknowledged',
     'delivered': 'delivered',
