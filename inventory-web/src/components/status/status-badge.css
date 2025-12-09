@@ -1,75 +1,98 @@
 /* src/components/StatusBadge/status-badge.css */
-
 .status-badge {
     /* Base styles */
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 0.25rem 0.75rem; /* Slightly wider for readability */
+    
+    /* Shape & Size */
+    padding: 0.35rem 1rem;       /* Increased padding creates a clearer oval shape */
+    border-radius: 9999px;       /* Forces the 'Pill' / Oval shape */
+    
+    /* Typography */
     font-size: 0.75rem; 
-    font-weight: 600;
-    border-radius: 9999px;
+    font-weight: 700;            /* Changed from 600 to 700 (Bold) */
     text-transform: capitalize;
+    white-space: nowrap;
     user-select: none;
-    white-space: nowrap; /* Prevent wrapping on small screens */
     transition: all 0.2s ease-in-out;
 }
 
 /* --- Modifier Styles --- */
 
-/* 1. ISSUED (Neutral/Slate) - The starting point */
-.status-badge--issued {
-    --status-hue: 210;
-    --status-sat: 15%;
-    --status-light: 50%;
-    
+/* 1. DRAFT (Pink/Fuchsia) - High Attention / Unfinished */
+.status-badge--draft {
+    --status-hue: 300;
+    --status-sat: 85%;
+    --status-light: 45%;
+
     background-color: hsla(var(--status-hue), var(--status-sat), var(--status-light), 0.15);
-    color: hsl(var(--status-hue), var(--status-sat), 40%);
-    border: 1px solid hsla(var(--status-hue), var(--status-sat), var(--status-light), 0.2);
+    color: hsl(var(--status-hue), var(--status-sat), 35%);
+    border: 1px solid hsla(var(--status-hue), var(--status-sat), var(--status-light), 0.3);
 }
 
-/* 2. ACKNOWLEDGED (Purple/Indigo) - Vendor has seen it */
+/* 2. PENDING (Amber/Gold) - Waiting / Paused */
+.status-badge--pending {
+    --status-hue: 45;
+    --status-sat: 95%;
+    --status-light: 40%; /* Slightly darker for better text contrast on gold */
+
+    background-color: hsla(var(--status-hue), var(--status-sat), var(--status-light), 0.15);
+    color: hsl(var(--status-hue), var(--status-sat), 30%);
+}
+
+/* 3. ISSUED (Blue) - Active / Standard */
+.status-badge--issued {
+    --status-hue: 210;
+    --status-sat: 90%;
+    --status-light: 50%; /* Standardized lightness for bold text */
+    
+    background-color: hsla(var(--status-hue), var(--status-sat), var(--status-light), 0.12);
+    color: hsl(var(--status-hue), var(--status-sat), 40%);
+}
+
+/* 4. ACKNOWLEDGED (Indigo/Purple) - Vendor Interaction */
 .status-badge--acknowledged {
     --status-hue: 250;
     --status-sat: 85%;
     --status-light: 60%;
 
-    background-color: hsla(var(--status-hue), var(--status-sat), var(--status-light), 0.1);
+    background-color: hsla(var(--status-hue), var(--status-sat), var(--status-light), 0.12);
     color: hsl(var(--status-hue), var(--status-sat), var(--status-light));
 }
 
-/* 3. DELIVERED (Cyan/Teal) - Arrived at dock, strictly physical */
+/* 5. DELIVERED (Teal/Cyan) - Physical Arrival */
 .status-badge--delivered {
     --status-hue: 180;
-    --status-sat: 75%;
-    --status-light: 40%;
+    --status-sat: 80%;
+    --status-light: 35%;
 
-    background-color: hsla(var(--status-hue), var(--status-sat), var(--status-light), 0.1);
-    color: hsl(var(--status-hue), var(--status-sat), 35%);
+    background-color: hsla(var(--status-hue), var(--status-sat), var(--status-light), 0.12);
+    color: hsl(var(--status-hue), var(--status-sat), 30%);
 }
 
-/* 4. RECEIVED (Orange/Amber) - In system, pending check */
+/* 6. RECEIVED (Green) - Success / Finished */
 .status-badge--received {
-    --status-hue: 35;
-    --status-sat: 95%;
-    --status-light: 50%;
-
-    background-color: hsla(var(--status-hue), var(--status-sat), var(--status-light), 0.1);
-    color: hsl(var(--status-hue), var(--status-sat), 45%);
-}
-
-/* 5. CHECKED (Green) - Validated and Final */
-.status-badge--checked {
-    --status-hue: 142;
-    --status-sat: 70%;
+    --status-hue: 145;
+    --status-sat: 80%;
     --status-light: 40%;
 
     background-color: hsla(var(--status-hue), var(--status-sat), var(--status-light), 0.15);
-    color: hsl(var(--status-hue), var(--status-sat), 35%);
+    color: hsl(var(--status-hue), var(--status-sat), 30%);
+}
+
+/* 7. CANCELLED (Red) - Terminal / Stopped */
+.status-badge--cancelled {
+    --status-hue: 350;
+    --status-sat: 85%;
+    --status-light: 50%;
+
+    background-color: hsla(var(--status-hue), var(--status-sat), var(--status-light), 0.12);
+    color: hsl(var(--status-hue), var(--status-sat), 40%);
 }
 
 /* Fallback */
 .status-badge--default {
     background-color: #f3f4f6;
-    color: #6b7280;
+    color: #374151; /* Darker gray for bold text */
 }
