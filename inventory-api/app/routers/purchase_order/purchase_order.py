@@ -11,7 +11,9 @@ from app.schemas.purchase_order import (
   PurchaseOrderItemPublic,
   PurchaseOrderItemsResponse,
   PurchaseOrderInput,
-  PurchaseOrderApproveResponse
+  PurchaseOrderApproveResponse,
+  PurchaseOrderRejectInput,
+  PurchaseOrderRejectResponse
   )
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import SQLAlchemyError
@@ -376,6 +378,9 @@ def approve_purchase_order(
 
         # 5. Perform Transition
         po_orm.Status = "Issued"
+        # Set approve date
+        po_orm.ApprovalDate = datetime.now()
+        po_orm.ApprovedByUserId = current_user.UserId
         # Optional: You might want to record who approved it if you add an 'ApprovedBy' column later
         # po_orm.ApprovedBy = current_user.UserId 
         # po_orm.ApprovedDate = datetime.now()
@@ -404,16 +409,17 @@ def approve_purchase_order(
       
 # Reject PO
 @router.put('/{purchase_order_id}/reject', 
-            response_model=PurchaseOrderApproveResponse, 
+            response_model=PurchaseOrderRejectResponse,
             status_code=status.HTTP_200_OK,
-            description="Reject a Draft PO, changing status to Draft. Assign for staff to re-evaluate.")
+            description="Reject a Pending PO, moving it back to Draft status with a reason.")
 def reject_purchase_order(
     purchase_order_id: int,
+    payload: PurchaseOrderRejectInput, # <--- Capture the JSON body
     db: Session = Depends(get_db),
     current_user: UserORM = Depends(get_current_user)
 ):
     try:
-        # 1. Fetch the PO with relations needed for the response
+        # 1. Fetch the PO
         po_orm = db.query(PurchaseOrderORM).filter(
             PurchaseOrderORM.PurchaseOrderId == purchase_order_id
         ).options(
@@ -425,36 +431,41 @@ def reject_purchase_order(
         if not po_orm:
             raise HTTPException(status_code=404, detail="Purchase Order not found.")
 
-        # 3. Validate State (Business Logic)
-        if po_orm.Status != "Pending":
+        # 3. Validate State
+        # Ensure we only reject POs that are actually waiting for approval.
+        # Note: Adjust "Pending" to "Issued" if that is your 'waiting' status.
+        if po_orm.Status != "Pending": 
             raise HTTPException(
                 status_code=400, 
-                detail=f"Cannot approve a PO with status '{po_orm.Status}'. Only 'Draft' POs can be approved."
+                detail=f"Cannot reject a PO with status '{po_orm.Status}'. Only 'Pending' POs can be rejected."
             )
-        # 5. Perform Transition
+        
+        # 4. Perform Transition
         po_orm.Status = "Draft"
-        # Optional: You might want to record who approved it if you add an 'ApprovedBy' column later
-        # po_orm.ApprovedBy = current_user.UserId 
-        # po_orm.ApprovedDate = datetime.now()
+        po_orm.RejectionReason = payload.reason  # Save the reason
 
-        # 6. Commit
+        # 5. Commit
         db.commit()
         db.refresh(po_orm)
+        
+        logger.info(f"User {current_user.UserId} rejected PO {purchase_order_id}")
+
+        # 6. Return Response
+        # Convert ORM to Pydantic first
         po_data = PurchaseOrderPublic.model_validate(po_orm)
         
-        logger.info(f"User {current_user.UserId} approved PO {purchase_order_id}")
-        return PurchaseOrderApproveResponse(
+        return PurchaseOrderRejectResponse(
             **po_data.model_dump(),
-            message=f"Purchase order: {po_orm.PurchaseOrderId} has been issued"
+            message=f"Purchase order {purchase_order_id} has been rejected and moved to Draft."
         )
 
     except HTTPException as e:
         raise e
     except SQLAlchemyError as e:
         db.rollback()
-        logger.error(f"Database Error during approval: {e}")
+        logger.error(f"Database Error during rejection: {e}")
         raise HTTPException(status_code=500, detail="Database error occurred.")
     except Exception as e:
         db.rollback()
-        logger.error(f"Unexpected Error during approval: {e}")
+        logger.error(f"Unexpected Error during rejection: {e}")
         raise HTTPException(status_code=500, detail="An unexpected error occurred.")

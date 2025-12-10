@@ -17,6 +17,7 @@ class PurchaseOrderBase(BaseModel):
     supplier_id: Optional[int] = Field(default=None)
     purchase_plan_id: Optional[int] = Field(default=None)
     create_user_id: Optional[int] = Field(default=None)
+    approved_by_user_id: Optional[int] = Field(default=None, validation_alias="ApprovedByUserId")
     total_price: Optional[Decimal] = Field(default=None)
     
     model_config = ConfigDict(populate_by_name=True)
@@ -65,6 +66,7 @@ class PurchaseOrderPublic(PurchaseOrderBase, AutoReadSchema):
     supplier_name: Optional[str] = Field(default=None, validation_alias='SupplierName')
     create_date: Optional[date|datetime] = Field(default=None, validation_alias="CreateDate")
     create_user_name: Optional[str] = Field(default=None, validation_alias='CreateUserName')
+    approval_date: Optional[datetime] = Field(default=None)
     model_config = ConfigDict(populate_by_name=True, extra='ignore')
 
 class PurchaseOrderItemPublic(PurchaseOrderItemBase, AutoReadSchema):
@@ -92,4 +94,11 @@ class PurchaseOrderItemsResponse(BaseModel):
     header: PurchaseOrderPublic = Field(..., description="General data of a purchase order")
     items: list[PurchaseOrderItemPublic] = Field(..., description="Items inside a purchase order")
 class PurchaseOrderApproveResponse(StandardResponse, PurchaseOrderPublic):
+    pass
+
+class PurchaseOrderRejectInput(BaseModel):
+    reason: Optional[str] = Field(default=None, min_length=1, description="Reason for rejecting the PO")
+
+# 3. Create a Response Schema (Optional, or just use Public)
+class PurchaseOrderRejectResponse(PurchaseOrderPublic, StandardResponse):
     pass
