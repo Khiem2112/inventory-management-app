@@ -112,6 +112,11 @@ const PODetailPage = () => {
                 items={activeItems} 
                 itemsLoading={isLoading} 
                 onClose={handleClose}
+                // Pass Actions Down
+                onApprove={() => approveMutation.mutate()}
+                onReject={(reason) => rejectMutation.mutate(reason)}
+                onGeneratePDF={() => pdfMutation.mutate()}
+                isProcessing={isProcessing}
             />
 
             <Snackbar 
