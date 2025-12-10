@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.schemas.pagination import PaginationMetaData
 from app.schemas.supplier import SupplierPublic
 from app.schemas.user import UserPublic
-from app.schemas.base import AutoReadSchema, AutoWriteSchema
+from app.schemas.base import AutoReadSchema, AutoWriteSchema, StandardResponse
 
 # --- 1. SHARED BASE MODELS (Data Only - NO IDs) ---
 
@@ -91,3 +91,5 @@ class PurchaseOrderResponse(PaginationMetaData):
 class PurchaseOrderItemsResponse(BaseModel):
     header: PurchaseOrderPublic = Field(..., description="General data of a purchase order")
     items: list[PurchaseOrderItemPublic] = Field(..., description="Items inside a purchase order")
+class PurchaseOrderApproveResponse(StandardResponse, PurchaseOrderPublic):
+    pass
