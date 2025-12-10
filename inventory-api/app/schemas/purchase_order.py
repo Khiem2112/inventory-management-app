@@ -95,3 +95,10 @@ class PurchaseOrderItemsResponse(BaseModel):
     items: list[PurchaseOrderItemPublic] = Field(..., description="Items inside a purchase order")
 class PurchaseOrderApproveResponse(StandardResponse, PurchaseOrderPublic):
     pass
+
+class PurchaseOrderRejectInput(BaseModel):
+    reason: Optional[str] = Field(default=None, min_length=1, description="Reason for rejecting the PO")
+
+# 3. Create a Response Schema (Optional, or just use Public)
+class PurchaseOrderRejectResponse(PurchaseOrderPublic, StandardResponse):
+    pass

@@ -39,6 +39,7 @@ class PurchaseOrder(Base):
   CreateUserId: Mapped[int] = mapped_column(Integer, ForeignKey("User.UserId"), nullable= False)
   ApprovedByUserId: Mapped[int] = mapped_column('ApprovedByUserID',Integer, ForeignKey("User.UserId"), nullable=True)
   ApprovalDate: Mapped[datetime] = mapped_column("ApprovalDate", DateTime, nullable=True)
+  RejectionReason: Mapped[String] = mapped_column(String(500), nullable=True)
   Supplier = relationship("Supplier", lazy="joined")
   CreateUser = relationship("User", foreign_keys=[CreateUserId], lazy="joined")
   ApprovedByUser = relationship("User",foreign_keys=[ApprovedByUserId], lazy="joined")
