@@ -48,6 +48,7 @@ const router = createBrowserRouter(
 
       {/* The Page using useBlocker */}
       <Route path="/purchase-orders/create" element={<POCreatePage />} />
+      <Route path="/purchase-orders/:id/edit" element={<POCreatePage />} /> {/* Same Component */}
       
       {/* Legacy Route */}
       <Route path="/purchase-orders-detail" element={<POMasterView />} />
