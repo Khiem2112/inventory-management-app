@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Purchase Order #{{ po.PurchaseOrderId }}</title>
+    <style>
+        body { font-family: sans-serif; font-size: 12px; color: #333; }
+        .header { margin-bottom: 20px; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
+        .header h1 { margin: 0; color: #2c3e50; }
+        .meta-info { margin-top: 10px; display: flex; justify-content: space-between; }
+        .meta-box { width: 48%; }
+        .meta-box h3 { border-bottom: 1px solid #ccc; margin-bottom: 5px; font-size: 14px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; font-weight: bold; }
+        .text-right { text-align: right; }
+        
+        .footer { margin-top: 30px; text-align: right; }
+        .total-box { font-size: 16px; font-weight: bold; }
+        
+        .approval-section { margin-top: 40px; border-top: 1px solid #ddd; padding-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Purchase Order</h1>
+        <div style="float: right; margin-top: -30px;">
+            <strong>PO #:</strong> {{ po.PurchaseOrderId }}<br>
+            <strong>Date:</strong> {{ po.CreateDate.strftime('%Y-%m-%d') }}<br>
+            <strong>Status:</strong> {{ po.Status }}
+        </div>
+    </div>
+
+    <div class="meta-info">
+        <div class="meta-box">
+            <h3>Vendor</h3>
+            <strong>{{ po.Supplier.SupplierName }}</strong><br>
+            {{ po.Supplier.Address }}<br>
+            Phone: {{ po.Supplier.Phone }}<br>
+            Contact: {{ po.Supplier.ContactPerson }}
+        </div>
+        <div class="meta-box" style="margin-left: 20px;">
+            <h3>Ship To / Bill To</h3>
+            <strong>My Company Inc.</strong><br>
+            123 Warehouse Blvd.<br>
+            Tech City, TC 90210<br>
+            Requested By: {{ po.CreateUser.Name }}
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Product / Description</th>
+                <th class="text-right">Qty</th>
+                <th class="text-right">Unit Price</th>
+                <th class="text-right">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in po.PurchaseOrderItems %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>
+                    <strong>{{ item.Product.ProductName }}</strong><br>
+                    <small>{{ item.ItemDescription or item.Product.ModelNumber_SKU }}</small>
+                </td>
+                <td class="text-right">{{ item.Quantity }}</td>
+                <td class="text-right">${{ "{:,.2f}".format(item.UnitPrice) }}</td>
+                <td class="text-right">${{ "{:,.2f}".format(item.Quantity * item.UnitPrice) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="footer">
+        <div class="total-box">
+            Grand Total: ${{ "{:,.2f}".format(po.TotalPrice) }}
+        </div>
+    </div>
+
+    {% if po.ApprovedByUser %}
+    <div class="approval-section">
+        <p><strong>Approved By:</strong> {{ po.ApprovedByUser.Name }} on {{ po.ApprovalDate.strftime('%Y-%m-%d %H:%M') }}</p>
+    </div>
+    {% endif %}
+</body>
+</html>

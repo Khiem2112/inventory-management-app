@@ -20,8 +20,13 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import desc, inspect
 from datetime import datetime, date
 from typing import Optional
+from jinja2 import Environment, FileSystemLoader
+from weasyprint import HTML
+from fastapi.responses import StreamingResponse
+import io
 
 logger = setup_logger()
+
 router = APIRouter(prefix='/purchase-order', tags=['po'])
 
 
@@ -469,3 +474,42 @@ def reject_purchase_order(
         db.rollback()
         logger.error(f"Unexpected Error during rejection: {e}")
         raise HTTPException(status_code=500, detail="An unexpected error occurred.")
+# Template of the central place to save document
+templates = Environment(loader=FileSystemLoader("app/template"))
+
+@router.get('/{purchase_order_id}/export/pdf', 
+            status_code=status.HTTP_200_OK,
+            description="Generates a standard PDF version of the PO for manual printing or downloading.")
+def export_purchase_order_pdf(
+    purchase_order_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserORM = Depends(get_current_user)
+):
+    # 1. Fetch PO Data (Your relationships are lazy="joined", so simple query works)
+    po_orm = db.query(PurchaseOrderORM).filter(
+        PurchaseOrderORM.PurchaseOrderId == purchase_order_id
+    ).first()
+
+    if not po_orm:
+        raise HTTPException(status_code=404, detail="Purchase Order not found")
+
+    # 2. Check Permissions (Optional - based on your requirement "Authorization: Read Access to PO")
+    # For now, we assume 'current_user' presence implies authentication.
+    
+    try:
+        # 3. Render HTML Template
+        template = templates.get_template("purchase_order.html")
+        html_content = template.render(po=po_orm)
+
+        # 4. Generate PDF
+        pdf_file = HTML(string=html_content).write_pdf()
+
+        # 5. Return PDF Stream
+        headers = {
+            'Content-Disposition': f'attachment; filename="PO-{purchase_order_id}.pdf"'
+        }
+        return StreamingResponse(io.BytesIO(pdf_file), headers=headers, media_type='application/pdf')
+
+    except Exception as e:
+        logger.error(f"Error generating PDF for PO {purchase_order_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate PDF: {str(e)}")
