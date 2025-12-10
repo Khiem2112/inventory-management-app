@@ -1,4 +1,5 @@
 import React from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
     Box, 
@@ -16,6 +17,8 @@ import {
     Skeleton,
     Tooltip,
     IconButton,
+    Button, Dialog, DialogTitle, DialogContent, 
+    DialogContentText, TextField, DialogActions, CircularProgress,
     Alert
 } from '@mui/material';
 import InventoryIcon from '@mui/icons-material/Inventory';
@@ -24,8 +27,10 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 // Services
 import {PO_DETAIL_ITEMS_CONFIG } from '../services/poService';
 import StatusBadge from '../components/status/statusBadge';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'; 
-
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 
 // --- 1. Detail Header (Pure Component - Instant Render) ---
 const DetailHeader = ({ headerData, onClose }) => {
@@ -206,8 +211,127 @@ const LineItemsTable = ({ items, loading }) => {
     );
 };
 
+// PO Approval Footer
+
+const POApprovalFooter = ({ status, onApprove, onReject, onGeneratePDF, isProcessing }) => {
+    const [rejectModalOpen, setRejectModalOpen] = useState(false);
+    const [rejectReason, setRejectReason] = useState("");
+
+    // --- Derived States ---
+    const isPending = status === 'Pending';
+    const isIssued = status === 'Issued' || status === 'Open'; // Adjust based on your specific status enum
+
+    // If neither pending nor issued (e.g. Draft), show nothing
+    if (!isPending && !isIssued) return null;
+
+    // --- Handlers ---
+    const handleRejectSubmit = () => {
+        if (!rejectReason.trim()) return; // Prevent empty reasons
+        onReject(rejectReason);
+        setRejectModalOpen(false);
+        setRejectReason("");
+    };
+
+    return (
+        <>
+            {/* STICKY FOOTER CONTAINER */}
+            <Paper 
+                elevation={6} 
+                sx={{ 
+                    position: 'sticky', 
+                    bottom: 0, 
+                    left: 0, 
+                    right: 0,
+                    p: 2, 
+                    borderTop: '1px solid #e0e0e0',
+                    zIndex: 10
+                }}
+            >
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, maxWidth: 1200, mx: 'auto' }}>
+                    
+                    {/* STATE: PENDING APPROVAL */}
+                    {isPending && (
+                        <>
+                            <Button 
+                                variant="outlined" 
+                                color="error" 
+                                startIcon={<CancelIcon />}
+                                onClick={() => setRejectModalOpen(true)}
+                                disabled={isProcessing}
+                            >
+                                Reject
+                            </Button>
+                            <Button 
+                                variant="contained" 
+                                color="success" 
+                                startIcon={isProcessing ? <CircularProgress size={20} color="inherit"/> : <CheckCircleIcon />}
+                                onClick={onApprove}
+                                disabled={isProcessing}
+                            >
+                                Approve PO
+                            </Button>
+                        </>
+                    )}
+
+                    {/* STATE: ISSUED (PDF GENERATION) */}
+                    {isIssued && (
+                        <Button 
+                            variant="contained" 
+                            color="primary" 
+                            startIcon={isProcessing ? <CircularProgress size={20} color="inherit"/> : <PictureAsPdfIcon />}
+                            onClick={onGeneratePDF}
+                            disabled={isProcessing}
+                            aria-label="Download PDF"
+                        >
+                            {isProcessing ? "Generating..." : "Download PDF"}
+                        </Button>
+                    )}
+                </Box>
+            </Paper>
+
+            {/* REJECT REASON MODAL */}
+            <Dialog open={rejectModalOpen} onClose={() => setRejectModalOpen(false)} maxWidth="sm" fullWidth>
+                <DialogTitle>Reject Purchase Order</DialogTitle>
+                <DialogContent>
+                    <DialogContentText sx={{ mb: 2 }}>
+                        Please provide a reason for rejecting this order. This will be sent to the requester.
+                    </DialogContentText>
+                    <TextField
+                        autoFocus
+                        margin="dense"
+                        id="reason"
+                        label="Rejection Reason"
+                        type="text"
+                        fullWidth
+                        variant="outlined"
+                        multiline
+                        rows={3}
+                        value={rejectReason}
+                        onChange={(e) => setRejectReason(e.target.value)}
+                        error={rejectReason.length > 0 && rejectReason.trim().length === 0}
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setRejectModalOpen(false)} color="inherit">Cancel</Button>
+                    <Button onClick={handleRejectSubmit} color="error" variant="contained">
+                        Confirm Rejection
+                    </Button>
+                </DialogActions>
+            </Dialog>
+        </>
+    );
+};
+
 // --- 3. Main Container (The Orchestrator) ---
-const PODetailView = ({ header, items, itemsLoading, onClose }) => {
+const PODetailView = ({ 
+    header, 
+    items, 
+    itemsLoading, 
+    onClose, 
+    onApprove, 
+    onReject, 
+    onGeneratePDF, 
+    isProcessing }) => {
     // Scenario 1: No PO selected (e.g. initial load of master-detail)
     if (!header || !items) {
         return (
@@ -228,20 +352,46 @@ const PODetailView = ({ header, items, itemsLoading, onClose }) => {
     }
 
     // Scenario 2: PO Selected
-    return (
-        <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'white' }}>
-            {/* A. Render Header Immediately (Synchronous) */}
-            <DetailHeader headerData={header} onClose={onClose}/>
-            
-            <Divider />
+    const isIssued = header?.status === 'Issued' || header?.status === 'Open';
 
-            {/* B. Render Line Items (Asynchronous Fetch) */}
-            <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
+    return (
+        <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'white', position: 'relative' }}>
+            
+            {/* WATERMARK BACKGROUND */}
+            {isIssued && (
+                <Box sx={{
+                    position: 'absolute',
+                    top: '50%', left: '50%',
+                    transform: 'translate(-50%, -50%) rotate(-45deg)',
+                    fontSize: '8rem',
+                    fontWeight: 'bold',
+                    color: 'rgba(0, 128, 0, 0.05)', // Very faint green
+                    pointerEvents: 'none', // Allow clicking through it
+                    zIndex: 0,
+                    userSelect: 'none'
+                }}>
+                    ISSUED
+                </Box>
+            )}
+
+            <DetailHeader headerData={header} onClose={onClose} />
+            <Divider />
+            
+            <Box sx={{ flexGrow: 1, overflow: 'auto', zIndex: 1 }}>
                 <Typography variant="subtitle2" sx={{ p: 2, bgcolor: '#fafafa', color: 'text.secondary', fontWeight: 'bold' }}>
                     LINE ITEMS
                 </Typography>
                 <LineItemsTable items={items} loading={itemsLoading} />
             </Box>
+
+            {/* ACTION FOOTER */}
+            <POApprovalFooter 
+                status={header?.status}
+                onApprove={onApprove}
+                onReject={onReject}
+                onGeneratePDF={onGeneratePDF}
+                isProcessing={isProcessing}
+            />
         </Box>
     );
 };
