@@ -76,7 +76,7 @@ const PODetailPage = () => {
         );
     }
 
-    const activeHeader = optimisticHeader || fullDetail?.header || {}
+    const activeHeader = fullDetail?.header || optimisticHeader || {}
     const showFullLoading = isLoading && !activeHeader
     const activeItems = fullDetail?.items || []
 
