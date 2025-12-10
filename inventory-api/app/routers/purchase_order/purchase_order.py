@@ -358,10 +358,10 @@ def approve_purchase_order(
             raise HTTPException(status_code=404, detail="Purchase Order not found.")
 
         # 3. Validate State (Business Logic)
-        if po_orm.Status != "Draft":
+        if po_orm.Status != "Pending":
             raise HTTPException(
                 status_code=400, 
-                detail=f"Cannot approve a PO with status '{po_orm.Status}'. Only 'Draft' POs can be approved."
+                detail=f"Cannot approve a PO with status '{po_orm.Status}'. Only 'Pending' POs can be approved."
             )
         
         # 4. Validate Content (Ensure it's not empty)
@@ -376,6 +376,63 @@ def approve_purchase_order(
 
         # 5. Perform Transition
         po_orm.Status = "Issued"
+        # Optional: You might want to record who approved it if you add an 'ApprovedBy' column later
+        # po_orm.ApprovedBy = current_user.UserId 
+        # po_orm.ApprovedDate = datetime.now()
+
+        # 6. Commit
+        db.commit()
+        db.refresh(po_orm)
+        po_data = PurchaseOrderPublic.model_validate(po_orm)
+        
+        logger.info(f"User {current_user.UserId} approved PO {purchase_order_id}")
+        return PurchaseOrderApproveResponse(
+            **po_data.model_dump(),
+            message=f"Purchase order: {po_orm.PurchaseOrderId} has been issued"
+        )
+
+    except HTTPException as e:
+        raise e
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.error(f"Database Error during approval: {e}")
+        raise HTTPException(status_code=500, detail="Database error occurred.")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Unexpected Error during approval: {e}")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred.")
+      
+# Reject PO
+@router.put('/{purchase_order_id}/reject', 
+            response_model=PurchaseOrderApproveResponse, 
+            status_code=status.HTTP_200_OK,
+            description="Reject a Draft PO, changing status to Draft. Assign for staff to re-evaluate.")
+def reject_purchase_order(
+    purchase_order_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserORM = Depends(get_current_user)
+):
+    try:
+        # 1. Fetch the PO with relations needed for the response
+        po_orm = db.query(PurchaseOrderORM).filter(
+            PurchaseOrderORM.PurchaseOrderId == purchase_order_id
+        ).options(
+            joinedload(PurchaseOrderORM.Supplier),
+            joinedload(PurchaseOrderORM.CreateUser)
+        ).first()
+
+        # 2. Check Existence
+        if not po_orm:
+            raise HTTPException(status_code=404, detail="Purchase Order not found.")
+
+        # 3. Validate State (Business Logic)
+        if po_orm.Status != "Pending":
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Cannot approve a PO with status '{po_orm.Status}'. Only 'Draft' POs can be approved."
+            )
+        # 5. Perform Transition
+        po_orm.Status = "Draft"
         # Optional: You might want to record who approved it if you add an 'ApprovedBy' column later
         # po_orm.ApprovedBy = current_user.UserId 
         # po_orm.ApprovedDate = datetime.now()
