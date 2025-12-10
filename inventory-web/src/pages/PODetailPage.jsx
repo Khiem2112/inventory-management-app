@@ -1,15 +1,16 @@
 import React, { useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import PODetailView from '../components/PurchaseOrderDetail'; // Your existing component
-import { Box, Typography, Button } from '@mui/material';
+import { Box, Typography, Button, CircularProgress, Snackbar, Alert } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { fetchPurchaseOrderDetail } from '../services/poService';
-import { useQuery } from '@tanstack/react-query';
+import { fetchPurchaseOrderDetail, approvePO, rejectPO } from '../services/poService';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'; // <--- 1. Import Client
 
 const PODetailPage = () => {
     const { id } = useParams();
     const location = useLocation();
     const navigate = useNavigate();
+    const queryClient = useQueryClient(); // Used to refresh data after approval
 
     // 1. Try to get data passed from the List View
     const optimisticHeader = location.state?.initialData;
@@ -34,6 +35,34 @@ const PODetailPage = () => {
         navigate("/purchase-orders")
     }
 
+    const approveMutation = useMutation({
+        mutationFn: () => approvePO(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries(['poDetail', id]); // Refresh UI to show "Issued"
+            setToast({ open: true, message: "Purchase Order Approved!", severity: 'success' });
+        },
+        onError: (err) => setToast({ open: true, message: err.message || "Approval Failed", severity: 'error' })
+    });
+
+    const rejectMutation = useMutation({
+        mutationFn: (reason) => rejectPO({ poId: id, reason }),
+        onSuccess: () => {
+            queryClient.invalidateQueries(['poDetail', id]);
+            setToast({ open: true, message: "Purchase Order Rejected", severity: 'info' });
+        },
+        onError: (err) => setToast({ open: true, message: err.message || "Rejection Failed", severity: 'error' })
+    });
+
+    const pdfMutation = useMutation({
+        mutationFn: () => downloadPurchaseOrderPDF(id),
+        onError: (err) => setToast({ open: true, message: "PDF Generation Failed", severity: 'error' })
+    });
+
+    // --- UI State ---
+    const [toast, setToast] = React.useState({ open: false, message: '', severity: 'info' });
+
+    const isProcessing = approveMutation.isPending || rejectMutation.isPending || pdfMutation.isPending;
+
     if (!id) {
         return (
             <Box sx={{ 
@@ -50,6 +79,8 @@ const PODetailPage = () => {
     const activeHeader = optimisticHeader || fullDetail?.header || {}
     const showFullLoading = isLoading && !activeHeader
     const activeItems = fullDetail?.items || []
+
+
     // Scenario B: Hard Loading (Refresh case - No cache, no state)
     if (showFullLoading) {
         return (
@@ -75,12 +106,28 @@ const PODetailPage = () => {
 
     // Scenario D: Success / Optimistic View
     return (
-        <PODetailView
-            header={activeHeader} 
-            items={activeItems} 
-            itemsLoading={isLoading} 
-            onClose={handleClose}
-        />
+        <>
+            <PODetailView
+                header={activeHeader} 
+                items={activeItems} 
+                itemsLoading={isLoading} 
+                onClose={handleClose}
+            />
+
+            <Snackbar 
+                open={toast.open} 
+                autoHideDuration={6000} 
+                onClose={() => setToast({ ...toast, open: false })}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+                <Alert severity={toast.severity} onClose={() => setToast({ ...toast, open: false })}>
+                    {toast.message}
+                </Alert>
+            </Snackbar>
+        </>
+        
+
+        
     );
 };
 
