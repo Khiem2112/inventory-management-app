@@ -192,3 +192,29 @@ export const rejectPO = async ({ poId, reason }) => {
         throw error;
     }
 };
+
+export const downloadPurchaseOrderPDF = async (poId) => {
+    try {
+        const response = await api.get(`/purchase-order/${poId}/export/pdf`, {
+            responseType: 'blob', // <--- CRITICAL: Tells axios to treat response as binary
+            headers: { 'Accept': 'application/pdf' }
+        });
+
+        // Create a temporary link to trigger download
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `PO-${poId}.pdf`); // Filename
+        document.body.appendChild(link);
+        link.click();
+        
+        // Cleanup
+        link.parentNode.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        return true;
+    } catch (error) {
+        console.error("PDF Download failed", error);
+        throw error;
+    }
+};
