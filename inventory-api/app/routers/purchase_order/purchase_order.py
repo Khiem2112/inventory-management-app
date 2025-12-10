@@ -376,6 +376,9 @@ def approve_purchase_order(
 
         # 5. Perform Transition
         po_orm.Status = "Issued"
+        # Set approve date
+        po_orm.ApprovalDate = datetime.now()
+        po_orm.ApprovedByUserId = current_user.UserId
         # Optional: You might want to record who approved it if you add an 'ApprovedBy' column later
         # po_orm.ApprovedBy = current_user.UserId 
         # po_orm.ApprovedDate = datetime.now()
