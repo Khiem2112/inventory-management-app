@@ -173,7 +173,6 @@ export const searchProducts = async (query) => {
     }
 };
 
-// It is currently mock version and we wait for real API to be developed
 export const approvePO = async (poId) => {
     try {
         const response = await api.put(`purchase-order/${poId}/approve`)
@@ -185,7 +184,6 @@ export const approvePO = async (poId) => {
 
 }
 
-// It is currently mock version and we wait for real API to be developed
 export const rejectPO = async ({ poId, reason }) => {
     try {
         const response = await api.put(`/purchase-order/${poId}/reject`, { reason: reason });

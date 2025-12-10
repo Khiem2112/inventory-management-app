@@ -3,7 +3,7 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import PODetailView from '../components/PurchaseOrderDetail'; // Your existing component
 import { Box, Typography, Button, CircularProgress, Snackbar, Alert } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { fetchPurchaseOrderDetail, approvePO, rejectPO } from '../services/poService';
+import { fetchPurchaseOrderDetail, approvePO, rejectPO, downloadPurchaseOrderPDF } from '../services/poService';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'; // <--- 1. Import Client
 
 const PODetailPage = () => {
