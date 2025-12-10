@@ -1,5 +1,6 @@
 # app/schemas/base.py
-from pydantic import BaseModel, ConfigDict, AliasGenerator
+from pydantic import BaseModel, ConfigDict, AliasGenerator, Field
+from typing import Optional
 
 # --- UTILITY: The Converter ---
 def to_pascal(snake: str) -> str:
@@ -45,3 +46,5 @@ class AutoReadSchema(BaseModel):
         populate_by_name=True,
         from_attributes=True
     )
+class StandardResponse(BaseModel):
+    message: Optional[str] = Field(default=None, description = "Overall description for the endpoint response")
