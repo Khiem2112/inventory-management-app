@@ -10,7 +10,7 @@ import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import { searchProducts } from '../../services/poService';
 
 const POLineItemsForm = () => {
-    const { control, register, watch, setValue, getValues} = useFormContext();
+    const { control, register, watch, setValue, getValues, formState: { errors } } = useFormContext();
     const { fields, append, remove } = useFieldArray({
         control,
         name: "items"
@@ -121,7 +121,18 @@ const POLineItemsForm = () => {
                             // Watch for live calculations
                             const qty = watch(`items.${index}.quantity`);
                             const price = watch(`items.${index}.unit_price`);
+                            const currentProductId = watch(`items.${index}.product_id`);
+                            const currentName = watch(`items.${index}.item_description`);
                             const total = (qty || 0) * (price || 0);
+                            // This ensures the input shows the selected value even after re-renders
+                            const autocompleteValue = currentProductId ? {
+                                product_id: currentProductId,
+                                name: currentName,
+                                unit_price: price,
+                                // Add fake properties if needed for display consistency
+                                sku: "SELECTED", 
+                                image_url: null
+                            } : null;
 
                             return (
                                 <TableRow key={field.id} sx={{ '& td': { verticalAlign: 'top', pt: 2 } }}>
@@ -130,6 +141,14 @@ const POLineItemsForm = () => {
                                             options={productOptions}
                                             loading={loadingProducts}
                                             onOpen={loadProducts}
+
+                                            // Control the Value manually
+                                            value={autocompleteValue}
+                                            
+                                            // Help MUI match the fake 'value' object with real 'options'
+                                            isOptionEqualToValue={(option, value) => 
+                                                String(option.product_id) === String(value.product_id)
+                                            }
                                             // Define how options look in the dropdown
                                             getOptionLabel={(option) => {
                                                 // Handle case where value might be just the name string initially
@@ -164,11 +183,10 @@ const POLineItemsForm = () => {
                                             renderInput={(params) => (
                                                 <TextField 
                                                     {...params} 
-                                                    {...register(`items.${index}.item_description`, { required: "Required" })}
                                                     placeholder="Search SKU or Name..." 
                                                     variant="standard" 
                                                     fullWidth
-                                                    error={!!watch(`items.${index}.item_description`) === false} // Simple validation visual
+                                                    error={!!errors.items?.[index]?.product_id} // Simple validation visual
                                                     InputProps={{
                                                         ...params.InputProps,
                                                         endAdornment: (

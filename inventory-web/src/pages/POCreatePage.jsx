@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useForm, FormProvider, useWatch } from 'react-hook-form';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useNavigate, useBlocker, useBeforeUnload } from 'react-router-dom';
+import { useNavigate, useBlocker, useBeforeUnload, useParams } from 'react-router-dom';
 import { 
     Box, Typography, Grid, Paper, Button, Autocomplete, TextField, 
     Divider, CircularProgress, Alert, Snackbar, 
@@ -12,12 +12,15 @@ import SendIcon from '@mui/icons-material/Send';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 import POLineItemsForm from '../components/form/POLineItemsForm'; 
-import { createPurchaseOrder, searchVendors } from '../services/poService';
+import { createPurchaseOrder, searchVendors, fetchPurchaseOrderDetail } from '../services/poService';
 
 // Mock Plan ID for now (as per user mock request)
 
 const POCreatePage = () => {
     const navigate = useNavigate();
+    // Check for ID in case the current page is for Update
+    const { id } = useParams();
+    const isEditMode = Boolean(id);
     const [vendorOptions, setVendorOptions] = useState([]);
     
     // 1. Setup Form
@@ -31,7 +34,50 @@ const POCreatePage = () => {
     });
 
     // Get formState from methods
-    const { formState: { isDirty, isSubmitSuccessful } } = methods;
+    const { formState: { isDirty, isSubmitSuccessful }, reset, setValue, register, watch } = methods;
+
+    // Fetch Data if Edit Mode ---
+    const { data: existingData, isLoading: isLoadingData } = useQuery({
+        queryKey: ['poDetail', id],
+        queryFn: () => fetchPurchaseOrderDetail(id),
+        enabled: isEditMode,
+        refetchOnWindowFocus: false,
+    });
+
+    // Populate Form on Data Load
+    useEffect(() => {
+        if (existingData) {
+            // Guard: Prevent editing if not Draft
+            if (existingData.header.status !== 'Draft') {
+                alert("Only Draft orders can be edited.");
+                navigate(`/purchase-orders/${id}`);
+                return;
+            }
+
+            // Map API Data -> Form Structure
+            const formData = {
+                supplier_id: existingData.header.supplier_id, // Ensure this exists in your header API response
+                // Reconstruct supplier_obj for the Autocomplete to show the name
+                supplier_obj: { 
+                    supplier_id: existingData.header.supplier_id, 
+                    name: existingData.header.supplier_name,
+                    payment_terms: "Net 30" // Mock or fetch if available in header
+                },
+                purchase_plan_id: existingData.header.purchase_plan_id,
+                items: existingData.items.map(item => ({
+                    product_id: item.product_id,
+                    item_description: item.item_description, // or item.product_name depending on API
+                    quantity: item.quantity,
+                    unit_price: item.unit_price,
+                    // If needed, store original ID to handle updates vs new lines
+                    purchase_order_item_id: item.purchase_order_item_id 
+                }))
+            };
+
+            // Reset form with fetched values
+            reset(formData);
+        }
+    }, [existingData, reset, id, navigate]);
 
     // 2. Setup Mutation (Create API)
     const createMutation = useMutation({
@@ -44,6 +90,12 @@ const POCreatePage = () => {
         onError: (error) => {
             // Handle error (show toast/alert)
         }
+    });
+
+    const updateMutation = useMutation({
+        mutationFn: (payload) => updatePurchaseOrder({ poId: id, payload }),
+        onSuccess: (data) => navigate(`/purchase-orders/${id}`, { replace: true }),
+        onError: (error) => console.error("Update failed", error)
     });
 
     // 3. Watchers for Summary Card
@@ -108,14 +160,10 @@ const POCreatePage = () => {
     };
 
     const handleSaveDraftAndLeave = () => {
-        console.log(`Calling handle save and navigating`)
-        // Trigger the form submit with isDraft = true
         methods.handleSubmit((data) => {
-            // We define a special onSuccess for this flow to proceed with navigation
-            const payload = {
-                // ... replicate payload logic or extract it to a helper ...
+            const payload = { /* ... construct payload ... */ 
                 supplier_id: data.supplier_obj?.supplier_id, 
-                is_draft: true, // FORCE DRAFT
+                is_draft: true,
                 items: data.items.map(item => ({
                     product_id: Number(item.product_id), 
                     quantity: Number(item.quantity),
@@ -125,15 +173,12 @@ const POCreatePage = () => {
             };
             if (data.purchase_plan_id) payload.purchase_plan_id = data.purchase_plan_id;
 
-            // Run mutation
-            createMutation.mutate(payload, {
-                onSuccess: (responseData) => {
-                    // Once saved, we allow the original navigation to proceed
-                    if (blocker.state === "blocked") {
-                        blocker.proceed();
-                    } else {
-                        navigate(`/purchase-orders/${responseData.purchase_order_id}`);
-                    }
+            const mutation = isEditMode ? updateMutation : createMutation; // Select mutation
+            
+            mutation.mutate(payload, {
+                onSuccess: (res) => {
+                    if (blocker.state === "blocked") blocker.proceed();
+                    else navigate(`/purchase-orders/${res?.purchase_order_id || id}`);
                 }
             });
         })();
@@ -172,6 +217,10 @@ const POCreatePage = () => {
                                 <Grid item xs={12} md={6}>
                                     <Autocomplete
                                         options={vendorOptions}
+                                        value={watch('supplier_obj')}
+                                        isOptionEqualToValue={(option, value) => 
+                                            option.supplier_id === value.supplier_id
+                                        }
                                         getOptionLabel={(option) => option.name}
                                         onOpen={async () => {
                                             const results = await searchVendors(""); // Load initial

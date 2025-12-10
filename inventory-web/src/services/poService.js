@@ -117,6 +117,17 @@ export const createPurchaseOrder = async (payload) => {
     }
 };
 
+// Update Purchase Order
+export const updatePurchaseOrder = async ({ poId, payload }) => {
+    try {
+        const response = await api.put(`/purchase-order/${poId}`, payload);
+        return response.data;
+    } catch (error) {
+        console.error("Failed to update PO:", error);
+        throw error;
+    }
+};
+
 /**
  * Lookup Helpers (Mocking these for now) ---
  * In a real app, these would hit /api/vendors?search=...

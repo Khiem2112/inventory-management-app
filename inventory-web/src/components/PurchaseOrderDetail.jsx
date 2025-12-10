@@ -1,6 +1,7 @@
-import React from 'react';
+ import React from 'react';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { 
     Box, 
     Typography, 
@@ -31,13 +32,15 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import EditIcon from '@mui/icons-material/Edit'; // <--- 2. Import Icon
 
 // --- 1. Detail Header (Pure Component - Instant Render) ---
 const DetailHeader = ({ headerData, onClose }) => {
     // We map the fields directly as per your PO_COLUMNS_CONFIG keys
     // keys: purchase_order_id, supplier_name, purchase_plan_id, create_user_name, create_date, total_price, status
-    
+    const navigate = useNavigate()
     if (!headerData) return null;
+    const isDraft = headerData.status === 'Draft';
 
     return (
         <Paper elevation={0} sx={{ p: 3, borderBottom: '1px solid #e0e0e0', borderRadius: 0 }}>
@@ -63,6 +66,17 @@ const DetailHeader = ({ headerData, onClose }) => {
                     <Typography variant="h4" fontWeight="800" color="#2c3e50">
                         #{headerData.purchase_order_id}
                     </Typography>
+                    {/*EDIT BUTTON (Only for Draft POs) */}
+                    {isDraft && (
+                        <Button 
+                            variant="outlined" 
+                            size="small" 
+                            startIcon={<EditIcon />}
+                            onClick={() => navigate(`/purchase-orders/${headerData.purchase_order_id}/edit`)}
+                        >
+                            Edit
+                        </Button>
+                    )}
                 </Box>
                 <StatusBadge status={headerData.status} />
             </Box>
