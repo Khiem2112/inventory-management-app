@@ -12,7 +12,7 @@ import SendIcon from '@mui/icons-material/Send';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 import POLineItemsForm from '../components/form/POLineItemsForm'; 
-import { createPurchaseOrder, searchVendors, fetchPurchaseOrderDetail } from '../services/poService';
+import { createPurchaseOrder, searchVendors, fetchPurchaseOrderDetail, updatePurchaseOrder } from '../services/poService';
 
 // Mock Plan ID for now (as per user mock request)
 
@@ -126,7 +126,8 @@ const POCreatePage = () => {
         }
 
         console.log("Submitting Payload:", JSON.stringify(payload, null, 2));
-        createMutation.mutate(payload);
+        const mutation = isEditMode ? updateMutation: createMutation
+        mutation.mutate(payload);
     };
 
     // unsaved guard
