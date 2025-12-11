@@ -44,7 +44,7 @@ class User(Base):
         back_populates="user"
     )
     # Good Receipts
-    goods_receipts_received: list["GoodsReceipt"] = relationship(
+    goods_receipts_received: Mapped[list["GoodsReceipt"]] = relationship(
         back_populates="received_by_user"
     )
     # Constraints
