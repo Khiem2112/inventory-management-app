@@ -43,6 +43,10 @@ class User(Base):
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
         back_populates="user"
     )
+    # Good Receipts
+    goods_receipts_received: list["GoodsReceipt"] = relationship(
+        back_populates="received_by_user"
+    )
     # Constraints
     __table_args__ = (
         CheckConstraint(
