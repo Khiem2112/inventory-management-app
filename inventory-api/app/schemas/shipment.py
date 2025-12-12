@@ -1,0 +1,92 @@
+from typing import Optional, List
+from datetime import datetime
+from pydantic import Field, BaseModel
+
+# Import the custom base schemas for auto-conversion
+from app.schemas.base import AutoReadSchema, AutoWriteSchema, StandardResponse
+class ShipmentManifestBase(BaseModel):
+    """Common fields for ShipmentManifest model."""
+    supplier_id: Optional[int] = Field(default=None)
+    purchase_order_id: Optional[int] = None
+    tracking_number: Optional[str] = Field(None, max_length=200)
+    carrier_name: Optional[str] = Field(None, max_length=200)
+    estimated_arrival: Optional[datetime] = None
+    status: Optional[str] = Field(..., max_length=100)
+    created_by_user_id: Optional[int] = None
+
+# (2) INPUT/WRITE: Inherits Base fields and AutoWriteSchema for ORM conversion
+class ShipmentManifestWrite(ShipmentManifestBase, AutoWriteSchema):
+    """Schema for creating or updating a ShipmentManifest (input)."""
+    pass
+
+# (3) OUTPUT/READ: Inherits Base fields and AutoReadSchema, plus read-only fields
+class ShipmentManifestRead(ShipmentManifestBase, AutoReadSchema):
+    """Schema for reading a ShipmentManifest (response)."""
+    id: int # Primary Key
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+
+# --- 2. ShipmentManifestLine Schemas ---
+
+# (1) BASE: All common fields, used for inheritance
+class ShipmentManifestLineBase(BaseModel):
+    """Common fields for ShipmentManifestLine model."""
+    shipment_manifest_id: Optional[int] = Field(default=None)
+    supplier_serial_number: Optional[str] = Field(None, max_length=200)
+    supplier_sku: Optional[str] = Field(None, max_length=200)
+    quantity_declared: int = Field(..., gt=0)
+
+# (2) INPUT/WRITE: Inherits Base fields and AutoWriteSchema
+class ShipmentManifestLineWrite(ShipmentManifestLineBase, AutoWriteSchema):
+    """Schema for creating or updating a ShipmentManifestLine (input)."""
+    pass
+
+# (3) OUTPUT/READ: Inherits Base fields and AutoReadSchema, plus read-only fields
+class ShipmentManifestLineRead(ShipmentManifestLineBase, AutoReadSchema):
+    """Schema for reading a ShipmentManifestLine (response)."""
+    id: int
+
+class CountingManifestLineResponse(ShipmentManifestLineBase, AutoReadSchema):
+    """
+    Schema for a single line item in the Manifest Details response.
+    Inherits fields like supplier_sku directly.
+    Aliases fields line_id and qty_shipped to adhere to the base contract.
+    """
+    id: Optional[int] = Field(default=None, description= "Line ID of Shipment Manifest")
+    # 1. Alias fields to match the specific API contract output names (keeping line_id and qty_shipped)
+    # 2. Add calculated/derived fields
+    po_number: Optional[str] = None 
+    product_name: Optional[str] = None
+    qty_received: Optional[int] = Field(default=None, description="Count of linked Assets with Status = 'received'")
+    
+class ManifestLinesListResponse(ShipmentManifestBase, StandardResponse):
+    """
+    The full response body for GET /manifests/{manifest_id}/lines.
+    """
+    shipment_manifest_id: Optional[int] = Field(default=None)
+    status: Optional[str] = None
+    lines: List[ShipmentManifestLineRead] # Leveraging the existing Read schema
+    total_lines: Optional[int] = Field(default=None)
+
+# --- 3. GoodsReceipt Schemas ---
+
+# (1) BASE: All common fields, used for inheritance
+class GoodsReceiptBase(BaseModel):
+    """Common fields for GoodsReceipt model."""
+    receipt_number: str = Field(..., max_length=50)
+    received_by_user_id: int
+    carrier_name: Optional[str] = Field(None, max_length=100)
+    tracking_number: Optional[str] = Field(None, max_length=50)
+    shipment_manifest_id: Optional[int] = None # FK for the 1:1 relationship
+
+# (2) INPUT/WRITE: Inherits Base fields and AutoWriteSchema
+class GoodsReceiptWrite(GoodsReceiptBase, AutoWriteSchema):
+    """Schema for creating or updating a GoodsReceipt (input)."""
+    pass
+
+# (3) OUTPUT/READ: Inherits Base fields and AutoReadSchema, plus read-only fields
+class GoodsReceiptRead(GoodsReceiptBase, AutoReadSchema):
+    """Schema for reading a GoodsReceipt (response)."""
+    receipt_id: int # Primary Key 'ReceiptId' maps to 'receipt_id'
+    received_date: Optional[datetime] = None

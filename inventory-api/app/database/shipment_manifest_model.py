@@ -20,7 +20,7 @@ class ShipmentManifest(Base):
     SupplierId: Mapped[int] = mapped_column(Integer, ForeignKey('Supplier.Id'), nullable=False)
 
     # PurchaseOrderId (Nullable, Foreign Key to PurchaseOrder)
-    PurchaseOrderId: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('PurchaseOrder.PurchaseOrderID'), nullable=True)
+    PurchaseOrderId: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('PurchaseOrder.PurchaseOrderId'), nullable=True)
 
     # TrackingNumber (Nullable, nvarchar(200))
     TrackingNumber: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
@@ -93,4 +93,7 @@ class ShipmentManifestLine(Base):
     # ORM Relationship: Many-to-One to ShipmentManifest
     shipment_manifest: Mapped["ShipmentManifest"] = relationship(
         back_populates="manifest_lines"
+    )
+    assets: Mapped[list["Asset"]]  = relationship(
+        back_populates="shipment_manifest_line"
     )

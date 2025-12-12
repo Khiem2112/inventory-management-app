@@ -5,7 +5,7 @@ from datetime import datetime
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy import String, Integer, DateTime, ForeignKey, text
 from app.database.base import Base
-from app.database.shipment_manifest import ShipmentManifest
+from app.database.shipment_manifest_model import ShipmentManifest
 
 class GoodsReceipt(Base):
   """

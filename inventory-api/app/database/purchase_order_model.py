@@ -46,6 +46,6 @@ class PurchaseOrder(Base):
   PurchaseOrderItems: Mapped[list["PurchaseOrderItem"]] = relationship("PurchaseOrderItem",
                                                              lazy="joined",
                                                              back_populates="PurchaseOrder")
-  shipment_manifests = relationship(
+  shipment_manifests: Mapped[list["ShipmentManifest"]] = relationship(
     back_populates="purchase_order"
   )
