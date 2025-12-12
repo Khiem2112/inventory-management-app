@@ -25,8 +25,23 @@ class ShipmentManifestRead(ShipmentManifestBase, AutoReadSchema):
     id: int # Primary Key
     created_at: datetime
     updated_at: Optional[datetime] = None
+# Search Schema Result
+class ManifestSearchResultItem(ShipmentManifestRead):
+    """
+    Enhanced schema for search results.
+    Inherits standard fields (id, status, dates) and adds joined/derived info.
+    """
+    # Override/Add fields for the specific search response format
+    manifest_code: str = Field(..., description="Formatted Manifest ID (e.g., SM-1002)")
+    supplier_name: Optional[str] = Field(None, description="Name of the Supplier")
+    po_number: Optional[str] = Field(None, description="Formatted PO Number (e.g., PO-123)")
+    item_count: int = Field(default=0, description="Total items in this manifest")
 
-
+class ManifestSearchResponse(BaseModel):
+    """
+    Wrapper for the search results array as per the API design.
+    """
+    results: List[ManifestSearchResultItem]
 # --- 2. ShipmentManifestLine Schemas ---
 
 # (1) BASE: All common fields, used for inheritance
@@ -66,7 +81,7 @@ class ManifestLinesListResponse(ShipmentManifestBase, StandardResponse):
     """
     shipment_manifest_id: Optional[int] = Field(default=None)
     status: Optional[str] = None
-    lines: List[ShipmentManifestLineRead] # Leveraging the existing Read schema
+    lines: List[CountingManifestLineResponse] # Leveraging the existing Read schema
     total_lines: Optional[int] = Field(default=None)
 
 # --- 3. GoodsReceipt Schemas ---
