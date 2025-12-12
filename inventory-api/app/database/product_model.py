@@ -46,6 +46,8 @@ class Product(Base):
   PurchaseOrderItems: Mapped[list["PurchaseOrderItem"]] = relationship("PurchaseOrderItem", 
                                                                      lazy="joined", 
                                                                      back_populates="Product")
-  
+  assets: Mapped[list["Asset"]] = relationship(
+    back_populates="product"
+  )
   class Config:
     from_attributes = True

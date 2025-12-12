@@ -94,3 +94,6 @@ class ShipmentManifestLine(Base):
     shipment_manifest: Mapped["ShipmentManifest"] = relationship(
         back_populates="manifest_lines"
     )
+    assets  = relationship(
+        back_populates="shipment_manifest_line"
+    )
