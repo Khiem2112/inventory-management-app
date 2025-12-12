@@ -36,7 +36,6 @@ class GoodsReceipt(Base):
   )
 
   # Details about the shipment (Optional fields use Mapped[Optional[str]])
-  CarrierName: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
   TrackingNumber: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
   ShipmentManifestId: Mapped[Optional[int]] = mapped_column(
         Integer,
