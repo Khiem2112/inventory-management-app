@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session, selectinload, joinedload
 from sqlalchemy import select
 from enum import Enum
+from datetime import datetime, date
 # Hypothetical imports
 from app.database.shipment_manifest_model import (
   ShipmentManifest, 
@@ -130,68 +131,74 @@ class SearchType(str, Enum):
     description="Finds 'In Transit' manifests (Status='posted' & Assets='In Transit') based on criteria."
 )
 async def search_manifests(
-    query: str = Query(..., description="The search term (e.g., 'PO-10023', 'Apple', 'SM-1002')"),
-    type: SearchType = Query(SearchType.manifest_id, description="Type of search"),
+    manifest_id: Optional[int] = Query(None, description="Exact match for Manifest ID"),
+    supplier_id: Optional[int] = Query(None, description="Exact match for Supplier ID"),
+    supplier_name: Optional[str] = Query(None, description="Partial match for Supplier Name"),
+    tracking_number: Optional[str] = Query(None, description="Partial match for Tracking Number"),
+    date_from: Optional[date] = Query(None, description="Arrival date from (inclusive)"),
+    date_to: Optional[date] = Query(None, description="Arrival date to (inclusive)"),
     db: Session = Depends(get_db)
 ):
-    logger.info(f"Searching manifests. Type: {type}, Query: {query}")
+    logger.info(f"Searching manifests. Params: ID={manifest_id}, Supplier={supplier_name}/{supplier_id}")
 
     try:
-        # 1. Base Query: Join tables to filter by Asset Status
-        # Path: ShipmentManifest -> ShipmentManifestLine -> Asset
-        stmt = (
+        # 1. Base Query: The "In Transit" Logic
+        query = (
             db.query(ShipmentManifest)
-            .join(ShipmentManifest.manifest_lines) # Inner join ensures manifest has lines
-            .join(ShipmentManifestLine.assets)     # Inner join ensures lines have assets
-            .filter(ShipmentManifest.Status == "posted")   # Header status must be 'posted'
-            .filter(Asset.AssetStatus == "In Transit")     # Linked assets must be 'In Transit'
+            .join(ShipmentManifest.manifest_lines)
+            .join(ShipmentManifestLine.assets)
+            # Join Supplier for filtering and fetching the name
+            .join(SupplierORM, ShipmentManifest.SupplierId == SupplierORM.SupplierId)
+            .filter(ShipmentManifest.Status == "posted")
+            .filter(Asset.AssetStatus == "In Transit")
         )
 
-        # 2. Dynamic Filtering based on Search Type
-        if type == SearchType.manifest_id:
-            # Extract digits (e.g., "SM-1002" -> 1002)
-            clean_id_str = "".join(filter(str.isdigit, query))
-            logger.info(f"clean id str when finding based on manifest id is: {clean_id_str}")
-            if clean_id_str:
-                stmt = stmt.filter(ShipmentManifest.Id == int(clean_id_str))
-            else:
-                return ManifestSearchResponse(results=[])
+        # 2. Apply Dynamic Filters
+        if manifest_id:
+            query = query.filter(ShipmentManifest.Id == manifest_id)
 
-        elif type == SearchType.po_number:
-            # Join PO Table to search by PO ID
-            clean_po_id_str = "".join(filter(str.isdigit, query))
-            if clean_po_id_str:
-                stmt = stmt.join(ShipmentManifest.purchase_order)\
-                           .filter(PurchaseOrderORM.PurchaseOrderId == int(clean_po_id_str))
-            else:
-                return ManifestSearchResponse(results=[])
+        if supplier_id:
+            query = query.filter(ShipmentManifest.SupplierId == supplier_id)
+        if supplier_name:
+            query = query.filter(SupplierORM.SupplierName.ilike(f"%{supplier_name}%"))
 
-        elif type == SearchType.supplier_name:
-            # Join Supplier Table manually (since we are querying ShipmentManifest)
-            stmt = stmt.join(SupplierORM, ShipmentManifest.SupplierId == SupplierORM.SupplierId)\
-                       .filter(SupplierORM.SupplierName.ilike(f"%{query}%"))
+        if tracking_number:
+            query = query.filter(ShipmentManifest.TrackingNumber.ilike(f"%{tracking_number}%"))
 
-        # 3. distinct(): 
-        # Since we join with Assets (1 Manifest has Many Assets), the query will return 
-        # duplicate Manifest rows for every matching Asset. distinct() removes them.
-        manifests = stmt.distinct().all()
-        # 4. Map to Response Schema
+        if date_from:
+            query = query.filter(ShipmentManifest.EstimatedArrival >= date_from)
+        if date_to:
+            query = query.filter(ShipmentManifest.EstimatedArrival <= date_to)
+
+        # 3. Execute & Deduplicate
+        manifests = query.distinct().all()
+
+        # 4. Map to Response (using snake_case arguments)
         results = []
         for man in manifests:
-            # Fetch Supplier Name manually if relationship lazy loading isn't set up perfectly
-            supplier_name = "Unknown"
-            # Optimization: could use eager loading in query, but simple lookup is safe here
-            supplier = db.query(SupplierORM).filter(SupplierORM.SupplierId == man.SupplierId).first()
-            if supplier:
-                supplier_name = supplier.SupplierName
+            # Fetch Supplier Name explicitly or access via relationship if configured
+            supp_name = "Unknown"
             
-            # Calculate item count (Total lines in this manifest)
+            # Since we performed an inner join on Supplier, the record typically exists.
+            # If you have a lazy-loaded relationship: supp_name = man.supplier.SupplierName
+            # Otherwise, a quick safe lookup (or optimization via add_entity in the query):
+            supplier_obj = db.query(SupplierORM).filter(SupplierORM.SupplierId == man.SupplierId).first()
+            if supplier_obj:
+                supp_name = supplier_obj.SupplierName
+
             item_count = len(man.manifest_lines) if man.manifest_lines else 0
 
+            # Use snake_case keys here. 
+            # Pydantic will map these to the model fields defined above.
             item = ManifestSearchResultItem(
-                **man.__dict__,
+                id=man.Id,
                 manifest_code=f"SM-{man.Id}",
-                supplier_name=supplier_name,
+                supplier_name=supp_name,
+                tracking_number=man.TrackingNumber,
+                carrier_name=man.CarrierName,
+                status=man.Status,
+                estimated_arrival=man.EstimatedArrival,
+                created_at=man.CreatedAt,
                 po_number=f"PO-{man.PurchaseOrderId}" if man.PurchaseOrderId else None,
                 item_count=item_count
             )
