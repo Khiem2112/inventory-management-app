@@ -1,21 +1,24 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session, selectinload
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy.orm import Session, selectinload, joinedload
 from sqlalchemy import select
-
+from enum import Enum
 # Hypothetical imports
 from app.database.shipment_manifest_model import (
   ShipmentManifest, 
   ShipmentManifestLine
 )
 from app.database.asset_model import Asset
-from app.database.base import Base 
+from app.database.supplier_model import Supplier as SupplierORM
+from app.database.purchase_order_model import PurchaseOrder as PurchaseOrderORM
 # Assuming these are available:
 from app.schemas.shipment import (
 
 ShipmentManifestLineRead,   
 ManifestLinesListResponse,
-CountingManifestLineResponse
+CountingManifestLineResponse,
+ManifestSearchResponse,
+ManifestSearchResultItem
 )
 from app.utils.dependencies import get_db
 from app.utils.logger import setup_logger
@@ -116,3 +119,89 @@ async def get_all_manifest_lines(
         message=f"Shipment Manifest {manifest_id} details successfully retrieved with {len(response_lines)} lines.",
         total_lines= len(response_lines)
     )
+    
+class SearchType(str, Enum):
+    manifest_id = "manifest_id"
+    po_number = "po_number"
+    supplier_name = "supplier_name"
+@router.get(
+    "/manifests/search",
+    response_model=ManifestSearchResponse,
+    description="Finds 'In Transit' manifests (Status='posted' & Assets='In Transit') based on criteria."
+)
+async def search_manifests(
+    query: str = Query(..., description="The search term (e.g., 'PO-10023', 'Apple', 'SM-1002')"),
+    type: SearchType = Query(SearchType.manifest_id, description="Type of search"),
+    db: Session = Depends(get_db)
+):
+    logger.info(f"Searching manifests. Type: {type}, Query: {query}")
+
+    try:
+        # 1. Base Query: Join tables to filter by Asset Status
+        # Path: ShipmentManifest -> ShipmentManifestLine -> Asset
+        stmt = (
+            db.query(ShipmentManifest)
+            .join(ShipmentManifest.manifest_lines) # Inner join ensures manifest has lines
+            .join(ShipmentManifestLine.assets)     # Inner join ensures lines have assets
+            .filter(ShipmentManifest.Status == "posted")   # Header status must be 'posted'
+            .filter(Asset.AssetStatus == "In Transit")     # Linked assets must be 'In Transit'
+        )
+
+        # 2. Dynamic Filtering based on Search Type
+        if type == SearchType.manifest_id:
+            # Extract digits (e.g., "SM-1002" -> 1002)
+            clean_id_str = "".join(filter(str.isdigit, query))
+            logger.info(f"clean id str when finding based on manifest id is: {clean_id_str}")
+            if clean_id_str:
+                stmt = stmt.filter(ShipmentManifest.Id == int(clean_id_str))
+            else:
+                return ManifestSearchResponse(results=[])
+
+        elif type == SearchType.po_number:
+            # Join PO Table to search by PO ID
+            clean_po_id_str = "".join(filter(str.isdigit, query))
+            if clean_po_id_str:
+                stmt = stmt.join(ShipmentManifest.purchase_order)\
+                           .filter(PurchaseOrderORM.PurchaseOrderId == int(clean_po_id_str))
+            else:
+                return ManifestSearchResponse(results=[])
+
+        elif type == SearchType.supplier_name:
+            # Join Supplier Table manually (since we are querying ShipmentManifest)
+            stmt = stmt.join(SupplierORM, ShipmentManifest.SupplierId == SupplierORM.SupplierId)\
+                       .filter(SupplierORM.SupplierName.ilike(f"%{query}%"))
+
+        # 3. distinct(): 
+        # Since we join with Assets (1 Manifest has Many Assets), the query will return 
+        # duplicate Manifest rows for every matching Asset. distinct() removes them.
+        manifests = stmt.distinct().all()
+        # 4. Map to Response Schema
+        results = []
+        for man in manifests:
+            # Fetch Supplier Name manually if relationship lazy loading isn't set up perfectly
+            supplier_name = "Unknown"
+            # Optimization: could use eager loading in query, but simple lookup is safe here
+            supplier = db.query(SupplierORM).filter(SupplierORM.SupplierId == man.SupplierId).first()
+            if supplier:
+                supplier_name = supplier.SupplierName
+            
+            # Calculate item count (Total lines in this manifest)
+            item_count = len(man.manifest_lines) if man.manifest_lines else 0
+
+            item = ManifestSearchResultItem(
+                **man.__dict__,
+                manifest_code=f"SM-{man.Id}",
+                supplier_name=supplier_name,
+                po_number=f"PO-{man.PurchaseOrderId}" if man.PurchaseOrderId else None,
+                item_count=item_count
+            )
+            results.append(item)
+
+        return ManifestSearchResponse(results=results)
+
+    except Exception as e:
+        logger.error(f"Error searching manifests: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while performing the search."
+        )
