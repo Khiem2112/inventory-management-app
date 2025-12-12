@@ -12,6 +12,7 @@ from app.routers.product import products
 from app.routers.warehouse_zone import warehouse_zones
 from app.routers.purchase_order import purchase_order
 from app.routers.supplier import supplier
+from app.routers.good_receipt import good_receipt
 from fastapi.middleware.cors	import CORSMiddleware
 import os
 from app.utils.logger import setup_logger
@@ -48,6 +49,7 @@ app.include_router(products.router)
 app.include_router(warehouse_zones.router)
 app.include_router(purchase_order.router)
 app.include_router(supplier.router)
+app.include_router(good_receipt.router)
 
 # users = get_all_users()
 # print(users)
