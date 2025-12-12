@@ -34,6 +34,9 @@ class ManifestSearchResultItem(ShipmentManifestRead):
     # Override/Add fields for the specific search response format
     manifest_code: str = Field(..., description="Formatted Manifest ID (e.g., SM-1002)")
     supplier_name: Optional[str] = Field(None, description="Name of the Supplier")
+    tracking_number: Optional[str] = Field(None, validation_alias="TrackingNumber")
+    status: str = Field(...)
+    estimated_arrival: Optional[datetime] = Field(None)
     po_number: Optional[str] = Field(None, description="Formatted PO Number (e.g., PO-123)")
     item_count: int = Field(default=0, description="Total items in this manifest")
 
