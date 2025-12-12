@@ -5,6 +5,7 @@ from sqlalchemy import String, Integer, DateTime, CheckConstraint, text, Foreign
 from datetime import datetime
 from typing import Optional, List # Keep Optional for nullable fields
 from app.database.base import Base
+from app.database.good_receipt_model import GoodsReceipt
 
 class User(Base):
     __tablename__ = 'User'
@@ -45,6 +46,7 @@ class User(Base):
     )
     # Good Receipts
     goods_receipts_received: Mapped[list["GoodsReceipt"]] = relationship(
+        "GoodsReceipt",
         back_populates="received_by_user"
     )
     # Constraints

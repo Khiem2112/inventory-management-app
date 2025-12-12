@@ -24,7 +24,7 @@ class Asset(Base):
     ProductId: Mapped[int] = mapped_column(Integer, ForeignKey('Product.ProductId'), nullable=False)
 
     # CurrentZoneId (int, NOT NULL, Foreign Key to Zone)
-    CurrentZoneId: Mapped[int] = mapped_column(Integer, ForeignKey('Zone.Id'), nullable=False)
+    CurrentZoneId: Mapped[int] = mapped_column(Integer, ForeignKey('Zone.ZoneId'), nullable=False)
 
     # AssetStatus (varchar(20), NOT NULL)
     AssetStatus: Mapped[str] = mapped_column(String(20), nullable=False)
@@ -61,9 +61,6 @@ class Asset(Base):
 
     # ORM Relationship: Many-to-One to Zone
     current_zone: Mapped["Zone"] = relationship(back_populates="assets")
-
-    # ORM Relationship: Many-to-One to ReceivingDocumentLine
-    receiving_document_line: Mapped[Optional["ReceivingDocumentLine"]] = relationship(back_populates="assets")
 
 
     def __repr__(self):
