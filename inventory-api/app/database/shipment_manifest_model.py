@@ -17,7 +17,7 @@ class ShipmentManifest(Base):
     Id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)
 
     # SupplierId (NOT NULL, Foreign Key to Supplier)
-    SupplierId: Mapped[int] = mapped_column(Integer, ForeignKey('Supplier.Id'), nullable=False)
+    SupplierId: Mapped[int] = mapped_column(Integer, ForeignKey('Supplier.SupplierId'), nullable=False)
 
     # PurchaseOrderId (Nullable, Foreign Key to PurchaseOrder)
     PurchaseOrderId: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('PurchaseOrder.PurchaseOrderId'), nullable=True)

@@ -29,13 +29,6 @@ class Asset(Base):
     # AssetStatus (varchar(20), NOT NULL)
     AssetStatus: Mapped[str] = mapped_column(String(20), nullable=False)
 
-    # ReceivingDocumentLineId (bigint, NULL, Foreign Key)
-    ReceivingDocumentLineId: Mapped[Optional[int]] = mapped_column(
-        BigInteger,
-        ForeignKey('DocumentLine.LineId'),
-        nullable=True
-    )
-
     # LastMovementDate (datetime2, NOT NULL)
     LastMovementDate: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
