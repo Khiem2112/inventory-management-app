@@ -1,7 +1,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session, selectinload, joinedload
-from sqlalchemy import select
+from sqlalchemy import select, func
 from enum import Enum
 from datetime import datetime, date
 # Hypothetical imports
@@ -9,9 +9,12 @@ from app.database.shipment_manifest_model import (
   ShipmentManifest, 
   ShipmentManifestLine
 )
-from app.database.asset_model import Asset
+from app.database.asset_model import Asset as AssetORM
 from app.database.supplier_model import Supplier as SupplierORM
-from app.database.purchase_order_model import PurchaseOrder as PurchaseOrderORM
+from app.database.purchase_order_model import PurchaseOrder as PurchaseOrderORM, PurchaseOrderItem as PurchaseOrderItemORM
+from app.database.warehouse_zone_model import Zone as ZoneORM
+from app.database.user_model import User as UserORM
+from app.database.good_receipt_model import GoodsReceipt as GoodsReceiptORM
 # Assuming these are available:
 from app.schemas.shipment import (
 
@@ -19,10 +22,14 @@ ShipmentManifestLineRead,
 ManifestLinesListResponse,
 CountingManifestLineResponse,
 ManifestSearchResponse,
-ManifestSearchResultItem
+ManifestSearchResultItem,
+FinalizeManifestInput,
+FinalizeManifestResponse,
+FinalizeManifestItem
 )
-from app.utils.dependencies import get_db
+from app.utils.dependencies import get_db, get_current_user
 from app.utils.logger import setup_logger
+from app.utils.random_string import generate_random_string
 
 # Initialize the router (assuming 'router' is already defined)
 router = APIRouter(prefix="/receiving", tags=["Receiving"])
@@ -52,7 +59,7 @@ async def get_all_manifest_lines(
             .options(
                 selectinload(ShipmentManifest.manifest_lines)
                 .selectinload(ShipmentManifestLine.assets) 
-                .joinedload(Asset.product) 
+                .joinedload(AssetORM.product) 
             )
             .filter(ShipmentManifest.Id == manifest_id)
             .first()
@@ -150,7 +157,7 @@ async def search_manifests(
             # Join Supplier for filtering and fetching the name
             .join(SupplierORM, ShipmentManifest.SupplierId == SupplierORM.SupplierId)
             .filter(ShipmentManifest.Status == "posted")
-            .filter(Asset.AssetStatus == "In Transit")
+            .filter(AssetORM.AssetStatus == "In Transit")
         )
 
         # 2. Apply Dynamic Filters
@@ -212,3 +219,124 @@ async def search_manifests(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while performing the search."
         )
+
+# Finalize user confirm when receive a shipment
+@router.post(
+    "/manifests/{manifest_id}/finalize",
+    response_model=FinalizeManifestResponse,
+    status_code=status.HTTP_201_CREATED,
+    description="Submits the count, updates Asset Status to 'Awaiting QC', and updates PO Status."
+)
+async def finalize_manifest(
+    manifest_id: int,
+    payload: FinalizeManifestInput,
+    db: Session = Depends(get_db),
+    current_user: UserORM = Depends(get_current_user)
+):
+    try:
+        # 1. Fetch Manifest
+        manifest = db.query(ShipmentManifest).filter(ShipmentManifest.Id == manifest_id).first()
+        if not manifest:
+            raise HTTPException(status_code=404, detail="Manifest not found")
+
+        # 2. Resolve Dock Location (Zone)
+        # Assuming we look up the Zone by name, or default to a generic 'Receiving' zone if not found
+        dock_zone = db.query(ZoneORM).filter(ZoneORM.ZoneName == payload.dock_location).first()
+        if not dock_zone:
+            # Fallback or Error? For now, let's raise an error to enforce valid zones
+            raise HTTPException(status_code=400, detail=f"Zone '{payload.dock_location}' not found.")
+
+        # 3. Create Goods Receipt Record
+        receipt_num = f"GR-{generate_random_string(6).upper()}"
+        goods_receipt = GoodsReceiptORM(
+            ReceiptNumber=receipt_num,
+            ReceivedDate=datetime.now(),
+            ReceivedByUserId=current_user.UserId,
+            ShipmentManifestId=manifest.Id,
+            TrackingNumber=manifest.TrackingNumber
+        )
+        db.add(goods_receipt)
+        db.flush() # Flush to get the GoodsReceipt ID
+
+        # 4. Process Counts & Update Assets
+        for count_item in payload.counts:
+            # Find the line
+            line = db.query(ShipmentManifestLine).filter(ShipmentManifestLine.Id == count_item.line_id).first()
+            if not line or line.ShipmentManifestId != manifest_id:
+                continue # Skip invalid lines
+
+            # Find 'In Transit' assets for this line to mark as Received
+            # We limit the query to 'qty_actual' to handle partial receipt/shortage
+            assets_to_receive = (
+                db.query(AssetORM)
+                .filter(AssetORM.ShipmentManifestLineId == line.Id)
+                .filter(AssetORM.AssetStatus == "In Transit") # Or 'Pending'
+                .limit(count_item.qty_actual)
+                .all()
+            )
+
+            # Update Assets
+            for asset in assets_to_receive:
+                asset.AssetStatus = "Awaiting QC" # Standard flow: Received -> Awaiting QC -> Available
+                asset.CurrentZoneId = dock_zone.ZoneId
+                asset.LastMovementDate = datetime.now()
+                asset.GoodsReceiptId = goods_receipt.ReceiptId
+            
+            # NOTE: If qty_actual > available assets, you might need logic to create NEW assets dynamically.
+            # For this implementation, we assume assets were pre-created (ASN logic).
+
+        # 5. Update Manifest Status
+        manifest.Status = "Awaiting QC" # Or 'Received'
+
+        # 6. UPDATE PURCHASE ORDER STATUS (The Advice Logic)
+        if manifest.PurchaseOrderId:
+            update_po_status_logic(db, manifest.PurchaseOrderId)
+
+        db.commit()
+        
+        return FinalizeManifestResponse(
+            receipt_number=receipt_num,
+            message=f"Manifest SM-{manifest_id} Finalized. Assets moved to {dock_zone.ZoneName}."
+        )
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error finalizing manifest: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+def update_po_status_logic(db: Session, po_id: int):
+    """
+    Helper function to calculate and update PO status based on asset reception.
+    """
+    # 1. Calculate Total Ordered Quantity from PO Items
+    total_ordered = (
+        db.query(func.sum(PurchaseOrderItemORM.Quantity))
+        .filter(PurchaseOrderItemORM.PurchaseOrderId == po_id)
+        .scalar()
+    ) or 0
+
+    # 2. Calculate Total Received Assets linked to this PO
+    # We count assets that are NOT 'Pending', 'In Transit' (i.e., they have arrived)
+    # Adjust status list based on your specific lifecycle
+    total_received = (
+        db.query(func.count(AssetORM.AssetId))
+        .join(ShipmentManifestLine, AssetORM.ShipmentManifestLineId == ShipmentManifestLine.Id)
+        .join(ShipmentManifest, ShipmentManifestLine.ShipmentManifestId == ShipmentManifest.Id)
+        .filter(ShipmentManifest.PurchaseOrderId == po_id)
+        # Filter for statuses that indicate the item is physically here
+        .filter(AssetORM.AssetStatus.in_(["Awaiting QC", "Available", "Allocated", "Quarantine"])) 
+        .scalar()
+    ) or 0
+
+    # 3. Determine Status
+    new_status = "Issued" # Default
+    if total_received >= total_ordered and total_ordered > 0:
+        new_status = "Received"
+    elif total_received > 0:
+        new_status = "Partially Received"
+    
+    # 4. Update PO
+    po = db.query(PurchaseOrderORM).filter(PurchaseOrderORM.PurchaseOrderId == po_id).first()
+    if po and po.Status != new_status:
+        logger.info(f"Updating PO {po_id} status from {po.Status} to {new_status}")
+        po.Status = new_status

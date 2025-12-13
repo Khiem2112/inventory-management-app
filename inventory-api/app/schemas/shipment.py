@@ -94,7 +94,6 @@ class GoodsReceiptBase(BaseModel):
     """Common fields for GoodsReceipt model."""
     receipt_number: str = Field(..., max_length=50)
     received_by_user_id: int
-    carrier_name: Optional[str] = Field(None, max_length=100)
     tracking_number: Optional[str] = Field(None, max_length=50)
     shipment_manifest_id: Optional[int] = None # FK for the 1:1 relationship
 
@@ -108,3 +107,15 @@ class GoodsReceiptRead(GoodsReceiptBase, AutoReadSchema):
     """Schema for reading a GoodsReceipt (response)."""
     receipt_id: int # Primary Key 'ReceiptId' maps to 'receipt_id'
     received_date: Optional[datetime] = None
+    
+class FinalizeManifestItem(BaseModel):
+    line_id: int = Field(..., description="ID of the Manifest Line Item being counted")
+    qty_actual: int = Field(..., gt=0, description="Actual quantity received and counted")
+
+class FinalizeManifestInput(BaseModel):
+    dock_location: str = Field(..., description="Name of the Dock/Zone where goods are received (e.g., 'Dock-04')")
+    counts: List[FinalizeManifestItem]
+
+class FinalizeManifestResponse(BaseModel):
+    receipt_number: str
+    message: str
