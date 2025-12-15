@@ -26,7 +26,9 @@
     "react-hook-form": "^7.68.0",
     "react-redux": "^9.2.0",
     "react-router-dom": "^6.22.3",
-    "react-use-websocket": "^4.13.0"
+    "react-router-query-params": "^1.0.4",
+    "react-use-websocket": "^4.13.0",
+    "use-query-params": "^2.2.2"
   },
   "devDependencies": {
     "@types/react": "^18.2.66",
