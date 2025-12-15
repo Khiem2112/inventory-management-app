@@ -8,15 +8,20 @@ import TablePagination from '@mui/material/TablePagination';// ... other imports
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@mui/material';
 
-// ... other imports
+import { usePoUrlState } from '../hooks/PurchaseOrder/usePoUrlsState';
 
+// ... other imports
 
 
 const PurchaseOrderList = ({
     isCompact = true
 }) => {
-    const [filterState, setFilterState] = useState({});
-    const [paginationState, setPaginationState] = useState({ page: 1, limit: 10 });
+    const { 
+        filterState, 
+        setFilterState, 
+        paginationState, 
+        setPaginationState 
+    } = usePoUrlState();
 
     // 1. Initialize state using the service function
     const [visibleKeys, setVisibleKeys] = useState(
@@ -71,6 +76,7 @@ const PurchaseOrderList = ({
         setPaginationState(prev => ({ ...prev, page: 1 })); // Reset to page 1
     };
     const handleSupplierFiltering = (chosenSupplierID) => {
+        console.log(`Start to handle supplier filtering`)
         setFilterState(prev => {
             return (
                 {...prev, vendor_id: chosenSupplierID}
