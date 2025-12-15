@@ -23,6 +23,7 @@ import WarehousePage from './pages/WarehousePage.jsx';
 import POMasterView from './pages/POMasterView.jsx';
 import PODetailPage from './pages/PODetailPage.jsx';
 import { TestPODetail } from '../test/testPurchaseOrderDetail.jsx';
+import DockReceivingPage from './pages/DockReceivingPage.jsx';
 import POCreatePage from './pages/POCreatePage.jsx';
 // Create new Query Client
 const queryClient = new QueryClient()
@@ -52,6 +53,8 @@ const router = createBrowserRouter(
       
       {/* Legacy Route */}
       <Route path="/purchase-orders-detail" element={<POMasterView />} />
+
+      <Route path="/good-receipt" element={<DockReceivingPage/>}/>
     </>
   )
 );
