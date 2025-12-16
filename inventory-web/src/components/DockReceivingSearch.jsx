@@ -4,12 +4,12 @@ import {
     Box, Paper, Typography, Grid, TextField, Button, 
     Dialog, DialogTitle, DialogContent, DialogActions,
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-    CircularProgress, IconButton
+    CircularProgress, IconButton, Divider
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker'; 
+import FilterAltIcon from '@mui/icons-material/FilterAlt'; // New icon
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 
@@ -45,42 +45,48 @@ const DockReceivingSearch = ({ onManifestSelect }) => {
 
     return (
         <LocalizationProvider dateAdapter={AdapterDateFns}>
-            <Paper sx={{ p: 3, mb: 3 }}>
-                <Typography variant="h6" gutterBottom color="primary.main">
-                    Find Inbound Manifest
-                </Typography>
+            <Paper elevation={2} sx={{ p: 3, height: '100%', bgcolor: 'white' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 1 }}>
+                    <FilterAltIcon color="primary" />
+                    <Typography variant="h6" fontWeight="bold">
+                        Search Filters
+                    </Typography>
+                </Box>
                 
                 <form onSubmit={handleSubmit(onSubmit)}>
-                    <Grid container spacing={2} alignItems="flex-end">
-                        {/* Row 1: IDs and Text */}
-                        <Grid item xs={12} md={3}>
+                    <Grid container spacing={2}>
+                        {/* Stack fields vertically for the sidebar layout */}
+                        <Grid item xs={12}>
                             <TextField 
                                 label="Manifest ID" 
                                 fullWidth 
                                 size="small" 
                                 type="number"
+                                placeholder="e.g. 12"
                                 {...register('manifest_id')} 
                             />
                         </Grid>
-                        <Grid item xs={12} md={3}>
+                        <Grid item xs={12}>
                             <TextField 
                                 label="Supplier Name" 
                                 fullWidth 
                                 size="small" 
+                                placeholder="e.g. ConnectAll"
                                 {...register('supplier_name')} 
                             />
                         </Grid>
-                        <Grid item xs={12} md={3}>
+                        <Grid item xs={12}>
                             <TextField 
                                 label="Tracking / Ref #" 
                                 fullWidth 
                                 size="small" 
+                                placeholder="e.g. TN211..."
                                 {...register('tracking_ref')} 
                             />
                         </Grid>
                         
-                        {/* Row 2: Search Button */}
-                        <Grid item xs={12} md={3}>
+                        <Grid item xs={12}>
+                            <Divider sx={{ my: 1 }} />
                             <Button 
                                 type="submit" 
                                 variant="contained" 
@@ -88,14 +94,14 @@ const DockReceivingSearch = ({ onManifestSelect }) => {
                                 size="large"
                                 startIcon={<SearchIcon />}
                             >
-                                Search
+                                Find Manifests
                             </Button>
                         </Grid>
                     </Grid>
                 </form>
             </Paper>
 
-            {/* --- SEARCH RESULTS MODAL --- */}
+            {/* --- SEARCH RESULTS MODAL (Unchanged Logic) --- */}
             <Dialog 
                 open={isModalOpen} 
                 onClose={() => setModalOpen(false)}

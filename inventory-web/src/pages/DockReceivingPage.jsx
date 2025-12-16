@@ -1,9 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom'; // <--- 1. Use Router Params
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Box, Typography, Button, Alert, CircularProgress, Snackbar } from '@mui/material';
+import { Box, Typography, Button, Alert, CircularProgress, Snackbar, Paper } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-
+import InventoryIcon from '@mui/icons-material/Inventory';
 import DockReceivingSearch from '../components/DockReceivingSearch';
 import ReceivingGrid from '../components/ReceivingGrid';
 import { fetchManifestDetails, finalizeManifest } from '../services/grServices';
@@ -14,7 +14,7 @@ const DockReceivingPage = () => {
     const activeManifestId = searchParams.get('manifest_id');
     const queryClient = useQueryClient();
 
-    const [toast, setToast] = React.useState({ open: false, message: '', severity: 'success' });
+    const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
 
     // --- 2. Data Fetching (Only if ID exists) ---
     const { 
@@ -75,58 +75,79 @@ const DockReceivingPage = () => {
         });
     };
 
+    const pageLayoutStyles = {
+        display: 'grid',
+        gridTemplateColumns: '350px 1fr', // Fixed sidebar, fluid content
+        gap: 3,
+        height: 'calc(100vh - 100px)', // Adjust based on your header height
+        overflow: 'hidden' 
+    };
+
     return (
-        <Box sx={{ p: 3, maxWidth: 1200, mx: 'auto' }}>
+        <Box sx={{ p: 3, maxWidth: 1600, mx: 'auto', height: '100%' }}>
             
-            {/* Header / Nav */}
-            <Box sx={{ mb: 3, display: 'flex', alignItems: 'center' }}>
-                {activeManifestId && (
-                    <Button 
-                        startIcon={<ArrowBackIcon />} 
-                        onClick={handleBackToSearch}
-                        sx={{ mr: 2 }}
-                    >
-                        Search
-                    </Button>
-                )}
-                <Box>
-                    <Typography variant="h4" fontWeight="bold">Dock Receiving</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                        {activeManifestId 
-                            ? `Verifying Manifest #${activeManifestId}`
-                            : "Scan or search for inbound manifests to begin."}
-                    </Typography>
-                </Box>
+            <Box sx={{ mb: 2 }}>
+                <Typography variant="h4" fontWeight="bold">Dock Receiving</Typography>
+                <Typography variant="body2" color="text.secondary">
+                    Process inbound shipments and verify inventory counts.
+                </Typography>
             </Box>
 
-            {/* --- VIEW SWITCHER --- */}
-            {!activeManifestId ? (
-                // VIEW 1: SEARCH
-                <DockReceivingSearch onManifestSelect={handleManifestSelect} />
-            ) : (
-                // VIEW 2: RECEIVING GRID
-                <Box>
-                    {isLoading && (
-                        <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
-                            <CircularProgress />
+            <Box sx={pageLayoutStyles}>
+                
+                {/* --- LEFT COLUMN: SEARCH --- */}
+                <Box sx={{ overflowY: 'auto', pr: 1 }}>
+                    <DockReceivingSearch onManifestSelect={handleManifestSelect} />
+                </Box>
+
+                {/* --- RIGHT COLUMN: GRID OR PLACEHOLDER --- */}
+                <Box sx={{ overflowY: 'auto', height: '100%' }}>
+                    {!activeManifestId ? (
+                        // EMPTY STATE
+                        <Paper 
+                            sx={{ 
+                                height: '100%', 
+                                display: 'flex', 
+                                flexDirection: 'column', 
+                                alignItems: 'center', 
+                                justifyContent: 'center',
+                                bgcolor: '#f8f9fa',
+                                border: '2px dashed #e0e0e0'
+                            }}
+                            elevation={0}
+                        >
+                            <InventoryIcon sx={{ fontSize: 80, color: 'text.secondary', opacity: 0.3, mb: 2 }} />
+                            <Typography variant="h6" color="text.secondary">No Manifest Selected</Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                Use the search panel on the left to find a shipment.
+                            </Typography>
+                        </Paper>
+                    ) : (
+                        // ACTIVE STATE
+                        <Box>
+                            {isLoading && (
+                                <Box sx={{ display: 'flex', justifyContent: 'center', p: 10 }}>
+                                    <CircularProgress />
+                                </Box>
+                            )}
+
+                            {isError && (
+                                <Alert severity="error">
+                                    {error?.message || "Failed to load manifest details."}
+                                </Alert>
+                            )}
+
+                            {manifestData && (
+                                <ReceivingGrid 
+                                    manifestData={manifestData} 
+                                    onSubmit={handleSubmitReceipt}
+                                    isSubmitting={finalizeMutation.isPending}
+                                />
+                            )}
                         </Box>
                     )}
-
-                    {isError && (
-                        <Alert severity="error" sx={{ mb: 2 }}>
-                            {error?.message || "Failed to load manifest details."}
-                        </Alert>
-                    )}
-
-                    {manifestData && (
-                        <ReceivingGrid 
-                            manifestData={manifestData} 
-                            onSubmit={handleSubmitReceipt}
-                            isSubmitting={finalizeMutation.isPending}
-                        />
-                    )}
                 </Box>
-            )}
+            </Box>
 
             {/* Toast Notification */}
             <Snackbar 
