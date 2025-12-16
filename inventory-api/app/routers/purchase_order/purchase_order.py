@@ -3,6 +3,11 @@ from app.utils.dependencies import get_db, get_current_user
 from app.utils.logger import setup_logger
 from app.database.purchase_order_model import PurchaseOrder as PurchaseOrderORM, PurchaseOrderItem as PurchaseOrderItemORM
 from app.database.supplier_model import Supplier as SupplierORM
+from app.database.asset_model import Asset as AssetORM
+from app.database.shipment_manifest_model import (
+  ShipmentManifest, 
+  ShipmentManifestLine
+)
 from app.database.user_model import User as UserORM 
 from app.schemas.purchase_order import (
   PurchaseOrderRead,
@@ -17,7 +22,7 @@ from app.schemas.purchase_order import (
   )
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import desc, inspect
+from sqlalchemy import desc, inspect, func
 from datetime import datetime, date
 from typing import Optional
 from jinja2 import Environment, FileSystemLoader
@@ -154,28 +159,86 @@ def get_purchase_order_items(purchase_order_id:int,
       PurchaseOrderORM.PurchaseOrderId==purchase_order_id
       ).options(joinedload(PurchaseOrderORM.Supplier),
                 joinedload(PurchaseOrderORM.CreateUser)).one_or_none()
-    logger.info(f"Can get the po: {po}")
+    
     if po is None:
       raise HTTPException(status_code=404,
                           detail="Purchase Order ID does not exist")
+
+    # 1. Fetch the basic PO Items
     query = db.query(PurchaseOrderItemORM).options(
-            # Correctly loading the 'Product' relationship on the PurchaseOrderItem
             joinedload(PurchaseOrderItemORM.Product) 
         ).filter(
-            # Filtering using the FOREIGN KEY COLUMN on the PurchaseOrderItem
             PurchaseOrderItemORM.PurchaseOrderId == purchase_order_id
         )
     purchase_order_items = query.all()
-    print("\n--- Raw ORM Results ---")
-    for item in purchase_order_items:
-      # The inspect method reveals the state, including all loaded attributes
-      print(f"ORM Object Class: {item.__class__.__name__}")
-      print(inspect(item).attrs.keys()) # Prints all available attribute names
-      print(f"ORM Object Dict: {item.__dict__}") # Prints the internal dictionary representation
-      logger.info(f"Detail product {item.Product.__dict__}")
-      # print(f"Pydantic model mapping: {}")
-    print("-----------------------\n")
     
+    # Only run this expensive aggregation if the PO is in a relevant status
+    valid_stat_statuses = {
+        'Issued', 'Acknowledged', 'Partially Delivered', 
+        'Partially Received', 'Received'
+    }
+
+    # 2. Calculate Stats (Received, In Transit)
+    # Logic: Asset -> ShipmentManifestLine -> ShipmentManifest (filter by PO ID)
+    # We group by ProductId and AssetStatus to get counts
+    logger.info(f"Handle purchase order item specific line: quantity shipped/in transit/remaining") if po.Status in valid_stat_statuses else logger.info("No specifc fields are calculated")
+    if po.Status in valid_stat_statuses:
+        stats_query = (
+            db.query(
+                AssetORM.ProductId,
+                AssetORM.AssetStatus,
+                func.count(AssetORM.AssetId).label("count")
+            )
+            .join(ShipmentManifestLine, AssetORM.ShipmentManifestLineId == ShipmentManifestLine.Id)
+            .join(ShipmentManifest, ShipmentManifestLine.ShipmentManifestId == ShipmentManifest.Id)
+            .filter(ShipmentManifest.PurchaseOrderId == purchase_order_id)
+            .filter(AssetORM.AssetStatus.in_(['Awaiting QC', 'Accepted', 'In Transit']))
+            .group_by(AssetORM.ProductId, AssetORM.AssetStatus)
+        )
+    
+        asset_stats = stats_query.all()
+
+        # 3. Process Stats into a lookup dictionary
+        # Structure: { product_id: {'received': 0, 'in_transit': 0} }
+        product_stats = {}
+        for pid, status, count in asset_stats:
+            if pid not in product_stats:
+                product_stats[pid] = {'received': 0, 'in_transit': 0}
+            
+            if status in ['Awaiting QC', 'Accepted']:
+                product_stats[pid]['received'] += count
+            elif status == 'In Transit':
+                product_stats[pid]['in_transit'] += count
+
+    # 4. Merge Stats with Items
+    final_items = []
+    for item in purchase_order_items:
+        pid = item.ProductId
+        stats = product_stats.get(pid, {'received': 0, 'in_transit': 0})
+        
+        received = stats['received']
+        in_transit = stats['in_transit']
+        # Remaining = Ordered - (Received + In Transit). Ensure it doesn't go below 0.
+        remaining = max(0, item.Quantity - received - in_transit)
+
+        # Construct a dictionary matching PurchaseOrderItemPublic
+        # We manually map fields because we are mixing ORM data with calculated data
+        item_data = {
+            "purchase_order_item_id": item.PurchaseOrderItemId,
+            "purchase_order_id": item.PurchaseOrderId,
+            "product_id": item.ProductId,
+            "quantity": item.Quantity,
+            "unit_price": item.UnitPrice,
+            "item_description": item.ItemDescription,
+            # Handle lazy loaded product name safely
+            "product_name": item.Product.ProductName if item.Product else None,
+            # New Calculated Fields
+            "quantity_received": received,
+            "quantity_in_transit": in_transit,
+            "quantity_remaining": remaining
+        }
+        final_items.append(item_data)
+
     return {
       'header': {
         "purchase_order_id": po.PurchaseOrderId,
@@ -184,18 +247,19 @@ def get_purchase_order_items(purchase_order_id:int,
         "create_date": po.CreateDate.date(),
         "total_price": po.TotalPrice,
         "status": po.Status,
-        # Safe navigation for relationships
         "supplier_name": po.Supplier.SupplierName if po.Supplier else "Unknown",
         "create_user_name": po.CreateUser.Name if po.CreateUser else "Unknown"
         },
-      'items': purchase_order_items
+      'items': final_items
     }
   except HTTPException:
     raise
   except SQLAlchemyError as e:
+    logger.error(f"Database Error in get_purchase_order_items: {e}")
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                         detail=f"Database error: {e}")
   except Exception as e:
+    logger.error(f"Unexpected Error in get_purchase_order_items: {e}")
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                         detail=f"Unexpected error: {e}")
 # Helper function validate po payload
