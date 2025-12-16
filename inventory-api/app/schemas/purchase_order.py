@@ -74,6 +74,11 @@ class PurchaseOrderItemPublic(PurchaseOrderItemBase, AutoReadSchema):
     purchase_order_item_id: int = Field(..., description="ID of the item")
     purchase_order_id: int = Field(..., description="The parent purchase order id", validation_alias="PurchaseOrderId")
     product_name: Optional[str] = Field(default=None, validation_alias="Product.ProductName")
+    
+    # Advance quantity
+    quantity_received: Optional[int] = Field(default = 0, description="Quantity of assets Accepted or Awaiting QC")
+    quantity_in_transit: Optional[int] = Field(default = 0, description="Quantity of assets In Transit")
+    quantity_remaining: Optional[int] = Field(default = 0, description="Ordered quantity minus (received + in transit)")
 
 # --- 4. METADATA ---
 
