@@ -6,13 +6,11 @@ from pydantic import Field, BaseModel
 from app.schemas.base import AutoReadSchema, AutoWriteSchema, StandardResponse
 class ShipmentManifestBase(BaseModel):
     """Common fields for ShipmentManifest model."""
-    supplier_id: Optional[int] = Field(default=None)
     purchase_order_id: Optional[int] = None
     tracking_number: Optional[str] = Field(None, max_length=200)
     carrier_name: Optional[str] = Field(None, max_length=200)
     estimated_arrival: Optional[datetime] = None
     status: Optional[str] = Field(..., max_length=100)
-    created_by_user_id: Optional[int] = None
 
 # (2) INPUT/WRITE: Inherits Base fields and AutoWriteSchema for ORM conversion
 class ShipmentManifestWrite(ShipmentManifestBase, AutoWriteSchema):
@@ -23,6 +21,8 @@ class ShipmentManifestWrite(ShipmentManifestBase, AutoWriteSchema):
 class ShipmentManifestRead(ShipmentManifestBase, AutoReadSchema):
     """Schema for reading a ShipmentManifest (response)."""
     id: int # Primary Key
+    supplier_id: Optional[int] = Field(default=None) # Only showing Shipment manifest read supplier id
+    created_by_user_id: Optional[int] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
 # Search Schema Result
@@ -64,6 +64,22 @@ class ShipmentManifestLineWrite(ShipmentManifestLineBase, AutoWriteSchema):
 class ShipmentManifestLineRead(ShipmentManifestLineBase, AutoReadSchema):
     """Schema for reading a ShipmentManifestLine (response)."""
     id: int
+    
+class ShipmentManifestLineCreate(ShipmentManifestLineBase, AutoWriteSchema):
+    """
+    Schema for lines inside the create payload. 
+    Excludes shipment_manifest_id since it's not generated yet.
+    """
+    product_id: int = Field(..., description= "Product ID")
+    shipment_manifest_id: Optional[int] = Field(default=None, exclude=True) 
+
+class ShipmentManifestInput(ShipmentManifestWrite):
+    """
+    Master payload for creating a Shipment Manifest.
+    Includes the header fields and a list of lines.
+    """
+    purchase_order_id: int = Field(..., description="Linked PO is required to determine the Supplier")
+    lines: List[ShipmentManifestLineCreate] = Field(..., description="List of items in this shipment")
 
 class CountingManifestLineResponse(ShipmentManifestLineBase, AutoReadSchema):
     """
