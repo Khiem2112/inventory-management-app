@@ -8,8 +8,9 @@ class ZoneBase (BaseModel):
   description: Optional[str] = Field(default=None, description="Description for what that zone's responsibility")
   is_stockable: bool = Field(default=True, description="1 for stockable, 0 for non-stockable")
   is_security_cage: bool = Field(default=True, description="To show if that zone mostly support for high-value product")
-  zone_type: str = Field (...,description="Type of Zone, including: Receiving, Storage and Quarantine area")
+  zone_type: Optional[str] = Field (default=None,description="Type of Zone, including: Receiving, Storage and Quarantine area")
   zone_image_url :Optional[str] = Field(..., description="Image url for warehouse zone stored in cloudinary")
+  model_config = ConfigDict(extra='ignore')
   
 class ZoneUpdate (ZoneBase, AutoWriteSchema):
   pass
