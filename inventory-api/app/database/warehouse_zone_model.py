@@ -16,9 +16,9 @@ class Zone(Base):
   ZoneId: Mapped[int] = mapped_column(Integer, nullable=False, autoincrement=True, primary_key=True)
   ZoneName: Mapped[str] = mapped_column(String(50), nullable= False)
   Description: Mapped[str] = mapped_column(String(255), nullable= True)
-  IsStockable: Mapped[bytes] = mapped_column(Boolean, nullable= False, default=True)
-  IsSecurityCage: Mapped[bytes] = mapped_column(Boolean, nullable= False, default=True)
-  ZoneType: Mapped[ZoneType] = mapped_column(Enum(ZoneType), default=ZoneType.Storage)
+  IsStockable: Mapped[bool] = mapped_column(Boolean, nullable= False, default=True)
+  IsSecurityCage: Mapped[bool] = mapped_column(Boolean, nullable= False, default=True)
+  ZoneType: Mapped[str] = mapped_column(Enum(ZoneType), default=ZoneType.Storage)
   ZoneImageUrl: Mapped[str] = mapped_column(String, nullable=True)
   
   # ORM relationship: 1:N with Asset
