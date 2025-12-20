@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useFieldArray, useFormContext } from 'react-hook-form';
+import { Controller, useFieldArray, useFormContext } from 'react-hook-form';
 import { 
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, 
     IconButton, TextField, Autocomplete, Box, Button, Typography, Paper,
@@ -83,6 +83,7 @@ const POLineItemsForm = () => {
     setValue(`items.${index}.product_id`, product.product_id);
     setValue(`items.${index}.item_description`, product.name);
     setValue(`items.${index}.unit_price`, product.unit_price);
+    setValue(`items.${index}.image_url`, product?.image_url)
 
     // 5. Default Quantity Logic (Using getValues for consistency)
     const currentQty = getValues(`items.${index}.quantity`);
@@ -137,7 +138,11 @@ const POLineItemsForm = () => {
                             return (
                                 <TableRow key={field.id} sx={{ '& td': { verticalAlign: 'top', pt: 2 } }}>
                                     <TableCell>
-                                        <Autocomplete
+                                        <Controller
+                                        control={control}
+                                        name={`items.${index}`}
+                                        render= {({field: {value}}) => (
+                                            <Autocomplete
                                             options={productOptions}
                                             loading={loadingProducts}
                                             onOpen={loadProducts}
@@ -189,6 +194,15 @@ const POLineItemsForm = () => {
                                                     error={!!errors.items?.[index]?.product_id} // Simple validation visual
                                                     InputProps={{
                                                         ...params.InputProps,
+                                                        startAdornment: (
+                                                            <>
+                                                            {/* If a value exists, show its avatar */}
+                                                            {value?.image_url && (
+                                                                <Avatar src={value.image_url} sx={{ width: 24, height: 24, mr: 1 }} />
+                                                            )}
+                                                            {params.InputProps.startAdornment}
+                                                            </>
+                                                        ),
                                                         endAdornment: (
                                                             <React.Fragment>
                                                                 {loadingProducts ? <CircularProgress color="inherit" size={20} /> : null}
@@ -199,6 +213,12 @@ const POLineItemsForm = () => {
                                                 />
                                             )}
                                         />
+
+                                        )}
+                                        >
+
+                                        </Controller>
+                                        
                                         {/* Hidden field to store the actual ID */}
                                         <input type="hidden" {...register(`items.${index}.product_id`)} />
                                     </TableCell>
