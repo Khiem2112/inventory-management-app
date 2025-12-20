@@ -107,14 +107,17 @@ const POLineItemsForm = () => {
             </Box>
 
             <TableContainer>
-                <Table size="small">
+                <Table size="small" sx = {{
+                    tableLayout: 'fixed',
+                    overflow: 'hidden'
+                }}>
                     <TableHead>
                         <TableRow>
-                            <TableCell width="40%">Product Details</TableCell>
+                            <TableCell width="35%">Product Details</TableCell>
                             <TableCell width="15%" align="right">Qty</TableCell>
                             <TableCell width="15%" align="right">Unit Price</TableCell>
                             <TableCell width="15%" align="right">Total</TableCell>
-                            <TableCell width="5%" align="center">Action</TableCell>
+                            <TableCell width="10%" align="center">Action</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
