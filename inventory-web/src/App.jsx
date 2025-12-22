@@ -25,6 +25,7 @@ import PODetailPage from './pages/PODetailPage.jsx';
 import { TestPODetail } from '../test/testPurchaseOrderDetail.jsx';
 import DockReceivingPage from './pages/DockReceivingPage.jsx';
 import POCreatePage from './pages/POCreatePage.jsx';
+import ShipmentManifestCreatePage from './pages/ShipmentManifestCreatePage.jsx';
 // Create new Query Client
 const queryClient = new QueryClient()
 
@@ -44,8 +45,12 @@ const router = createBrowserRouter(
       {/* Nested Route for Master/Detail View */}
       <Route path="/purchase-orders" element={<POMasterView />}>
         <Route index element={<div style={{ padding: 20 }}>Select an order from the list</div>} />
-        <Route path=":id" element={<PODetailPage />} />
+        <Route path=":id" element={<PODetailPage />}>
+          <Route path= "create-shipment-manifest" element={<ShipmentManifestCreatePage/>} />
+        </Route>
       </Route>
+
+      <Route path ="/supplier/manifest/create" element={<ShipmentManifestCreatePage/>} />
 
       {/* The Page using useBlocker */}
       <Route path="/purchase-orders/create" element={<POCreatePage />} />
