@@ -1,8 +1,16 @@
 // src/components/ServerSideTable/ServerSideTable.jsx
 import StatusBadge from "../status/statusBadge";
 import './poTable.css'
+import RowActions from "./rowActions";
 
-const ServerSideTable = ({ data, limit, loading, columnsConfig, onRowClick, selectedId }) => {
+const ServerSideTable = ({ 
+    data, 
+    limit, 
+    loading,
+    columnsConfig, 
+    onRowClick, 
+    selectedId
+}) => {
 
   // Loading State (on_load)
   if (loading) {
@@ -58,6 +66,15 @@ const ServerSideTable = ({ data, limit, loading, columnsConfig, onRowClick, sele
              // Simple date format for demo
             const date = new Date(value);
             return <span>{date.toLocaleDateString()}</span>;
+        }
+
+        // 3. Add the 'actions' case
+        if (column.type === 'actions') {            
+            return (
+                <RowActions 
+                    item={item}
+                />
+            );
         }
         
         // Default rendering

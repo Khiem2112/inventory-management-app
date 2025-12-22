@@ -8,6 +8,7 @@ export const PO_COLUMNS_CONFIG = [
     { key: 'create_date', label: 'Creation Date', isVisible: true, type: 'date' },
     { key: 'total_price', label: 'Total Price', isVisible: true, type: 'currency' },
     { key: 'status', label: 'Status', isVisible: true, type: 'status' },
+    { key: 'actions', label: 'Actions', isVisible: true, type: 'actions'}
 ];
 
 // --- DETAIL VIEW CONFIGURATION
