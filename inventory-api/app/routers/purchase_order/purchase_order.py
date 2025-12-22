@@ -172,6 +172,9 @@ def get_purchase_order_items(purchase_order_id:int,
         )
     purchase_order_items = query.all()
     
+    product_stats = {}
+
+    
     # Only run this expensive aggregation if the PO is in a relevant status
     valid_stat_statuses = {
         'Issued', 'Acknowledged', 'Partially Delivered', 
@@ -200,7 +203,6 @@ def get_purchase_order_items(purchase_order_id:int,
 
         # 3. Process Stats into a lookup dictionary
         # Structure: { product_id: {'received': 0, 'in_transit': 0} }
-        product_stats = {}
         for pid, status, count in asset_stats:
             if pid not in product_stats:
                 product_stats[pid] = {'received': 0, 'in_transit': 0}
