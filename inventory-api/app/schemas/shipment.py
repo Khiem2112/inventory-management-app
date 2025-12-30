@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Literal, Union
 from datetime import datetime
 from pydantic import Field, BaseModel
 
@@ -47,13 +47,32 @@ class ManifestSearchResponse(BaseModel):
     results: List[ManifestSearchResultItem]
 # --- 2. ShipmentManifestLine Schemas ---
 
-# (1) BASE: All common fields, used for inheritance
+class AssetBase(BaseModel):
+    serial_number: str = Field(..., description=" Unique serial number of a product provide by supplier")
+
+class AssetInput(AssetBase):
+    pass
+
 class ShipmentManifestLineBase(BaseModel):
     """Common fields for ShipmentManifestLine model."""
-    shipment_manifest_id: Optional[int] = Field(default=None)
-    supplier_serial_number: Optional[str] = Field(None, max_length=200)
-    supplier_sku: Optional[str] = Field(None, max_length=200)
-    quantity_declared: int = Field(..., gt=0)
+    purchase_order_item_id: int = Field(desciption = "Direct reference purchase order item")
+    supplier_serial_number: Optional[str] = Field(default=None, description="Supplier injected supplier serial number on their shipment line")
+    supplier_sku: Optional[str] = Field(default = None, description="Supplier SKU")
+    
+class ShipmentManifestLineAssetInput(ShipmentManifestLineBase):
+    """Shipment manifest line model for Asset input flow."""
+    shipment_mode: Literal["asset_specified"] = "asset_specified"
+    asset_items: list[AssetInput] = Field(..., description = "List of asset items defined by supplier")
+    @property
+    def quantity(
+        self
+    ) -> int:
+        return len(self.asset_items)
+    
+class ShipmentManifestLineQuantityInput(ShipmentManifestLineBase):
+    """Shipment manifest line model for Quantity input flow."""
+    shipment_mode: Literal["quantity_declared"] = "quantity_declared"
+    quantity: int = Field(..., gt=0)
 
 # (2) INPUT/WRITE: Inherits Base fields and AutoWriteSchema
 class ShipmentManifestLineWrite(ShipmentManifestLineBase, AutoWriteSchema):
@@ -65,13 +84,6 @@ class ShipmentManifestLineRead(ShipmentManifestLineBase, AutoReadSchema):
     """Schema for reading a ShipmentManifestLine (response)."""
     id: int
     
-class ShipmentManifestLineCreate(ShipmentManifestLineBase, AutoWriteSchema):
-    """
-    Schema for lines inside the create payload. 
-    Excludes shipment_manifest_id since it's not generated yet.
-    """
-    product_id: int = Field(..., description= "Product ID")
-    shipment_manifest_id: Optional[int] = Field(default=None, exclude=True) 
 
 class ShipmentManifestInput(ShipmentManifestWrite):
     """
@@ -79,7 +91,7 @@ class ShipmentManifestInput(ShipmentManifestWrite):
     Includes the header fields and a list of lines.
     """
     purchase_order_id: int = Field(..., description="Linked PO is required to determine the Supplier")
-    lines: List[ShipmentManifestLineCreate] = Field(..., description="List of items in this shipment")
+    lines: List[Union[ ShipmentManifestLineAssetInput, ShipmentManifestLineQuantityInput ]] = Field(..., description="List of items in this shipment")
 
 class CountingManifestLineResponse(ShipmentManifestLineBase, AutoReadSchema):
     """

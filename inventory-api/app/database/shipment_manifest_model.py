@@ -80,6 +80,8 @@ class ShipmentManifestLine(Base):
         ForeignKey('ShipmentManifest.Id'),
         nullable=False
     )
+    
+    PurchaseOrderLineId: Mapped[int] = mapped_column("PurchaseOrderLineId", Integer, ForeignKey("PurchaseOrderItem.POItemId"), nullable=True)
 
     # SupplierSerialNumber (Nullable, nvarchar(200))
     SupplierSerialNumber: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
