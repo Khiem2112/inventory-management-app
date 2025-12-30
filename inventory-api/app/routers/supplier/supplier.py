@@ -10,7 +10,10 @@ from app.schemas.shipment import ShipmentManifestRead, ShipmentManifestInput
 from app.schemas.supplier import SupplierPublic
 from app.utils.dependencies import get_current_user, get_db
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.exc import IntegrityError
 from datetime import datetime
+from app.services.procurement.supplier import SupplierService
+import traceback
 import uuid
 
 
@@ -45,101 +48,43 @@ def create_shipment_manifest(
     db: Session = Depends(get_db),
     current_user: UserORM = Depends(get_current_user)
 ):
+    
+    """
+    This function create a new shipment manifest in two modes:
+    - Each line will be declared with quantity
+    - Each line will has its own asset list with specified serial number
+    The general flow:
+    - Check purchase order existence
+    - Check po status if it is Issued
+    - Check if the estimated arrival is not before today timestamp --> WARN user
+    - Check if any po line item id is duplicated
+    - if each shipment manifest line's reference purchase order item id is in the purchase order
+    - if quantity in each shipment manifest line match the remaining quantity of the purchase order
+    - Create a Shipment manifest document 
+    - And many shipment manifest line:
+        - Create one shipment manifest line document with reference po and the quantity declared
+        - Create one stock move for each shipment manifest, 
+        source location = supplier location, destination = in transit location
+    - Create n new asset items based on shipment quantity 
+        
+    """
     try:
-        # 1. Validation: Check Purchase Order Validity
-        po_orm = None
-        sku_map = {} # Map[Sku, ProductId]
-
-        if payload.purchase_order_id:
-            po_orm = db.query(PurchaseOrder).filter(
-                PurchaseOrder.PurchaseOrderId == payload.purchase_order_id
-            ).options(
-                joinedload(PurchaseOrder.PurchaseOrderItems).joinedload(PurchaseOrderItem.Product)
-            ).first()
-            
-            if not po_orm:
-                raise HTTPException(status_code=404, detail="Referenced Purchase Order not found.")
-
-        # 2. Get Default Zone
-        default_zone = db.query(Zone).filter(Zone.ZoneType == ZoneType.Receiving).first()
-        if not default_zone:
-            default_zone = db.query(Zone).first()
-            if not default_zone:
-                 raise HTTPException(status_code=400, detail="No Warehouse Zones defined. Cannot create Assets.")
-
-        # 3. Determine Statuses
-        manifest_status = payload.status or "Draft"
-        if manifest_status == "Draft":
-            initial_asset_status = "Disabled"
-        else:
-            initial_asset_status = "In Transit"
-
-        # 4. Create Manifest Header (MANUAL MAPPING)
-        # Note: We strictly use po_orm.SupplierId instead of anything from the payload
-        new_manifest = ShipmentManifest(
-            SupplierId=po_orm.SupplierId, 
-            PurchaseOrderId=payload.purchase_order_id,
-            TrackingNumber=payload.tracking_number,
-            CarrierName=payload.carrier_name,
-            EstimatedArrival=payload.estimated_arrival,
-            Status=manifest_status,
-            CreatedByUserId=current_user.UserId,
-            CreatedAt=datetime.now()
+        # Create a new supplier service to perform create shipment manifest
+        supplier_service = SupplierService(current_user)
+        # Check the current purchase order
+        return supplier_service.createShipmentManifest(
+            db=db,
+            sm_data = payload
         )
+    except IntegrityError as e:
+        raise HTTPException(500, detail=f"Database integrity error: {e}")
         
-        db.add(new_manifest)
-        db.flush() # Generate new_manifest.Id
-
-        # 5. Create Lines and Associated Assets
-        new_lines = []
-        new_assets = []
-
-        for line in payload.lines:
-            # Create the Line
-            new_line = ShipmentManifestLine(
-                ShipmentManifestId=new_manifest.Id,
-                SupplierSerialNumber=line.supplier_serial_number,
-                SupplierSku=line.supplier_sku,
-                QuantityDeclared=line.quantity_declared
-            )
-            db.add(new_line)
-            db.flush() # Flush to generate new_line.Id
-
-            # Create Assets
-            product_id = line.product_id
-            
-            if product_id:
-                for _ in range(line.quantity_declared):
-                    # Generate a temporary Serial Number
-                    temp_serial = f"TMP-{new_manifest.Id}-{new_line.Id}-{uuid.uuid4().hex[:6].upper()}"
-                    
-                    new_asset = Asset(
-                        SerialNumber=temp_serial,
-                        ProductId=line.product_id,
-                        CurrentZoneId=default_zone.ZoneId,
-                        AssetStatus=initial_asset_status, 
-                        LastMovementDate=datetime.now(),
-                        ShipmentManifestLineId=new_line.Id,
-                        GoodsReceiptId=None
-                    )
-                    new_assets.append(new_asset)
-            else:
-                logger.warning(f"Could not find Product ID for SKU '{line.supplier_sku}'. Assets not created.")
-
-        if new_assets:
-            db.add_all(new_assets)
-            
-        # 6. Commit Transaction
-        db.commit()
-        db.refresh(new_manifest)
-        
-        logger.info(f"Created Manifest {new_manifest.Id} ({manifest_status}). Generated {len(new_assets)} assets.")
-        return new_manifest
-
     except HTTPException as e:
-        db.rollback()
         raise e
+    except ValueError as e:
+        raise HTTPException(400, detail=f"Value error: {e}")
+    except KeyError as e:
+        raise HTTPException(500, detail=f"Key Error: {e}")
     except Exception as e:
-        db.rollback()
-        logger.error(f"Error creating shipment manifest: {e}")
-        raise HTTPException(status_code=500, detail="An unexpected error occurred while creating the manifest.")
+        traceback.print_exc()
+        raise HTTPException(500, detail=f"Unexpected error: {e}")
