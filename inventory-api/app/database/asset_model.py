@@ -7,6 +7,7 @@ from sqlalchemy import String, Integer, BigInteger, DateTime, ForeignKey, text
 from app.database.base import Base
 
 
+
 class Asset(Base):
     """
     SQLAlchemy ORM class for the 'Asset' table,
@@ -18,7 +19,7 @@ class Asset(Base):
     AssetId: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True, nullable=False)
 
     # SerialNumber (varchar(50), NOT NULL, typically unique)
-    SerialNumber: Mapped[str] = mapped_column(String(50), nullable=False)
+    SerialNumber: Mapped[str] = mapped_column(String(50), nullable=True)
 
     # ProductId (int, NOT NULL, Foreign Key to Product)
     ProductId: Mapped[int] = mapped_column(Integer, ForeignKey('Product.ProductId'), nullable=False)
@@ -32,6 +33,13 @@ class Asset(Base):
     # LastMovementDate (datetime2, NOT NULL)
     LastMovementDate: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
+
+    PurchaseOrderLineId: Mapped[int] = mapped_column("PurchaseOrderLineId", 
+                                                     Integer, 
+                                                     ForeignKey("PurchaseOrderItem.POItemId"),
+                                                     nullable=True)
+    
+    
     # ShipmentManifestLineId (int, NULL, Foreign Key to ManifestLine)
     ShipmentManifestLineId: Mapped[Optional[int]] = mapped_column(
         Integer,
@@ -45,7 +53,7 @@ class Asset(Base):
         ForeignKey('GoodsReceipt.ReceiptID'),
         nullable=True
     )
-
+    StockMoveLinks: Mapped[list["AssetStockMove"]] = relationship(back_populates="asset")
     # ORM Relationship: Many-to-One to Product
     product: Mapped["Product"] = relationship(back_populates="assets")
 
