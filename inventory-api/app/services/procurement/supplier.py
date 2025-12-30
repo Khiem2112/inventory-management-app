@@ -1,5 +1,5 @@
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import select, text, func, case, label, insert, bindparam
 from app.database.purchase_order_model import PurchaseOrder as PurchaseOrderORM, PurchaseOrderItem as PurchaseOrderItemORM
@@ -14,6 +14,7 @@ from dateutil import parser
 from collections import Counter
 from enum import Enum
 from collections import defaultdict  
+from app.utils.dependencies import get_db, get_current_user
 import traceback
 
 logger = setup_logger()
@@ -40,25 +41,18 @@ class AssetStatus(Enum):
   AwaitingQC = "Awaiting QC"
   Rejected = "Rejected"
 
-    
-def get_location_sum(loc_id):
-  return func.sum(
-    case(
-      (StockMoveORM.SourceLocationId == loc_id, -1),
-      (StockMoveORM.DestinationLocationId == loc_id, 1),
-      else_=0
-    )
-  )
   
 class SupplierService():
   
-  def __init__ (self, user: UserORM):
+  def __init__ (self, 
+                user: UserORM,
+                db:Session):
     self.user = user
+    self.db = db
 
   
-  def createShipmentManifest(
+  def create_shipment_manifest(
     self,
-    db: Session,
     sm_data: ShipmentManifestInput,
     
   ) -> ShipmentManifestRead: 
@@ -79,7 +73,7 @@ class SupplierService():
     po_query = select(PurchaseOrderORM).where(
       PurchaseOrderORM.PurchaseOrderId == input_po_id
     )
-    po_db = db.execute(po_query).scalars().first()
+    po_db = self.db.execute(po_query).scalars().first()
     if not po_db:
       logger.error(f"Cannot find po id: {input_po_id}")
       raise ValueError(f"Purchase order does not exist, po id: {input_po_id}")
@@ -106,7 +100,7 @@ class SupplierService():
       PurchaseOrderItemORM.PurchaseOrderId == input_po_id
     )
     
-    po_items_db = db.execute(po_items_query).unique().scalars().all()
+    po_items_db = self.db.execute(po_items_query).unique().scalars().all()
     
     po_item_lookup_map = {
       po_item_db.PurchaseOrderItemId: po_item_db
@@ -155,7 +149,7 @@ class SupplierService():
         "po_id": sm_data.purchase_order_id
     }
 
-    po_items_stats = db.execute(sql_query, params).mappings().all()
+    po_items_stats = self.db.execute(sql_query, params).mappings().all()
     
     po_item_stats_lookup_map = {
       po_item_stat["PurchaseOrderItemId"]: po_item_stat
@@ -189,8 +183,8 @@ class SupplierService():
         CreatedByUserId = self.user.UserId,
         Status = sm_data.status,
       )
-      db.add(new_shipment_manifest_orm)
-      db.flush()
+      self.db.add(new_shipment_manifest_orm)
+      self.db.flush()
       logger.info(f"Have created new shipment manifest with id: {new_shipment_manifest_orm.Id}")
       # Creat shipment manifest line items and the corresponding stock moves
       
@@ -218,7 +212,7 @@ class SupplierService():
         )
         
         # result is a list of RowMapping objects
-        result = db.execute(stmt, sm_lines_data).mappings().all()
+        result = self.db.execute(stmt, sm_lines_data).mappings().all()
 
         # 3. Build lookup map for the Asset creation step
         # Key: PO Item ID -> Value: New Shipment Line ID
@@ -236,11 +230,11 @@ class SupplierService():
           'SourceLocationId': LocationID.VENDOR.value,
           'DestinationLocationId': LocationID.IN_TRANSIT.value
         })
-      results = db.execute(insert(StockMoveORM).returning(
+      results = self.db.execute(insert(StockMoveORM).returning(
         StockMoveORM.PurchaseOrderItemId,
         StockMoveORM.Id
         ), stock_moves_data).mappings().all()
-      db.flush()
+      self.db.flush()
       stock_move_lookup_map = {
         stock_move['PurchaseOrderItemId']: stock_move['Id']
         for stock_move in results
@@ -275,12 +269,12 @@ class SupplierService():
             } for i in range(sm_line.quantity)]
           assets_to_be_created.extend(new_asset_list)
 
-      asset_results = db.execute(insert(AssetORM).returning(
+      asset_results = self.db.execute(insert(AssetORM).returning(
       AssetORM.AssetId,
       AssetORM.PurchaseOrderLineId
       ), 
       assets_to_be_created).mappings().all()
-      db.flush()
+      self.db.flush()
       asset_lookup_map: dict[int, list[int]] = defaultdict(list)
 
       for row in asset_results:
@@ -304,8 +298,8 @@ class SupplierService():
 
       # Bulk insert into the junction table
       if asset_stock_move_links:
-        db.execute(insert(AssetStockMoveORM), asset_stock_move_links)
-        db.flush()
+        self.db.execute(insert(AssetStockMoveORM), asset_stock_move_links)
+        self.db.flush()
       logger.info(f'Have created so many stock moves relation: ')
       response_data = ShipmentManifestRead(
       # Primary Key and Metadata
@@ -322,11 +316,17 @@ class SupplierService():
       estimated_arrival=new_shipment_manifest_orm.EstimatedArrival,
       status=new_shipment_manifest_orm.Status
     )
-      db.commit()
+      self.db.commit()
       return response_data
         
     except Exception as e:
-      db.rollback()
+      self.db.rollback()
       logger.error(f"Face exception {e}, rollback all transactions")
       raise e
+  
+def get_supplier_service(
+  db: Session = Depends(get_db),
+  current_user: UserORM = Depends(get_current_user)
+  ) -> SupplierService  :
+  return SupplierService(current_user, db)
   

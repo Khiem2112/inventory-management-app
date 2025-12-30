@@ -12,7 +12,7 @@ from app.utils.dependencies import get_current_user, get_db
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
-from app.services.procurement.supplier import SupplierService
+from app.services.procurement.supplier import SupplierService, get_supplier_service
 import traceback
 import uuid
 
@@ -45,8 +45,7 @@ def get_all_supplers(db: Session = Depends(get_db),
              description="Create a new Shipment Manifest. Assets are 'Disabled' if Draft, 'In Transit' if Issued.")
 def create_shipment_manifest(
     payload: ShipmentManifestInput = Body(...),
-    db: Session = Depends(get_db),
-    current_user: UserORM = Depends(get_current_user)
+    supplier_service: SupplierService = Depends(get_supplier_service)
 ):
     
     """
@@ -70,10 +69,8 @@ def create_shipment_manifest(
     """
     try:
         # Create a new supplier service to perform create shipment manifest
-        supplier_service = SupplierService(current_user)
         # Check the current purchase order
-        return supplier_service.createShipmentManifest(
-            db=db,
+        return supplier_service.create_shipment_manifest(
             sm_data = payload
         )
     except IntegrityError as e:
