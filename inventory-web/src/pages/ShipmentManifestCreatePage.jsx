@@ -277,6 +277,11 @@ const ShipmentManifestCreatePage = () => {
                     startIcon={poLookupMutation.isPending ? <CircularProgress size={20} color="inherit"/> : <SearchIcon />}
                     onClick={handlePOSearch}
                     disabled={!selectedPOId || poLookupMutation.isPending}
+                    onKeyPress={(e) => {
+                        if (e.key === 'Enter' && selectedPOId && !poLookupMutation.isPending) {
+                            handlePOSearch();
+                        }
+                    }}
                 >
                     Find
                 </Button>
