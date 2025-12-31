@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
+
 import { 
     Box, Typography, Paper, Grid, TextField, Button, 
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
@@ -110,8 +112,18 @@ const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty
 };
 
 const ShipmentManifestCreatePage = () => {
-    const [activeStep, setActiveStep] = useState(0);
-    const [selectedPOId, setSelectedPOId] = useState('');
+    const [searchParams, setSearchParams] = useSearchParams();
+    const selectedPOId = searchParams.get('po_id') || '';
+
+    const setSelectedPOId = (newId) => {
+        if (newId) {
+            setSearchParams({ po_id: newId });
+        } else {
+            setSearchParams({});
+        }
+    };
+
+    const [poInput, setPoInput] = useState(selectedPOId);
     const [poContext, setPoContext] = useState(null);
     const [submissionResult, setSubmissionResult] = useState(null);
     const [isPOClear, setIsPOClear] = useState(false); // State to check whether to render Step 2 Enter Shipment Detail or Showing a PO Clear Page
@@ -122,6 +134,18 @@ const ShipmentManifestCreatePage = () => {
     // Error State
     const [errorDialogOpen, setErrorDialogOpen] = useState(false);
     const [submitError, setSubmitError] = useState(null);
+
+    // --- Derived Step Logic ---
+    let activeStep
+    if (submissionResult) {
+        activeStep = 2;
+    }
+    else if (selectedPOId && poContext) {
+        activeStep = 1;
+    }
+    else {
+        activeStep = 0
+    }
     // --- Form Setup ---
     const { control, handleSubmit, register, watch, setValue, reset, getValues, formState: { errors } } = useForm({
         defaultValues: {
@@ -170,17 +194,28 @@ const ShipmentManifestCreatePage = () => {
                 carrier_name: '',
                 estimated_arrival: ''
             });
-            setActiveStep(1);
         },
         onError: () => alert("PO not found or invalid.")
     });
+
+    // --- Effect: React to URL Change ---
+    useEffect(() => {
+        if (selectedPOId) {
+            poLookupMutation.mutate(selectedPOId);
+        } else {
+            // Reset if URL param is cleared
+            setPoContext(null);
+            setIsPOClear(false);
+            setSubmissionResult(null);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedPOId]);
 
     // --- Mutation: Submit Manifest ---
     const submitManifestMutation = useMutation({
         mutationFn: submitManifest,
         onSuccess: (data) => {
             setSubmissionResult(data);
-            setActiveStep(2);
         },
         onError: (error) => {
             // Capture the error object and open the dialog
@@ -191,14 +226,13 @@ const ShipmentManifestCreatePage = () => {
 
     // --- Handlers ---
     const handlePOSearch = () => {
-        if (selectedPOId) poLookupMutation.mutate(selectedPOId);
+        if (poInput) setSelectedPOId(poInput);
     };
 
     const handleBackToSearch = () => {
         setIsPOClear(false);
         setPoContext(null);
         setSelectedPOId('');
-        setActiveStep(0);
     };
 
     // Open the Serial Dialog for a specific line
@@ -268,15 +302,20 @@ const ShipmentManifestCreatePage = () => {
                     fullWidth 
                     label="Purchase Order ID" 
                     placeholder="e.g. 33" 
-                    value={selectedPOId}
-                    onChange={(e) => setSelectedPOId(e.target.value)}
+                    value={poInput}
+                    onChange={(e) => setPoInput(e.target.value)}
                 />
                 <Button 
                     variant="contained" 
                     size="large" 
                     startIcon={poLookupMutation.isPending ? <CircularProgress size={20} color="inherit"/> : <SearchIcon />}
                     onClick={handlePOSearch}
-                    disabled={!selectedPOId || poLookupMutation.isPending}
+                    disabled={poLookupMutation.isPending} // The Find button is disabled when there the po lookup is performed
+                    onKeyPress={(e) => {
+                        if (e.key === 'Enter' && selectedPOId && !poLookupMutation.isPending) {
+                            handlePOSearch();
+                        }
+                    }}
                 >
                     Find
                 </Button>
