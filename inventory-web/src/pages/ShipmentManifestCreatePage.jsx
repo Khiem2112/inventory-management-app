@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { 
     Box, Typography, Paper, Grid, TextField, Button, 
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-    Stepper, Step, StepLabel, CircularProgress, Alert, Divider
+    Stepper, Step, StepLabel, CircularProgress, Alert, Divider,
+    Select, MenuItem, FormControl, IconButton, Chip, Dialog, DialogTitle, 
+    DialogContent, DialogActions, List, ListItem, ListItemText, ListItemSecondaryAction
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
@@ -12,10 +14,96 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import QrCodeIcon from '@mui/icons-material/QrCode';
+import DeleteIcon from '@mui/icons-material/Delete';
+
+
 
 import { fetchPOContext, submitManifest } from '../services/smServices';
 
 const steps = ['Select Purchase Order', 'Enter Shipment Details', 'Confirmation'];
+
+
+// --- Sub-Component: Serial Number Manager Dialog ---
+const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty, productName }) => {
+    const [currentSerial, setCurrentSerial] = useState("");
+    const [serials, setSerials] = useState(initialSerials);
+
+    // Reset local state when dialog opens with new data
+    useEffect(() => {
+        if (open) setSerials(initialSerials);
+    }, [open]);
+
+    const handleAdd = () => {
+        if (!currentSerial.trim()) return;
+        if (serials.some(s => s.serial_number === currentSerial)) return; // Prevent dupes
+        if (serials.length >= maxQty) return; // Prevent over-shipping
+
+        setSerials([...serials, { serial_number: currentSerial.trim() }]);
+        setCurrentSerial("");
+    };
+
+    const handleDelete = (index) => {
+        const newSerials = [...serials];
+        newSerials.splice(index, 1);
+        setSerials(newSerials);
+    };
+
+    const handleSave = () => {
+        onSave(serials);
+        onClose();
+    };
+
+    console.log(`Current serial number`, serials )
+    return (
+        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+            <DialogTitle>Specify Assets for {productName}</DialogTitle>
+            <DialogContent dividers>
+                <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                    <TextField 
+                        fullWidth 
+                        label="Scan/Enter Serial Number" 
+                        value={currentSerial}
+                        onChange={(e) => setCurrentSerial(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && handleAdd()}
+                        disabled={serials.length >= maxQty}
+                        helperText={`${serials.length} / ${maxQty} assets added`}
+                    />
+                    <Button 
+                        variant="contained" 
+                        onClick={handleAdd}
+                        disabled={!currentSerial || serials.length >= maxQty}
+                    >
+                        Add
+                    </Button>
+                </Box>
+                
+                {serials.length === 0 ? (
+                    <Typography color="text.secondary" align="center" sx={{ py: 2 }}>
+                        No serial numbers added yet.
+                    </Typography>
+                ) : (
+                    <List dense sx={{ maxHeight: 200, overflow: 'auto', bgcolor: '#f9f9f9', borderRadius: 1 }}>
+                        {serials.map((item, idx) => (
+                            <ListItem key={idx} divider>
+                                <ListItemText primary={item.serial_number} />
+                                <ListItemSecondaryAction>
+                                    <IconButton edge="end" size="small" onClick={() => handleDelete(idx)}>
+                                        <DeleteIcon fontSize="small" />
+                                    </IconButton>
+                                </ListItemSecondaryAction>
+                            </ListItem>
+                        ))}
+                    </List>
+                )}
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={onClose}>Cancel</Button>
+                <Button onClick={handleSave} variant="contained">Save Assets</Button>
+            </DialogActions>
+        </Dialog>
+    );
+};
 
 const ShipmentManifestCreatePage = () => {
     const [activeStep, setActiveStep] = useState(0);
@@ -23,14 +111,16 @@ const ShipmentManifestCreatePage = () => {
     const [poContext, setPoContext] = useState(null);
     const [submissionResult, setSubmissionResult] = useState(null);
     const [isPOClear, setIsPOClear] = useState(false); // State to check whether to render Step 2 Enter Shipment Detail or Showing a PO Clear Page
-
+    // Dialog State
+    const [serialDialogOpen, setSerialDialogOpen] = useState(false);
+    const [activeLineIndex, setActiveLineIndex] = useState(null);
     // --- Form Setup ---
-    const { control, handleSubmit, register, watch, reset, formState: { errors } } = useForm({
+    const { control, handleSubmit, register, watch, setValue, reset, getValues, formState: { errors } } = useForm({
         defaultValues: {
             tracking_number: '',
             carrier_name: '',
             estimated_arrival: '',
-            lines: [] // Renamed 'items' to 'lines' to match API payload better, though internal form name can be anything
+            lines: [] 
         }
     });
 
@@ -97,24 +187,53 @@ const ShipmentManifestCreatePage = () => {
         setActiveStep(0);
     };
 
+    // Open the Serial Dialog for a specific line
+    const openSerialDialog = (index) => {
+        setActiveLineIndex(index);
+        setSerialDialogOpen(true);
+    };
+
+    // Save serials from dialog back to form state
+    const handleSaveSerials = (newSerials) => {
+        setValue(`lines.${activeLineIndex}.asset_items`, newSerials);
+        // Also update the declared quantity to match the serial count
+        setValue(`lines.${activeLineIndex}.quantity_declared`, newSerials.length);
+    };
+
     const onSubmit = (data) => {
-        // Construct Payload matching your API requirement
         const payload = {
             purchase_order_id: Number(selectedPOId),
             tracking_number: data.tracking_number,
             carrier_name: data.carrier_name,
-            estimated_arrival: new Date(data.estimated_arrival).toISOString(), // Ensure ISO format
-            status: "posted", // Default status as per requirement
-            lines: data.lines.map(line => ({
-                product_id: line.product_id,
-                quantity_declared: Number(line.quantity_declared),
-                supplier_sku: line.supplier_sku || "N/A", 
-                supplier_serial_number: line.supplier_serial_number || "N/A"
-            }))
+            estimated_arrival: new Date(data.estimated_arrival).toISOString(), 
+            status: "posted", 
+            lines: data.lines.map(line => {
+                const baseLine = {
+                    purchase_order_item_id: line.purchase_order_item_id,
+                    supplier_serial_number: line.supplier_serial_number || "N/A",
+                    supplier_sku: line.supplier_sku || "N/A",
+                    shipment_mode: line.shipment_mode
+                };
+
+                // Conditional Payload based on Flow
+                if (line.shipment_mode === 'asset_specified') {
+                    return {
+                        ...baseLine,
+                        asset_items: line.asset_items // Array of { serial_number }
+                    };
+                } else {
+                    // Flow: quantity_declared
+                    return {
+                        ...baseLine,
+                        quantity: Number(line.quantity_declared) // API expects 'quantity' for this mode
+                    };
+                }
+            })
         };
+        
+        console.log("Submitting Payload:", payload);
         submitManifestMutation.mutate(payload);
     };
-
     // --- Render Steps ---
 
     const renderStep0_POSearch = () => {
@@ -211,15 +330,18 @@ const ShipmentManifestCreatePage = () => {
                     <Table size="small">
                         <TableHead>
                             <TableRow sx={{ bgcolor: '#fafafa' }}>
-                                <TableCell>Product</TableCell>
-                                <TableCell>SKU / Ref</TableCell>
-                                <TableCell align="right">Pending Qty</TableCell>
-                                <TableCell align="right" width={150}>Ship Qty</TableCell>
+                                <TableCell width="25%">Product</TableCell>
+                                <TableCell width="15%">Supplier SKU</TableCell>
+                                <TableCell width="15%">Pending</TableCell>
+                                <TableCell width="20%">Mode</TableCell>
+                                <TableCell width="25%" align="right">Shipment Data</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
                             {fields.map((field, index) => {
                                 const max = field.max_qty;
+                                const mode = watch(`lines.${index}.shipment_mode`);
+                                const assets = watch(`lines.${index}.asset_items`) || [];
                                 return (
                                     <TableRow key={field.id}>
                                         <TableCell>{field.product_name}</TableCell>
@@ -232,16 +354,42 @@ const ShipmentManifestCreatePage = () => {
                                             />
                                         </TableCell>
                                         <TableCell align="right">{max}</TableCell>
-                                        <TableCell align="right">
-                                            <TextField 
-                                                type="number" size="small"
-                                                {...register(`lines.${index}.quantity_declared`, { 
-                                                    required: true, min: 0, max: { value: max, message: `Max ${max}` } 
-                                                })}
-                                                error={!!errors.lines?.[index]?.quantity_declared}
-                                                helperText={errors.lines?.[index]?.quantity_declared?.message}
-                                                InputProps={{ inputProps: { min: 0, max: max, style: { textAlign: 'right' } } }}
+                                        <TableCell>
+                                            <Controller
+                                                name={`lines.${index}.shipment_mode`}
+                                                control={control}
+                                                render={({ field: selectField }) => (
+                                                    <Select {...selectField} size="small" fullWidth variant="standard">
+                                                        <MenuItem value="quantity_declared">Qty Declared</MenuItem>
+                                                        <MenuItem value="asset_specified">Specify Assets</MenuItem>
+                                                    </Select>
+                                                )}
                                             />
+                                        </TableCell>
+                                        <TableCell align="right">
+                                            {mode === 'quantity_declared' ? (
+                                                <TextField 
+                                                    type="number" size="small"
+                                                    {...register(`lines.${index}.quantity_declared`, { 
+                                                        required: true, min: 0, max: { value: max, message: `Max ${max}` } 
+                                                    })}
+                                                    error={!!errors.lines?.[index]?.quantity_declared}
+                                                    helperText={errors.lines?.[index]?.quantity_declared?.message}
+                                                    InputProps={{ inputProps: { min: 0, max: max, style: { textAlign: 'right' } } }}
+                                                />
+                                            ) : (
+                                                <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1 }}>
+                                                    <Chip label={`${assets.length} Assets`} size="small" color={assets.length > 0 ? "primary" : "default"} />
+                                                    <Button 
+                                                        size="small" variant="outlined" startIcon={<QrCodeIcon />}
+                                                        onClick={() => openSerialDialog(index)}
+                                                    >
+                                                        Manage
+                                                    </Button>
+                                                    {/* Hidden input to enforce validation if needed */}
+                                                    <input type="hidden" value={assets.length} {...register(`lines.${index}.quantity_declared`, { min: 1 })} />
+                                                </Box>
+                                            )}
                                         </TableCell>
                                     </TableRow>
                                 );
@@ -263,6 +411,15 @@ const ShipmentManifestCreatePage = () => {
                     </Button>
                 </Box>
             </Paper>
+            {/* Serial Number Modal */}
+            <SerialNumberDialog 
+                open={serialDialogOpen}
+                onClose={() => setSerialDialogOpen(false)}
+                onSave={handleSaveSerials}
+                initialSerials={activeLineIndex !== null ? getValues(`lines.${activeLineIndex}.asset_items`) : []}
+                maxQty={activeLineIndex !== null ? getValues(`lines.${activeLineIndex}.max_qty`) : 0}
+                productName={activeLineIndex !== null ? getValues(`lines.${activeLineIndex}.product_name`) : ''}
+            />
         </form>
     );
 
