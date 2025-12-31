@@ -139,9 +139,10 @@ const ShipmentManifestCreatePage = () => {
                 .filter(item => item.quantity_remaining > 0)
                 .map(item => ({
                     // Form-specific fields to track context
-                    product_id: item.product_id, 
-                    product_name: item.product_name,
-                    max_qty: item.quantity_remaining,
+                    purchase_order_item_id: item?.purchase_order_item_id,
+                    product_id: item?.product_id, 
+                    product_name: item?.product_name,
+                    max_qty: item?.quantity_remaining,
                     
                     // API-specific fields for submission
                     supplier_sku: item.item_description, // Default SKU mapping
@@ -332,6 +333,8 @@ const ShipmentManifestCreatePage = () => {
                             <TableRow sx={{ bgcolor: '#fafafa' }}>
                                 <TableCell width="25%">Product</TableCell>
                                 <TableCell width="15%">Supplier SKU</TableCell>
+                                <TableCell width="15%">Serial #</TableCell> {/* New Column */}
+
                                 <TableCell width="15%">Pending</TableCell>
                                 <TableCell width="20%">Mode</TableCell>
                                 <TableCell width="25%" align="right">Shipment Data</TableCell>
@@ -351,6 +354,16 @@ const ShipmentManifestCreatePage = () => {
                                                 fullWidth
                                                 placeholder="Supplier SKU"
                                                 {...register(`lines.${index}.supplier_sku`)} 
+                                            />
+                                        </TableCell>
+                                        {/* New Serial Number Input */}
+                                        <TableCell>
+                                            <TextField 
+                                                variant="standard" 
+                                                fullWidth 
+                                                placeholder="Required"
+                                                {...register(`lines.${index}.supplier_serial_number`, { required: "Required" })}
+                                                error={!!errors.lines?.[index]?.supplier_serial_number}
                                             />
                                         </TableCell>
                                         <TableCell align="right">{max}</TableCell>
