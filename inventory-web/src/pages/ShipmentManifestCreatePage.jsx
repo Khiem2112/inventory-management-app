@@ -22,7 +22,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 
 
-
+import ErrorDialog from '../components/common/ErrorDialog';
 import { fetchPOContext, submitManifest } from '../services/smServices';
 
 const steps = ['Select Purchase Order', 'Enter Shipment Details', 'Confirmation'];
@@ -118,6 +118,10 @@ const ShipmentManifestCreatePage = () => {
     // Dialog State
     const [serialDialogOpen, setSerialDialogOpen] = useState(false);
     const [activeLineIndex, setActiveLineIndex] = useState(null);
+
+    // Error State
+    const [errorDialogOpen, setErrorDialogOpen] = useState(false);
+    const [submitError, setSubmitError] = useState(null);
     // --- Form Setup ---
     const { control, handleSubmit, register, watch, setValue, reset, getValues, formState: { errors } } = useForm({
         defaultValues: {
@@ -177,6 +181,11 @@ const ShipmentManifestCreatePage = () => {
         onSuccess: (data) => {
             setSubmissionResult(data);
             setActiveStep(2);
+        },
+        onError: (error) => {
+            // Capture the error object and open the dialog
+            setSubmitError(error);
+            setErrorDialogOpen(true);
         }
     });
 
@@ -481,6 +490,13 @@ const ShipmentManifestCreatePage = () => {
             {activeStep === 0 && renderStep0_POSearch()}
             {activeStep === 1 && poContext && renderStep1_Details()}
             {activeStep === 2 && renderStep2_Success()}
+            {/* Error Dialog */}
+            <ErrorDialog 
+                open={errorDialogOpen} 
+                onClose={() => setErrorDialogOpen(false)} 
+                error={submitError}
+                title="Manifest Submission Failed"
+            />
         </Box>
     );
 };
