@@ -17,8 +17,12 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import QrCodeIcon from '@mui/icons-material/QrCode';
 import DeleteIcon from '@mui/icons-material/Delete';
 
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 
 
+import ErrorDialog from '../components/common/ErrorDialog';
 import { fetchPOContext, submitManifest } from '../services/smServices';
 
 const steps = ['Select Purchase Order', 'Enter Shipment Details', 'Confirmation'];
@@ -114,6 +118,10 @@ const ShipmentManifestCreatePage = () => {
     // Dialog State
     const [serialDialogOpen, setSerialDialogOpen] = useState(false);
     const [activeLineIndex, setActiveLineIndex] = useState(null);
+
+    // Error State
+    const [errorDialogOpen, setErrorDialogOpen] = useState(false);
+    const [submitError, setSubmitError] = useState(null);
     // --- Form Setup ---
     const { control, handleSubmit, register, watch, setValue, reset, getValues, formState: { errors } } = useForm({
         defaultValues: {
@@ -173,6 +181,11 @@ const ShipmentManifestCreatePage = () => {
         onSuccess: (data) => {
             setSubmissionResult(data);
             setActiveStep(2);
+        },
+        onError: (error) => {
+            // Capture the error object and open the dialog
+            setSubmitError(error);
+            setErrorDialogOpen(true);
         }
     });
 
@@ -291,10 +304,6 @@ const ShipmentManifestCreatePage = () => {
                             <Typography variant="caption" color="text.secondary">Order Date</Typography>
                             <Typography variant="body1">{poContext.header.create_date}</Typography>
                         </Grid>
-                        <Grid item xs={6} md={3}>
-                            <Typography variant="caption" color="text.secondary">Supplier</Typography>
-                            <Typography variant="body1">{poContext.header.supplier_name}</Typography>
-                        </Grid>
                     </Grid>
                 </Box>
 
@@ -316,14 +325,31 @@ const ShipmentManifestCreatePage = () => {
                             helperText={errors.carrier_name?.message}
                         />
                     </Grid>
-                    <Grid item xs={12} md={4}>
-                        <TextField 
-                            fullWidth type="datetime-local" label="Est. Arrival" InputLabelProps={{ shrink: true }}
-                            {...register('estimated_arrival', { required: "Required" })}
-                            error={!!errors.estimated_arrival}
-                            helperText={errors.estimated_arrival?.message}
-                        />
-                    </Grid>
+                                            {/* UPDATED: DateTimePicker with Controller */}
+                        <Grid item xs={12} md={4}>
+                            <LocalizationProvider dateAdapter={AdapterDateFns}>
+                                <Controller
+                                    control={control}
+                                    name="estimated_arrival"
+                                    rules={{ required: "Required" }}
+                                    render={({ field, fieldState: { error } }) => (
+                                        <DateTimePicker
+                                            label="Est. Arrival"
+                                            value={field.value ? new Date(field.value) : null}
+                                            onChange={(date) => field.onChange(date)}
+                                            slotProps={{
+                                                textField: {
+                                                    fullWidth: true,
+                                                    error: !!error,
+                                                    helperText: error?.message,
+                                                    variant: "outlined"
+                                                }
+                                            }}
+                                        />
+                                    )}
+                                />
+                            </LocalizationProvider>
+                        </Grid>
                 </Grid>
 
                 <Typography variant="h6" gutterBottom>Items to Ship</Typography>
@@ -464,6 +490,13 @@ const ShipmentManifestCreatePage = () => {
             {activeStep === 0 && renderStep0_POSearch()}
             {activeStep === 1 && poContext && renderStep1_Details()}
             {activeStep === 2 && renderStep2_Success()}
+            {/* Error Dialog */}
+            <ErrorDialog 
+                open={errorDialogOpen} 
+                onClose={() => setErrorDialogOpen(false)} 
+                error={submitError}
+                title="Manifest Submission Failed"
+            />
         </Box>
     );
 };
