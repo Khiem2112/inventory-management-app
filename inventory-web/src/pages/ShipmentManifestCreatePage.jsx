@@ -10,6 +10,8 @@ import SearchIcon from '@mui/icons-material/Search';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 import { fetchPOContext, submitManifest } from '../services/smServices';
 
@@ -20,6 +22,7 @@ const ShipmentManifestCreatePage = () => {
     const [selectedPOId, setSelectedPOId] = useState('');
     const [poContext, setPoContext] = useState(null);
     const [submissionResult, setSubmissionResult] = useState(null);
+    const [isPOClear, setIsPOClear] = useState(false); // State to check whether to render Step 2 Enter Shipment Detail or Showing a PO Clear Page
 
     // --- Form Setup ---
     const { control, handleSubmit, register, watch, reset, formState: { errors } } = useForm({
@@ -38,6 +41,7 @@ const ShipmentManifestCreatePage = () => {
         mutationFn: fetchPOContext,
         onSuccess: (data) => {
             setPoContext(data);
+            setIsPOClear(false);
             
             // Map PO Items to Manifest Lines
             // Filter: Only items with quantity_remaining > 0
@@ -54,6 +58,12 @@ const ShipmentManifestCreatePage = () => {
                     quantity_declared: item.quantity_remaining, // Default to max
                     supplier_serial_number: "" // Optional field
                 }));
+            // If there is no po line --> show Clear Page
+            if (shippableLines.length === 0) {
+                setIsPOClear(true);
+                // Do NOT advance step yet, let the UI handle the swap
+                return;
+            }
             
             reset({ 
                 lines: shippableLines,
@@ -80,6 +90,13 @@ const ShipmentManifestCreatePage = () => {
         if (selectedPOId) poLookupMutation.mutate(selectedPOId);
     };
 
+    const handleBackToSearch = () => {
+        setIsPOClear(false);
+        setPoContext(null);
+        setSelectedPOId('');
+        setActiveStep(0);
+    };
+
     const onSubmit = (data) => {
         // Construct Payload matching your API requirement
         const payload = {
@@ -100,8 +117,14 @@ const ShipmentManifestCreatePage = () => {
 
     // --- Render Steps ---
 
-    const renderStep0_POSearch = () => (
-        <Paper sx={{ p: 4, maxWidth: 600, mx: 'auto', mt: 4, textAlign: 'center' }}>
+    const renderStep0_POSearch = () => {
+
+        if (isPOClear) {
+            return <POClearPage poId={selectedPOId} onBack={handleBackToSearch} />;
+        }
+
+        return (
+            <Paper sx={{ p: 4, maxWidth: 600, mx: 'auto', mt: 4, textAlign: 'center' }}>
             <Typography variant="h6" gutterBottom>Start New Shipment</Typography>
             <Typography variant="body2" color="text.secondary" paragraph>
                 Enter the Purchase Order number provided by the buyer to retrieve order details.
@@ -126,7 +149,9 @@ const ShipmentManifestCreatePage = () => {
                 </Button>
             </Box>
         </Paper>
-    );
+        )
+        
+    }
 
     const renderStep1_Details = () => (
         <form onSubmit={handleSubmit(onSubmit)}>
@@ -139,7 +164,7 @@ const ShipmentManifestCreatePage = () => {
                             <Typography variant="body1" fontWeight="bold">#{poContext.header.purchase_order_id}</Typography>
                         </Grid>
                         <Grid item xs={6} md={3}>
-                            <Typography variant="caption" color="text.secondary">Customer</Typography>
+                            <Typography variant="caption" color="text.secondary">Creation Employee</Typography>
                             <Typography variant="body1">{poContext.header.create_user_name}</Typography>
                         </Grid>
                         <Grid item xs={6} md={3}>
@@ -226,7 +251,7 @@ const ShipmentManifestCreatePage = () => {
                 </TableContainer>
 
                 <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-                    <Button onClick={() => setActiveStep(0)}>Back</Button>
+                    <Button onClick={handleBackToSearch}>Back</Button>
                     <Button 
                         type="submit" 
                         variant="contained" 
@@ -260,9 +285,11 @@ const ShipmentManifestCreatePage = () => {
     return (
         <Box sx={{ p: 3, maxWidth: 1000, mx: 'auto' }}>
             <Typography variant="h4" fontWeight="bold" gutterBottom>Create Shipment Manifest</Typography>
-            <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
-                {steps.map((label) => <Step key={label}><StepLabel>{label}</StepLabel></Step>)}
-            </Stepper>
+            {!isPOClear && (
+                <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
+                    {steps.map((label) => <Step key={label}><StepLabel>{label}</StepLabel></Step>)}
+                </Stepper>
+            )}
 
             {activeStep === 0 && renderStep0_POSearch()}
             {activeStep === 1 && poContext && renderStep1_Details()}
@@ -270,5 +297,66 @@ const ShipmentManifestCreatePage = () => {
         </Box>
     );
 };
+
+
+const POClearPage = ({ poId, onBack }) => {
+    return (
+        <Paper 
+            elevation={0} 
+            sx={{ 
+                p: 5, 
+                textAlign: 'center', 
+                maxWidth: 600, 
+                mx: 'auto', 
+                mt: 4,
+                bgcolor: '#f8f9fa',
+                border: '1px dashed #ced4da',
+                borderRadius: 2
+            }}
+        >
+            {/* Changed to LocalShipping for a "Logistics" feel rather than "Final Completion" */}
+            <LocalShippingIcon color="info" sx={{ fontSize: 80, mb: 2, opacity: 0.8 }} />
+            
+            <Typography variant="h5" gutterBottom fontWeight="bold" color="text.primary">
+                Manifest Complete for PO #{poId}
+            </Typography>
+            
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+                All items from this Purchase Order have been assigned to shipment manifests. 
+                There are no remaining quantities available to manifest at this time.
+            </Typography>
+
+            {/* Added QC Disclaimer */}
+            <Box sx={{ 
+                textAlign: 'left', 
+                bgcolor: '#fff4e5', // Light warning/info color
+                p: 2, 
+                borderRadius: 1, 
+                mb: 4,
+                border: '1px solid #ffe2b7'
+            }}>
+                <Typography variant="caption" display="block" color="warning.dark" fontWeight="bold" sx={{ mb: 0.5 }}>
+                    PLEASE NOTE:
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                    A completed manifest does not guarantee final stock entry. Items are still subject to 
+                    <strong> Quality Control (QC) inspection</strong> upon arrival. Quantities may be 
+                    rejected or adjusted based on physical condition and compliance.
+                </Typography>
+            </Box>
+
+            <Button 
+                variant="outlined" // Outlined feels less "final" than contained
+                color="primary"
+                startIcon={<ArrowBackIcon />}
+                onClick={onBack}
+                fullWidth
+            >
+                Return to Order Search
+            </Button>
+        </Paper>
+    );
+};
+
 
 export default ShipmentManifestCreatePage;
