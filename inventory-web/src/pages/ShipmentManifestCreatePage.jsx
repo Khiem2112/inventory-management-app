@@ -17,6 +17,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import QrCodeIcon from '@mui/icons-material/QrCode';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import DeleteIcon from '@mui/icons-material/Delete';
 
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -111,6 +112,42 @@ const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty
     );
 };
 
+const PONotFoundPage = ({ poId, onBack }) => (
+    <Paper 
+        elevation={0} 
+        sx={{ 
+            p: 5, 
+            textAlign: 'center', 
+            maxWidth: 600, 
+            mx: 'auto', 
+            mt: 4,
+            bgcolor: '#fff4f4',
+            border: '1px dashed #ffcdd2',
+            borderRadius: 2
+        }}
+    >
+        <ErrorOutlineIcon color="error" sx={{ fontSize: 80, mb: 2, opacity: 0.8 }} />
+        
+        <Typography variant="h5" gutterBottom fontWeight="bold" color="text.primary">
+            Purchase Order #{poId} Not Found
+        </Typography>
+        
+        <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+            We could not locate a Purchase Order with this ID. Please check the number and try again.
+        </Typography>
+
+        <Button 
+            variant="outlined" 
+            color="primary"
+            startIcon={<ArrowBackIcon />}
+            onClick={onBack}
+            fullWidth
+        >
+            Return to Search
+        </Button>
+    </Paper>
+);
+
 const ShipmentManifestCreatePage = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const selectedPOId = searchParams.get('po_id') || '';
@@ -126,6 +163,7 @@ const ShipmentManifestCreatePage = () => {
     const [poInput, setPoInput] = useState(selectedPOId);
     const [poContext, setPoContext] = useState(null);
     const [submissionResult, setSubmissionResult] = useState(null);
+    const [isPONotFound, setIsPONotFound] = useState(false);
     const [isPOClear, setIsPOClear] = useState(false); // State to check whether to render Step 2 Enter Shipment Detail or Showing a PO Clear Page
     // Dialog State
     const [serialDialogOpen, setSerialDialogOpen] = useState(false);
@@ -164,6 +202,7 @@ const ShipmentManifestCreatePage = () => {
         onSuccess: (data) => {
             setPoContext(data);
             setIsPOClear(false);
+            setIsPONotFound(false);
             
             // Map PO Items to Manifest Lines
             // Filter: Only items with quantity_remaining > 0
@@ -195,7 +234,11 @@ const ShipmentManifestCreatePage = () => {
                 estimated_arrival: ''
             });
         },
-        onError: () => alert("PO not found or invalid.")
+        onError: () => {
+            // Error Handling: Set Not Found state
+            setIsPONotFound(true);
+            setPoContext(null);
+        }
     });
 
     // --- Effect: React to URL Change ---
@@ -233,6 +276,7 @@ const ShipmentManifestCreatePage = () => {
         setIsPOClear(false);
         setPoContext(null);
         setSelectedPOId('');
+        setIsPONotFound(false);
     };
 
     // Open the Serial Dialog for a specific line
@@ -516,6 +560,21 @@ const ShipmentManifestCreatePage = () => {
             <Button variant="outlined" onClick={() => window.location.reload()}>Create Another</Button>
         </Paper>
     );
+
+    if (isPONotFound) return (
+            <PONotFoundPage poId={selectedPOId} onBack={handleBackToSearch} />
+        )
+
+
+    // 1. Loading Guard (The "Pre-check" you requested)
+    if (poLookupMutation.isPending && selectedPOId) {
+        return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+                <CircularProgress size={60} />
+                <Typography variant="h6" sx={{ ml: 2, color: 'text.secondary' }}>Loading Order Context...</Typography>
+            </Box>
+        );
+    }
 
     return (
         <Box sx={{ p: 3, maxWidth: 1000, mx: 'auto' }}>
