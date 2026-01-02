@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
-
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { 
     Box, Typography, Paper, Grid, TextField, Button, 
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
@@ -148,136 +147,86 @@ const PONotFoundPage = ({ poId, onBack }) => (
     </Paper>
 );
 
+const POClearPage = ({ poId, onBack }) => {
+    return (
+        <Paper 
+            elevation={0} 
+            sx={{ 
+                p: 5, 
+                textAlign: 'center', 
+                maxWidth: 600, 
+                mx: 'auto', 
+                mt: 4,
+                bgcolor: '#f8f9fa',
+                border: '1px dashed #ced4da',
+                borderRadius: 2
+            }}
+        >
+            {/* Changed to LocalShipping for a "Logistics" feel rather than "Final Completion" */}
+            <LocalShippingIcon color="info" sx={{ fontSize: 80, mb: 2, opacity: 0.8 }} />
+            
+            <Typography variant="h5" gutterBottom fontWeight="bold" color="text.primary">
+                Manifest Complete for PO #{poId}
+            </Typography>
+            
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+                All items from this Purchase Order have been assigned to shipment manifests. 
+                There are no remaining quantities available to manifest at this time.
+            </Typography>
+
+            {/* Added QC Disclaimer */}
+            <Box sx={{ 
+                textAlign: 'left', 
+                bgcolor: '#fff4e5', // Light warning/info color
+                p: 2, 
+                borderRadius: 1, 
+                mb: 4,
+                border: '1px solid #ffe2b7'
+            }}>
+                <Typography variant="caption" display="block" color="warning.dark" fontWeight="bold" sx={{ mb: 0.5 }}>
+                    PLEASE NOTE:
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                    A completed manifest does not guarantee final stock entry. Items are still subject to 
+                    <strong> Quality Control (QC) inspection</strong> upon arrival. Quantities may be 
+                    rejected or adjusted based on physical condition and compliance.
+                </Typography>
+            </Box>
+
+            <Button 
+                variant="outlined" // Outlined feels less "final" than contained
+                color="primary"
+                startIcon={<ArrowBackIcon />}
+                onClick={onBack}
+                fullWidth
+            >
+                Return to Order Search
+            </Button>
+        </Paper>
+    );
+};
+
+/* The User flow:
+(1) Search PO --> (2)
+          
+(2) Shipment Detail Page
+        --> Not Found
+        --> PO is cleared
+        --> Found PO --> Detail page
+(3) Success Page 
+        --> create new SM from that PO --> (2)
+        --> create new SM from other PO --> (1)
+
+**/
 const ShipmentManifestCreatePage = () => {
-    const [searchParams, setSearchParams] = useSearchParams();
-    const selectedPOId = searchParams.get('po_id') || '';
 
-    const setSelectedPOId = (newId) => {
-        if (newId) {
-            setSearchParams({ po_id: newId });
-        } else {
-            setSearchParams({});
-        }
-    };
+    const location = useLocation()
 
-    const [poInput, setPoInput] = useState(selectedPOId);
-    const [poContext, setPoContext] = useState(null);
-    const [submissionResult, setSubmissionResult] = useState(null);
-    const [isPONotFound, setIsPONotFound] = useState(false);
-    const [isPOClear, setIsPOClear] = useState(false); // State to check whether to render Step 2 Enter Shipment Detail or Showing a PO Clear Page
-    // Dialog State
-    const [serialDialogOpen, setSerialDialogOpen] = useState(false);
-    const [activeLineIndex, setActiveLineIndex] = useState(null);
+    const smCreationResult = location?.state?.submissionResult
 
-    // Error State
-    const [errorDialogOpen, setErrorDialogOpen] = useState(false);
-    const [submitError, setSubmitError] = useState(null);
-
-    // --- Derived Step Logic ---
-    let activeStep
-    if (submissionResult) {
-        activeStep = 2;
-    }
-    else if (selectedPOId && poContext) {
-        activeStep = 1;
-    }
-    else {
-        activeStep = 0
-    }
-    // --- Form Setup ---
-    const { control, handleSubmit, register, watch, setValue, reset, getValues, formState: { errors } } = useForm({
-        defaultValues: {
-            tracking_number: '',
-            carrier_name: '',
-            estimated_arrival: '',
-            lines: [] 
-        }
-    });
-
-    const { fields } = useFieldArray({ control, name: 'lines' });
-
-    // --- Mutation: Fetch PO Context ---
-    const poLookupMutation = useMutation({
-        mutationFn: fetchPOContext,
-        onSuccess: (data) => {
-            setPoContext(data);
-            setIsPOClear(false);
-            setIsPONotFound(false);
-            
-            // Map PO Items to Manifest Lines
-            // Filter: Only items with quantity_remaining > 0
-            const shippableLines = data.items
-                .filter(item => item.quantity_remaining > 0)
-                .map(item => ({
-                    // Form-specific fields to track context
-                    purchase_order_item_id: item?.purchase_order_item_id,
-                    product_id: item?.product_id, 
-                    product_name: item?.product_name,
-                    max_qty: item?.quantity_remaining,
-                    
-                    // API-specific fields for submission
-                    supplier_sku: item.item_description, // Default SKU mapping
-                    quantity_declared: item.quantity_remaining, // Default to max
-                    supplier_serial_number: "" // Optional field
-                }));
-            // If there is no po line --> show Clear Page
-            if (shippableLines.length === 0) {
-                setIsPOClear(true);
-                // Do NOT advance step yet, let the UI handle the swap
-                return;
-            }
-            
-            reset({ 
-                lines: shippableLines,
-                tracking_number: '', 
-                carrier_name: '',
-                estimated_arrival: ''
-            });
-        },
-        onError: () => {
-            // Error Handling: Set Not Found state
-            setIsPONotFound(true);
-            setPoContext(null);
-        }
-    });
-
-    // --- Effect: React to URL Change ---
-    useEffect(() => {
-        if (selectedPOId) {
-            poLookupMutation.mutate(selectedPOId);
-        } else {
-            // Reset if URL param is cleared
-            setPoContext(null);
-            setIsPOClear(false);
-            setSubmissionResult(null);
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedPOId]);
-
-    // --- Mutation: Submit Manifest ---
-    const submitManifestMutation = useMutation({
-        mutationFn: submitManifest,
-        onSuccess: (data) => {
-            setSubmissionResult(data);
-        },
-        onError: (error) => {
-            // Capture the error object and open the dialog
-            setSubmitError(error);
-            setErrorDialogOpen(true);
-        }
-    });
+    const [activeStep, setActiveStep] = useState(0) // Global state to track the current step, other child component will update this active step
 
     // --- Handlers ---
-    const handlePOSearch = () => {
-        if (poInput) setSelectedPOId(poInput);
-    };
-
-    const handleBackToSearch = () => {
-        setIsPOClear(false);
-        setPoContext(null);
-        setSelectedPOId('');
-        setIsPONotFound(false);
-    };
 
     // Open the Serial Dialog for a specific line
     const openSerialDialog = (index) => {
@@ -292,47 +241,27 @@ const ShipmentManifestCreatePage = () => {
         setValue(`lines.${activeLineIndex}.quantity_declared`, newSerials.length);
     };
 
-    const onSubmit = (data) => {
-        const payload = {
-            purchase_order_id: Number(selectedPOId),
-            tracking_number: data.tracking_number,
-            carrier_name: data.carrier_name,
-            estimated_arrival: new Date(data.estimated_arrival).toISOString(), 
-            status: "posted", 
-            lines: data.lines.map(line => {
-                const baseLine = {
-                    purchase_order_item_id: line.purchase_order_item_id,
-                    supplier_serial_number: line.supplier_serial_number || "N/A",
-                    supplier_sku: line.supplier_sku || "N/A",
-                    shipment_mode: line.shipment_mode
-                };
-
-                // Conditional Payload based on Flow
-                if (line.shipment_mode === 'asset_specified') {
-                    return {
-                        ...baseLine,
-                        asset_items: line.asset_items // Array of { serial_number }
-                    };
-                } else {
-                    // Flow: quantity_declared
-                    return {
-                        ...baseLine,
-                        quantity: Number(line.quantity_declared) // API expects 'quantity' for this mode
-                    };
-                }
-            })
-        };
-        
-        console.log("Submitting Payload:", payload);
-        submitManifestMutation.mutate(payload);
-    };
     // --- Render Steps ---
 
     const renderStep0_POSearch = () => {
 
-        if (isPOClear) {
-            return <POClearPage poId={selectedPOId} onBack={handleBackToSearch} />;
+        const [searchParams, setSearchParams] = useSearchParams()
+
+        const [poInput, setPoInput] = useState();
+
+        const setSelectedPOId = (newId) => {
+          if (newId) {
+            setSearchParams({ po_id: newId });
+        } else {
+            setSearchParams({});
         }
+        };
+
+        const handlePOSearch = () => {
+            if (poInput) setSelectedPOId(poInput);
+        };
+
+
 
         return (
             <Paper sx={{ p: 4, maxWidth: 600, mx: 'auto', mt: 4, textAlign: 'center' }}>
@@ -369,7 +298,160 @@ const ShipmentManifestCreatePage = () => {
         
     }
 
-    const renderStep1_Details = () => (
+    const renderStep1_Details = ({
+    }
+    ) => {
+
+        // Dialog State
+        const [serialDialogOpen, setSerialDialogOpen] = useState(false);
+        const [activeLineIndex, setActiveLineIndex] = useState(null);
+
+        // Error State
+        const [errorDialogOpen, setErrorDialogOpen] = useState(false);
+        const [submitError, setSubmitError] = useState(null);
+
+        // --- Form Setup ---
+        const { control, handleSubmit, register, watch, setValue, reset, getValues, formState: { errors } } = useForm({
+            defaultValues: {
+                tracking_number: '',
+                carrier_name: '',
+                estimated_arrival: '',
+                lines: [] 
+            }
+        });
+
+        const { fields } = useFieldArray({ control, name: 'lines' });
+
+
+        // Current PO params
+        const [searchParams, setSearchParams] = useSearchParams();
+        const selectedPOId = searchParams.get('po_id') || '';
+
+        // Pass submission result to step 2
+        const navigate = useNavigate();
+
+        // --- Mutation: Fetch PO Context ---
+        const {
+            data: poContext,
+            isSuccess: isFetchingPOContextSuccess,
+            error: fetchingPOContextError,
+            isError: isFetchingPOContextError,
+            isLoading: isFetchingPOContextLoading
+        } = useQuery({
+            queryFn: () => fetchPOContext(selectedPOId),
+            queryKey: selectedPOId
+    });
+
+        // 2. Handle the "Cleared" state as Derived State (No useEffect needed for this!)
+        const shippableLines = useMemo(() => {
+        if (!poContext?.items) return [];
+        return poContext.items
+            .filter(item => item.quantity_remaining > 0)
+            .map(item => ({
+            purchase_order_item_id: item?.purchase_order_item_id,
+            product_id: item?.product_id,
+            product_name: item?.product_name,
+            max_qty: item?.quantity_remaining,
+            supplier_sku: item.item_description,
+            quantity_declared: item.quantity_remaining,
+            supplier_serial_number: ""
+            }));
+        }, [poContext]);
+
+        const isPOClear = poContext && shippableLines.length === 0;
+
+        // 3. Handle the FORM RESET as a Side Effect
+        useEffect(() => {
+        if (isFetchingPOContextSuccess) {
+            reset({
+            lines: shippableLines,
+            tracking_number: '',
+            carrier_name: '',
+            estimated_arrival: ''
+            });
+        }
+        }, [isFetchingPOContextSuccess, isPOClear, shippableLines, reset]);
+        
+        // Error Handling: Set Not Found state
+        const isPONotFound = isFetchingPOContextError
+
+        const handleBackToSearch = () => {
+            const newParams = new URLSearchParams(searchParams)
+            newParams.delete('po_id')
+            setSearchParams(newParams)
+        } // Handle clear the po_id which navigate the page back to step0
+
+
+        // --- Mutation: Submit Manifest ---
+        const submitManifestMutation = useMutation({
+            mutationFn: submitManifest,
+            onSuccess: (data) => {
+                navigate('/manifest/success', { state: { manifestSuccessResponse: data } })
+
+            },
+            onError: (error) => {
+                // Capture the error object and open the dialog
+                setSubmitError(error)
+                setErrorDialogOpen(true)
+            }
+        })
+                // Handle onSubmit to create new Shipment Manifest
+        const onSubmit = (data) => {
+        const payload = {
+            purchase_order_id: Number(selectedPOId),
+            tracking_number: data.tracking_number,
+            carrier_name: data.carrier_name,
+            estimated_arrival: new Date(data.estimated_arrival).toISOString(), 
+            status: "posted", 
+            lines: data.lines.map(line => {
+                const baseLine = {
+                    purchase_order_item_id: line.purchase_order_item_id,
+                    supplier_serial_number: line.supplier_serial_number || "N/A",
+                    supplier_sku: line.supplier_sku || "N/A",
+                    shipment_mode: line.shipment_mode
+                };
+
+                // Conditional Payload based on Flow
+                if (line.shipment_mode === 'asset_specified') {
+                    return {
+                        ...baseLine,
+                        asset_items: line.asset_items // Array of { serial_number }
+                    };
+                } else {
+                    // Flow: quantity_declared
+                    return {
+                        ...baseLine,
+                        quantity: Number(line.quantity_declared) // API expects 'quantity' for this mode
+                    };
+                }
+            })
+        };
+        
+        console.log("Submitting Payload:", payload);
+        submitManifestMutation.mutate(payload);
+    };
+
+        // Rendering logic when already haved data
+        if (isPONotFound) return (
+        <PONotFoundPage poId={selectedPOId} onBack={handleBackToSearch} />
+    )
+
+        if (isPOClear) {
+                return <POClearPage poId={selectedPOId} onBack={handleBackToSearch} />;
+            }
+        
+        // 1. Loading Guard (The "Pre-check" you requested)
+        if (isFetchingPOContextLoading && selectedPOId) {
+            return (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+                    <CircularProgress size={60} />
+                    <Typography variant="h6" sx={{ ml: 2, color: 'text.secondary' }}>Loading Order Context...</Typography>
+                </Box>
+            );
+        }
+
+
+        return (
         <form onSubmit={handleSubmit(onSubmit)}>
             <Paper sx={{ p: 3, mb: 3 }}>
                 {/* Header Summary */}
@@ -542,10 +624,23 @@ const ShipmentManifestCreatePage = () => {
                 maxQty={activeLineIndex !== null ? getValues(`lines.${activeLineIndex}.max_qty`) : 0}
                 productName={activeLineIndex !== null ? getValues(`lines.${activeLineIndex}.product_name`) : ''}
             />
+            {/* Error Dialog */}
+            <ErrorDialog 
+                open={errorDialogOpen} 
+                onClose={() => setErrorDialogOpen(false)} 
+                error={submitError}
+                title="Manifest Submission Failed"
+            />
         </form>
     );
 
-    const renderStep2_Success = () => (
+    }
+
+    const renderStep2_Success = ({
+        submissionResult
+    }) => {
+
+        return (
         <Paper sx={{ p: 5, textAlign: 'center', maxWidth: 600, mx: 'auto', mt: 4 }}>
             <CheckCircleIcon color="success" sx={{ fontSize: 80, mb: 2 }} />
             <Typography variant="h4" gutterBottom>Success!</Typography>
@@ -561,21 +656,7 @@ const ShipmentManifestCreatePage = () => {
         </Paper>
     );
 
-    if (isPONotFound) return (
-            <PONotFoundPage poId={selectedPOId} onBack={handleBackToSearch} />
-        )
-
-
-    // 1. Loading Guard (The "Pre-check" you requested)
-    if (poLookupMutation.isPending && selectedPOId) {
-        return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-                <CircularProgress size={60} />
-                <Typography variant="h6" sx={{ ml: 2, color: 'text.secondary' }}>Loading Order Context...</Typography>
-            </Box>
-        );
-    }
-
+    } 
     return (
         <Box sx={{ p: 3, maxWidth: 1000, mx: 'auto' }}>
             <Typography variant="h4" fontWeight="bold" gutterBottom>Create Shipment Manifest</Typography>
@@ -586,78 +667,16 @@ const ShipmentManifestCreatePage = () => {
             )}
 
             {activeStep === 0 && renderStep0_POSearch()}
-            {activeStep === 1 && poContext && renderStep1_Details()}
+            {/* Just need to know current activeStep to render step 1 */}
+            {activeStep === 1 && renderStep1_Details()} 
             {activeStep === 2 && renderStep2_Success()}
-            {/* Error Dialog */}
-            <ErrorDialog 
-                open={errorDialogOpen} 
-                onClose={() => setErrorDialogOpen(false)} 
-                error={submitError}
-                title="Manifest Submission Failed"
-            />
+
         </Box>
     );
 };
 
 
-const POClearPage = ({ poId, onBack }) => {
-    return (
-        <Paper 
-            elevation={0} 
-            sx={{ 
-                p: 5, 
-                textAlign: 'center', 
-                maxWidth: 600, 
-                mx: 'auto', 
-                mt: 4,
-                bgcolor: '#f8f9fa',
-                border: '1px dashed #ced4da',
-                borderRadius: 2
-            }}
-        >
-            {/* Changed to LocalShipping for a "Logistics" feel rather than "Final Completion" */}
-            <LocalShippingIcon color="info" sx={{ fontSize: 80, mb: 2, opacity: 0.8 }} />
-            
-            <Typography variant="h5" gutterBottom fontWeight="bold" color="text.primary">
-                Manifest Complete for PO #{poId}
-            </Typography>
-            
-            <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-                All items from this Purchase Order have been assigned to shipment manifests. 
-                There are no remaining quantities available to manifest at this time.
-            </Typography>
 
-            {/* Added QC Disclaimer */}
-            <Box sx={{ 
-                textAlign: 'left', 
-                bgcolor: '#fff4e5', // Light warning/info color
-                p: 2, 
-                borderRadius: 1, 
-                mb: 4,
-                border: '1px solid #ffe2b7'
-            }}>
-                <Typography variant="caption" display="block" color="warning.dark" fontWeight="bold" sx={{ mb: 0.5 }}>
-                    PLEASE NOTE:
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                    A completed manifest does not guarantee final stock entry. Items are still subject to 
-                    <strong> Quality Control (QC) inspection</strong> upon arrival. Quantities may be 
-                    rejected or adjusted based on physical condition and compliance.
-                </Typography>
-            </Box>
-
-            <Button 
-                variant="outlined" // Outlined feels less "final" than contained
-                color="primary"
-                startIcon={<ArrowBackIcon />}
-                onClick={onBack}
-                fullWidth
-            >
-                Return to Order Search
-            </Button>
-        </Paper>
-    );
-};
 
 
 export default ShipmentManifestCreatePage;
