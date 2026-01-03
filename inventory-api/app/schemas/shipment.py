@@ -93,7 +93,7 @@ class ShipmentManifestInput(ShipmentManifestWrite):
     purchase_order_id: int = Field(..., description="Linked PO is required to determine the Supplier")
     lines: List[Union[ ShipmentManifestLineAssetInput, ShipmentManifestLineQuantityInput ]] = Field(..., description="List of items in this shipment")
 
-class CountingManifestLineResponse(ShipmentManifestLineBase, AutoReadSchema):
+class CountingManifestLineResponse(AutoReadSchema):
     """
     Schema for a single line item in the Manifest Details response.
     Inherits fields like supplier_sku directly.
@@ -105,6 +105,7 @@ class CountingManifestLineResponse(ShipmentManifestLineBase, AutoReadSchema):
     po_number: Optional[str] = None 
     product_name: Optional[str] = None
     qty_received: Optional[int] = Field(default=None, description="Count of linked Assets with Status = 'received'")
+    quantity_declared: Optional[int] = Field(default= None, description= "Quantity that supplier want to ship on that SHipment Line")
     
 class ManifestLinesListResponse(ShipmentManifestBase, StandardResponse):
     """
