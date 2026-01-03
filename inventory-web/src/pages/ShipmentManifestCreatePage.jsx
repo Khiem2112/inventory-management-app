@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useForm, useFieldArray, Controller } from 'react-hook-form';
+import { useForm, useFieldArray, Controller, FormProvider, useWatch, useFormContext } from 'react-hook-form';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useNavigate, useLocation, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { 
@@ -282,6 +282,95 @@ const Step0_POSearch = () => {
     
 }
 
+// Single row in the Step1 Details
+const ManifestItemData = ({
+    index,
+    field,
+    onOpenSerialDialog
+}) => {
+
+    const methods = useFormContext()
+    const { register, control, formState: { errors } } = methods
+    // Get the form context from parent
+    const shipmentMode = useWatch({
+        control: control,
+        name: `lines.${index}.shipment_mode`
+    })
+
+    const assetItems = useWatch({
+        control: control,
+        name: `lines.${index}.asset_items`
+    }) || []
+
+
+    // The data transform layer
+    const max = field.max_qty
+    const mode = shipmentMode
+    const assets = assetItems
+
+    return (
+        <>
+        <TableCell>{field.product_name}</TableCell>
+        <TableCell>
+            <TextField 
+                variant="standard"
+                fullWidth
+                placeholder="Supplier SKU"
+                {...register(`lines.${index}.supplier_sku`)} 
+            />
+        </TableCell>
+        {/* New Serial Number Input */}
+        <TableCell>
+            <TextField 
+                variant="standard" 
+                fullWidth 
+                placeholder="Required"
+                {...register(`lines.${index}.supplier_serial_number`, { required: "Required" })}
+                error={!!errors.lines?.[index]?.supplier_serial_number}
+            />
+        </TableCell>
+        <TableCell align="right">{max}</TableCell>
+        <TableCell>
+            <Controller
+                name={`lines.${index}.shipment_mode`}
+                control={control}
+                render={({ field: selectField }) => (
+                    <Select {...selectField} size="small" fullWidth variant="standard">
+                        <MenuItem value="quantity_declared">Qty Declared</MenuItem>
+                        <MenuItem value="asset_specified">Specify Assets</MenuItem>
+                    </Select>
+                )}
+            />
+        </TableCell>
+        <TableCell align="right">
+            {mode === 'quantity_declared' ? (
+                <TextField 
+                    type="number" size="small"
+                    {...register(`lines.${index}.quantity_declared`, { 
+                        required: true, min: 0, max: { value: max, message: `Max ${max}` } 
+                    })}
+                    error={!!errors.lines?.[index]?.quantity_declared}
+                    helperText={errors.lines?.[index]?.quantity_declared?.message}
+                    InputProps={{ inputProps: { min: 0, max: max, style: { textAlign: 'right' } } }}
+                />
+            ) : (
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1 }}>
+                    <Chip label={`${assets.length} Assets`} size="small" color={assets.length > 0 ? "primary" : "default"} />
+                    <Button 
+                        size="small" variant="outlined" startIcon={<QrCodeIcon />}
+                        onClick={() => onOpenSerialDialog(index)}
+                    >
+                        Manage
+                    </Button>
+                    {/* Hidden input to enforce validation if needed */}
+                    <input type="hidden" value={assets.length} {...register(`lines.${index}.quantity_declared`, { min: 1 })} />
+                </Box>
+            )}
+        </TableCell>
+        </>
+    )
+}
+
 const Step1_Details = (
 ) => {
 
@@ -307,7 +396,8 @@ const Step1_Details = (
     };
 
     // --- Form Setup ---
-    const { control, handleSubmit, register, watch, setValue, reset, getValues, formState: { errors } } = useForm({
+
+    const methods = useForm({
         defaultValues: {
             tracking_number: '',
             carrier_name: '',
@@ -315,6 +405,8 @@ const Step1_Details = (
             lines: [] 
         }
     });
+
+    const { control, handleSubmit, register, watch, setValue, reset, getValues, formState: { errors } } = methods
 
     const { fields } = useFieldArray({ control, name: 'lines' });
 
@@ -445,186 +537,129 @@ const Step1_Details = (
 
 
     return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-        <Paper sx={{ p: 3, mb: 3 }}>
-            {/* Header Summary */}
-            <Box sx={{ mb: 3, bgcolor: '#f5f5f5', p: 2, borderRadius: 1 }}>
-                <Grid container spacing={2}>
-                    <Grid item xs={6} md={3}>
-                        <Typography variant="caption" color="text.secondary">PO Number</Typography>
-                        <Typography variant="body1" fontWeight="bold">#{poContext.header.purchase_order_id}</Typography>
-                    </Grid>
-                    <Grid item xs={6} md={3}>
-                        <Typography variant="caption" color="text.secondary">Creation Employee</Typography>
-                        <Typography variant="body1">{poContext.header.create_user_name}</Typography>
-                    </Grid>
-                    <Grid item xs={6} md={3}>
-                        <Typography variant="caption" color="text.secondary">Order Date</Typography>
-                        <Typography variant="body1">{poContext.header.create_date}</Typography>
-                    </Grid>
-                </Grid>
-            </Box>
+        <FormProvider {...methods} >
+            <form onSubmit={handleSubmit(onSubmit)}>
+                <Paper sx={{ p: 3, mb: 3 }}>
+                    {/* Header Summary */}
+                    <Box sx={{ mb: 3, bgcolor: '#f5f5f5', p: 2, borderRadius: 1 }}>
+                        <Grid container spacing={2}>
+                            <Grid item xs={6} md={3}>
+                                <Typography variant="caption" color="text.secondary">PO Number</Typography>
+                                <Typography variant="body1" fontWeight="bold">#{poContext.header.purchase_order_id}</Typography>
+                            </Grid>
+                            <Grid item xs={6} md={3}>
+                                <Typography variant="caption" color="text.secondary">Creation Employee</Typography>
+                                <Typography variant="body1">{poContext.header.create_user_name}</Typography>
+                            </Grid>
+                            <Grid item xs={6} md={3}>
+                                <Typography variant="caption" color="text.secondary">Order Date</Typography>
+                                <Typography variant="body1">{poContext.header.create_date}</Typography>
+                            </Grid>
+                        </Grid>
+                    </Box>
 
-            <Typography variant="h6" gutterBottom>Shipment Info</Typography>
-            <Grid container spacing={3} sx={{ mb: 4 }}>
-                <Grid item xs={12} md={4}>
-                    <TextField 
-                        fullWidth label="Tracking Number" 
-                        {...register('tracking_number', { required: "Required" })}
-                        error={!!errors.tracking_number}
-                        helperText={errors.tracking_number?.message}
-                    />
-                </Grid>
-                <Grid item xs={12} md={4}>
-                    <TextField 
-                        fullWidth label="Carrier Name" 
-                        {...register('carrier_name', { required: "Required" })}
-                        error={!!errors.carrier_name}
-                        helperText={errors.carrier_name?.message}
-                    />
-                </Grid>
-                                        {/* UPDATED: DateTimePicker with Controller */}
-                    <Grid item xs={12} md={4}>
-                        <LocalizationProvider dateAdapter={AdapterDateFns}>
-                            <Controller
-                                control={control}
-                                name="estimated_arrival"
-                                rules={{ required: "Required" }}
-                                render={({ field, fieldState: { error } }) => (
-                                    <DateTimePicker
-                                        label="Est. Arrival"
-                                        value={field.value ? new Date(field.value) : null}
-                                        onChange={(date) => field.onChange(date)}
-                                        slotProps={{
-                                            textField: {
-                                                fullWidth: true,
-                                                error: !!error,
-                                                helperText: error?.message,
-                                                variant: "outlined"
-                                            }
-                                        }}
-                                    />
-                                )}
+                    <Typography variant="h6" gutterBottom>Shipment Info</Typography>
+                    <Grid container spacing={3} sx={{ mb: 4 }}>
+                        <Grid item xs={12} md={4}>
+                            <TextField 
+                                fullWidth label="Tracking Number" 
+                                {...register('tracking_number', { required: "Required" })}
+                                error={!!errors.tracking_number}
+                                helperText={errors.tracking_number?.message}
                             />
-                        </LocalizationProvider>
-                    </Grid>
-            </Grid>
-
-            <Typography variant="h6" gutterBottom>Items to Ship</Typography>
-            <TableContainer sx={{ border: '1px solid #eee' }}>
-                <Table size="small">
-                    <TableHead>
-                        <TableRow sx={{ bgcolor: '#fafafa' }}>
-                            <TableCell width="25%">Product</TableCell>
-                            <TableCell width="15%">Supplier SKU</TableCell>
-                            <TableCell width="15%">Serial #</TableCell> {/* New Column */}
-
-                            <TableCell width="15%">Pending</TableCell>
-                            <TableCell width="20%">Mode</TableCell>
-                            <TableCell width="25%" align="right">Shipment Data</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {fields.map((field, index) => {
-                            const max = field.max_qty;
-                            const mode = watch(`lines.${index}.shipment_mode`);
-                            const assets = watch(`lines.${index}.asset_items`) || [];
-                            return (
-                                <TableRow key={field.id}>
-                                    <TableCell>{field.product_name}</TableCell>
-                                    <TableCell>
-                                        <TextField 
-                                            variant="standard"
-                                            fullWidth
-                                            placeholder="Supplier SKU"
-                                            {...register(`lines.${index}.supplier_sku`)} 
-                                        />
-                                    </TableCell>
-                                    {/* New Serial Number Input */}
-                                    <TableCell>
-                                        <TextField 
-                                            variant="standard" 
-                                            fullWidth 
-                                            placeholder="Required"
-                                            {...register(`lines.${index}.supplier_serial_number`, { required: "Required" })}
-                                            error={!!errors.lines?.[index]?.supplier_serial_number}
-                                        />
-                                    </TableCell>
-                                    <TableCell align="right">{max}</TableCell>
-                                    <TableCell>
-                                        <Controller
-                                            name={`lines.${index}.shipment_mode`}
-                                            control={control}
-                                            render={({ field: selectField }) => (
-                                                <Select {...selectField} size="small" fullWidth variant="standard">
-                                                    <MenuItem value="quantity_declared">Qty Declared</MenuItem>
-                                                    <MenuItem value="asset_specified">Specify Assets</MenuItem>
-                                                </Select>
-                                            )}
-                                        />
-                                    </TableCell>
-                                    <TableCell align="right">
-                                        {mode === 'quantity_declared' ? (
-                                            <TextField 
-                                                type="number" size="small"
-                                                {...register(`lines.${index}.quantity_declared`, { 
-                                                    required: true, min: 0, max: { value: max, message: `Max ${max}` } 
-                                                })}
-                                                error={!!errors.lines?.[index]?.quantity_declared}
-                                                helperText={errors.lines?.[index]?.quantity_declared?.message}
-                                                InputProps={{ inputProps: { min: 0, max: max, style: { textAlign: 'right' } } }}
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                            <TextField 
+                                fullWidth label="Carrier Name" 
+                                {...register('carrier_name', { required: "Required" })}
+                                error={!!errors.carrier_name}
+                                helperText={errors.carrier_name?.message}
+                            />
+                        </Grid>
+                                                {/* UPDATED: DateTimePicker with Controller */}
+                            <Grid item xs={12} md={4}>
+                                <LocalizationProvider dateAdapter={AdapterDateFns}>
+                                    <Controller
+                                        control={control}
+                                        name="estimated_arrival"
+                                        rules={{ required: "Required" }}
+                                        render={({ field, fieldState: { error } }) => (
+                                            <DateTimePicker
+                                                label="Est. Arrival"
+                                                value={field.value ? new Date(field.value) : null}
+                                                onChange={(date) => field.onChange(date)}
+                                                slotProps={{
+                                                    textField: {
+                                                        fullWidth: true,
+                                                        error: !!error,
+                                                        helperText: error?.message,
+                                                        variant: "outlined"
+                                                    }
+                                                }}
                                             />
-                                        ) : (
-                                            <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1 }}>
-                                                <Chip label={`${assets.length} Assets`} size="small" color={assets.length > 0 ? "primary" : "default"} />
-                                                <Button 
-                                                    size="small" variant="outlined" startIcon={<QrCodeIcon />}
-                                                    onClick={() => openSerialDialog(index)}
-                                                >
-                                                    Manage
-                                                </Button>
-                                                {/* Hidden input to enforce validation if needed */}
-                                                <input type="hidden" value={assets.length} {...register(`lines.${index}.quantity_declared`, { min: 1 })} />
-                                            </Box>
                                         )}
-                                    </TableCell>
-                                </TableRow>
-                            );
-                        })}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+                                    />
+                                </LocalizationProvider>
+                            </Grid>
+                    </Grid>
 
-            <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-                <Button onClick={handleBackToSearch}>Back</Button>
-                <Button 
-                    type="submit" 
-                    variant="contained" 
-                    size="large"
-                    startIcon={submitManifestMutation.isPending ? <CircularProgress size={20} color="inherit"/> : <ArrowForwardIcon />}
-                    disabled={submitManifestMutation.isPending}
-                >
-                    Create Manifest
-                </Button>
-            </Box>
-        </Paper>
-        {/* Serial Number Modal */}
-        <SerialNumberDialog 
-            open={serialDialogOpen}
-            onClose={() => setSerialDialogOpen(false)}
-            onSave={handleSaveSerials}
-            initialSerials={activeLineIndex !== null ? getValues(`lines.${activeLineIndex}.asset_items`) : []}
-            maxQty={activeLineIndex !== null ? getValues(`lines.${activeLineIndex}.max_qty`) : 0}
-            productName={activeLineIndex !== null ? getValues(`lines.${activeLineIndex}.product_name`) : ''}
-        />
-        {/* Error Dialog */}
-        <ErrorDialog
-            open={errorDialogOpen} 
-            onClose={() => setErrorDialogOpen(false)} 
-            error={submitError}
-            title="Manifest Submission Failed"
-        />
-    </form>
+                    <Typography variant="h6" gutterBottom>Items to Ship</Typography>
+                    <TableContainer sx={{ border: '1px solid #eee' }}>
+                        <Table size="small">
+                            <TableHead>
+                                <TableRow sx={{ bgcolor: '#fafafa' }}>
+                                    <TableCell width="25%">Product</TableCell>
+                                    <TableCell width="15%">Supplier SKU</TableCell>
+                                    <TableCell width="15%">Serial #</TableCell> {/* New Column */}
+
+                                    <TableCell width="15%">Pending</TableCell>
+                                    <TableCell width="20%">Mode</TableCell>
+                                    <TableCell width="25%" align="right">Shipment Data</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {fields.map((field, index) => {
+                                    return (
+                                        <TableRow key={field.id}>
+                                            <ManifestItemData index={index} field={field} onOpenSerialDialog={openSerialDialog}/>
+                                        </TableRow>
+                                    );
+                                })}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+
+                    <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+                        <Button onClick={handleBackToSearch}>Back</Button>
+                        <Button 
+                            type="submit" 
+                            variant="contained" 
+                            size="large"
+                            startIcon={submitManifestMutation.isPending ? <CircularProgress size={20} color="inherit"/> : <ArrowForwardIcon />}
+                            disabled={submitManifestMutation.isPending}
+                        >
+                            Create Manifest
+                        </Button>
+                    </Box>
+                </Paper>
+                {/* Serial Number Modal */}
+                <SerialNumberDialog 
+                    open={serialDialogOpen}
+                    onClose={() => setSerialDialogOpen(false)}
+                    onSave={handleSaveSerials}
+                    initialSerials={activeLineIndex !== null ? getValues(`lines.${activeLineIndex}.asset_items`) : []}
+                    maxQty={activeLineIndex !== null ? getValues(`lines.${activeLineIndex}.max_qty`) : 0}
+                    productName={activeLineIndex !== null ? getValues(`lines.${activeLineIndex}.product_name`) : ''}
+                />
+                {/* Error Dialog */}
+                <ErrorDialog
+                    open={errorDialogOpen} 
+                    onClose={() => setErrorDialogOpen(false)} 
+                    error={submitError}
+                    title="Manifest Submission Failed"
+                />
+            </form>
+        </FormProvider>    
 );
 
 }
