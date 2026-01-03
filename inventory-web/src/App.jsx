@@ -50,7 +50,7 @@ const router = createBrowserRouter(
         </Route>
       </Route>
 
-      <Route path ="/supplier/manifest/create" element={<ShipmentManifestCreatePage/>} />
+      <Route path ="/supplier/manifest/create/*" element={<ShipmentManifestCreatePage/>} />
 
       {/* The Page using useBlocker */}
       <Route path="/purchase-orders/create" element={<POCreatePage />} />
