@@ -106,6 +106,7 @@ class CountingManifestLineResponse(AutoReadSchema):
     id: Optional[int] = Field(default=None, description= "Line ID of Shipment Manifest")
     # 1. Alias fields to match the specific API contract output names (keeping line_id and qty_shipped)
     # 2. Add calculated/derived fields
+    receiving_strategy: Optional[Literal['asset_specified','quantity_declared']] = Field(default = None,)
     po_number: Optional[str] = None 
     product_name: Optional[str] = None
     quantity_received: Optional[int] = Field(default=None, description="Count of linked Assets with Status = 'received'")

@@ -77,6 +77,7 @@ async def get_manifest_lines_raw_sql(
             sml.Id,
             sml.SupplierSku,
             sml.QuantityDeclared,
+            sml.ReceivingStrategy,
             MAX(p.ProductName) AS ProductName,
             SUM(CASE 
                 WHEN a.AssetStatus IN ('Available', 'Awaiting QC') THEN 1 
@@ -86,7 +87,7 @@ async def get_manifest_lines_raw_sql(
         LEFT JOIN Asset a ON sml.Id = a.ShipmentManifestLineId
         LEFT JOIN Product p ON a.ProductId = p.ProductId
         WHERE sml.ShipmentManifestId = :manifest_id
-        GROUP BY sml.Id, sml.SupplierSku, sml.QuantityDeclared
+        GROUP BY sml.Id, sml.SupplierSku, sml.QuantityDeclared, sml.ReceivingStrategy
     """)
 
     line_rows = db.execute(lines_query, {"manifest_id": manifest_id}).mappings().all()
@@ -112,6 +113,7 @@ async def get_manifest_lines_raw_sql(
         line_data = {
             "id": row.get('Id'),
             "supplier_sku": row.get('SupplierSku'),
+            "receiving_strategy": row.get('ReceivingStrategy'),
             "quantity_declared": qty_declared,
             "po_number": po_number,
             "product_name": row.get('ProductName'), # Returns None if key missing or value is NULL
@@ -230,23 +232,26 @@ async def search_manifests(
 
         # 2. Apply Dynamic Filters
         if manifest_id:
+            logger.info(f"Just searching with manifest id: {manifest_id}")
             query = query.filter(ShipmentManifest.Id == manifest_id)
+        # Skipp searching other condition if already has manifest id
+        else:
+            if supplier_id:
+                query = query.filter(ShipmentManifest.SupplierId == supplier_id)
+            if supplier_name:
+                query = query.filter(SupplierORM.SupplierName.ilike(f"%{supplier_name}%"))
 
-        if supplier_id:
-            query = query.filter(ShipmentManifest.SupplierId == supplier_id)
-        if supplier_name:
-            query = query.filter(SupplierORM.SupplierName.ilike(f"%{supplier_name}%"))
+            if tracking_number:
+                query = query.filter(ShipmentManifest.TrackingNumber.ilike(f"%{tracking_number}%"))
 
-        if tracking_number:
-            query = query.filter(ShipmentManifest.TrackingNumber.ilike(f"%{tracking_number}%"))
-
-        if date_from:
-            query = query.filter(ShipmentManifest.EstimatedArrival >= date_from)
-        if date_to:
-            query = query.filter(ShipmentManifest.EstimatedArrival <= date_to)
+            if date_from:
+                query = query.filter(ShipmentManifest.EstimatedArrival >= date_from)
+            if date_to:
+                query = query.filter(ShipmentManifest.EstimatedArrival <= date_to)
 
         # 3. Execute & Deduplicate
         manifests = query.distinct().all()
+        logger.info(f"Seeing list of manifests: {manifests}")
 
         # 4. Map to Response (using snake_case arguments)
         results = []
