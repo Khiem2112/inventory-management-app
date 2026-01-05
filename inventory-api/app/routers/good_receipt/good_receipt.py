@@ -77,6 +77,7 @@ async def get_manifest_lines_raw_sql(
             sml.Id,
             sml.SupplierSku,
             sml.QuantityDeclared,
+            sml.ReceivingStrategy,
             MAX(p.ProductName) AS ProductName,
             SUM(CASE 
                 WHEN a.AssetStatus IN ('Available', 'Awaiting QC') THEN 1 
@@ -86,7 +87,7 @@ async def get_manifest_lines_raw_sql(
         LEFT JOIN Asset a ON sml.Id = a.ShipmentManifestLineId
         LEFT JOIN Product p ON a.ProductId = p.ProductId
         WHERE sml.ShipmentManifestId = :manifest_id
-        GROUP BY sml.Id, sml.SupplierSku, sml.QuantityDeclared
+        GROUP BY sml.Id, sml.SupplierSku, sml.QuantityDeclared, sml.ReceivingStrategy
     """)
 
     line_rows = db.execute(lines_query, {"manifest_id": manifest_id}).mappings().all()
@@ -112,6 +113,7 @@ async def get_manifest_lines_raw_sql(
         line_data = {
             "id": row.get('Id'),
             "supplier_sku": row.get('SupplierSku'),
+            "receiving_strategy": row.get('ReceivingStrategy'),
             "quantity_declared": qty_declared,
             "po_number": po_number,
             "product_name": row.get('ProductName'), # Returns None if key missing or value is NULL
