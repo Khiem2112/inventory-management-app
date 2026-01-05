@@ -182,6 +182,9 @@ async def verify_assets(
                                      AssetORM.ShipmentManifestLineId == line_id
                                  )
     assets_orm = db.execute(asset_serials_query).mappings().all()
+    # handle if shipment line doesn't have any assets
+    if len(assets_orm) == 0:
+        raise HTTPException(status_code=400, detail="Shipment line id doesn't has any asset record")
     asset_serials_db_set = set(
         asset_orm.get('SerialNumber') for asset_orm in assets_orm
     )
@@ -192,9 +195,9 @@ async def verify_assets(
     matched_serials = asset_serials_db_set & asset_serials_input_set
     return ShipmentLineVerifyResponse(
         message= "Have calculated the differences in user input serials successfully",
-        missing_asset_serials= list(missing_serials),
-        redundant_asset_serials= list(redundant_serials),
-        matched_asset_serials=list(matched_serials)
+        missing_asset_serials= list(missing_serials) if missing_serials is not None else [],
+        redundant_asset_serials= list(redundant_serials) if redundant_serials is not None else [],
+        matched_asset_serials=list(matched_serials) if matched_serials is not None else []
     )
     
     
