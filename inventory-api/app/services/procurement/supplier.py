@@ -196,6 +196,7 @@ class SupplierService():
         sm_lines_data.append({
           "ShipmentManifestId": new_shipment_manifest_orm.Id,
           "PurchaseOrderLineId": po_item_orm.PurchaseOrderItemId,
+          "ReceivingStrategy": sm_line.shipment_mode,
           "SupplierSerialNumber": sm_line.supplier_serial_number,
           "SupplierSku": sm_line.supplier_sku,
           "QuantityDeclared": sm_line.quantity
