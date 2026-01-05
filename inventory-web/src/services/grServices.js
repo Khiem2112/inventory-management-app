@@ -48,6 +48,28 @@ export const fetchManifestDetails = async (manifestId) => {
 };
 
 /**
+ * Verify asset serials in a shipment manifest line
+ * Endpoint: /receiving/manifests/lines/${shipmentManifestLineId}/verify_asset
+ */
+export const verifyShipmentLineAssets = async (payload) => {
+    // DEBUG: Check your console. It should show: { line_id: "...", assets: [...] }
+    console.log("Payload received by verify function:", payload);
+
+    const { line_id, assets } = payload;
+
+    // Ensure we don't send the request if line_id is missing
+    if (!line_id) throw new Error("Missing manifest line ID");
+
+    const response = await api.post(`receiving/manifest/lines/${line_id}/verify_asset`, assets);
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Verification failed');
+    }
+
+    return response.json();
+};
+/**
  * Submit the Receipt
  * Payload structure would typically be: { manifest_id, received_lines: [{ id, qty_received }] }
  */
