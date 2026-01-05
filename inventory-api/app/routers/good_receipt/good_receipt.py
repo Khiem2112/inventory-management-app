@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session, selectinload, joinedload
 from sqlalchemy import select, func, text
 from enum import Enum
 from datetime import datetime, date
+from collections import Counter
 # Hypothetical imports
 from app.database.shipment_manifest_model import (
   ShipmentManifest, 
@@ -25,8 +26,11 @@ ManifestSearchResponse,
 ManifestSearchResultItem,
 FinalizeManifestInput,
 FinalizeManifestResponse,
+AssetInput,
+ShipmentLineVerifyResponse,
 FinalizeManifestItem
 )
+from app.schemas.base import StandardResponse
 from app.utils.dependencies import get_db, get_current_user
 from app.utils.logger import setup_logger
 from app.utils.random_string import generate_random_string
@@ -132,6 +136,65 @@ async def get_manifest_lines_raw_sql(
         message=f"Shipment Manifest {manifest_id} details retrieved safely.",
         total_lines=len(response_lines)
     )
+    
+@router.post(
+    "/manifest/lines/{line_id}/verify_asset",
+    response_model=ShipmentLineVerifyResponse,
+    description = "List of asset user typed in"
+)
+async def verify_assets(
+    line_id: int,
+    asset_inputs: list[AssetInput],
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    # Check if the shipment line id exist
+    line_id_orm = db.execute(select(ShipmentManifestLine.Id).where(
+        ShipmentManifestLine.Id == line_id
+    )).scalars().first()
+    
+    if not line_id_orm:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Not found shipment manifest line id {line_id}"
+        )
+        
+    input_asset_serials:list[str] = [ asset_input.serial_number  for asset_input in asset_inputs ]
+    # Check if all input asset is identical
+    # Show different asset serials number that has duplicated value
+    asset_serials_counter = Counter(input_asset_serials)
+    duplicated_asset_serials = [
+        key
+        for key, value in asset_serials_counter.items() if value > 1
+    ]
+    if len(duplicated_asset_serials) > 0:
+        raise HTTPException(
+            status_code=400,
+            detail = f"Observed redundant serial number: {duplicated_asset_serials}"
+        )
+    
+    # Compare all the asset serial number in the input asset to know which one is not in database
+    asset_serials_query = select(AssetORM.SerialNumber,
+                                 AssetORM.ShipmentManifestLineId).where(
+                                     AssetORM.AssetStatus == "In Transit",
+                                     AssetORM.ShipmentManifestLineId == line_id
+                                 )
+    assets_orm = db.execute(asset_serials_query).mappings().all()
+    asset_serials_db_set = set(
+        asset_orm.get('SerialNumber') for asset_orm in assets_orm
+    )
+    asset_serials_input_set = set(input_asset_serials)
+    missing_serials = asset_serials_db_set - asset_serials_input_set
+    logger.info(f"List of missing serials: {list(missing_serials)}")
+    redundant_serials = asset_serials_input_set - asset_serials_db_set
+    matched_serials = asset_serials_db_set & asset_serials_input_set
+    return ShipmentLineVerifyResponse(
+        message= "Have calculated the differences in user input serials successfully",
+        missing_asset_serials= list(missing_serials),
+        redundant_asset_serials= list(redundant_serials),
+        matched_asset_serials=list(matched_serials)
+    )
+    
     
 class SearchType(str, Enum):
     manifest_id = "manifest_id"

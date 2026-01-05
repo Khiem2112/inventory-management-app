@@ -52,6 +52,10 @@ class AssetBase(BaseModel):
 
 class AssetInput(AssetBase):
     pass
+class ShipmentLineVerifyResponse(StandardResponse):
+    missing_asset_serials: list[str] 
+    redundant_asset_serials: list[str]
+    matched_asset_serials: list[str]
 
 class ShipmentManifestLineBase(BaseModel):
     """Common fields for ShipmentManifestLine model."""
@@ -119,6 +123,7 @@ class ManifestLinesListResponse(ShipmentManifestBase, StandardResponse):
     status: Optional[str] = None
     lines: List[CountingManifestLineResponse] # Leveraging the existing Read schema
     total_lines: Optional[int] = Field(default=None)
+
 
 # --- 3. GoodsReceipt Schemas ---
 
