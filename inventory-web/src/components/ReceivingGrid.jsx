@@ -185,6 +185,7 @@ const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
                     initialSerials={activeLineIndex !== null ? getValues(`lines.${activeLineIndex}.asset_items`) : []}
                     maxQty={activeLineIndex !== null ? getValues(`lines.${activeLineIndex}.quantity_remaining`) : 0}
                     productName={activeLineIndex !== null ? getValues(`lines.${activeLineIndex}.product_name`) : ''}
+                    manifestLineId={activeLineIndex !== null ? getValues(`lines.${activeLineIndex}.id`) : ''}
                 />
 
                 {/* --- FOOTER ACTIONS --- */}
