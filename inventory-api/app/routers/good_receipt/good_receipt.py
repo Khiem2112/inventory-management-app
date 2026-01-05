@@ -1,7 +1,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session, selectinload, joinedload
-from sqlalchemy import select, func
+from sqlalchemy import select, func, text
 from enum import Enum
 from datetime import datetime, date
 # Hypothetical imports
@@ -42,98 +42,95 @@ logger = setup_logger()
     response_model=ManifestLinesListResponse, 
     description="Retrieves all line items for a specific Shipment Manifest."
 )
-async def get_all_manifest_lines(
+async def get_manifest_lines_raw_sql(
     manifest_id: int, 
     db: Session = Depends(get_db)
 ):
-    """
-    Fetches a ShipmentManifest and eagerly loads all associated ShipmentManifestLine objects 
-    using the db.query() and filter() syntax.
-    """
-    logger.info(f"Fetching manifest details for ID: {manifest_id}. Using final consistent naming conventions.")
+    # ---------------------------------------------------------
+    # 1. Fetch the Manifest Header
+    # ---------------------------------------------------------
+    header_query = text("""
+        SELECT 
+            Id, SupplierId, PurchaseOrderId, TrackingNumber, 
+            CarrierName, EstimatedArrival, CreatedByUserId, Status
+        FROM ShipmentManifest 
+        WHERE Id = :manifest_id
+    """)
+    
+    header_row = db.execute(header_query, {"manifest_id": manifest_id}).mappings().first()
 
-    try:
-        # 1. Fetch data efficiently using db.query() and eager loading (1.x syntax)
-        manifest_orm: Optional[ShipmentManifest] = (
-            db.query(ShipmentManifest)
-            .options(
-                selectinload(ShipmentManifest.manifest_lines)
-                .selectinload(ShipmentManifestLine.assets) 
-                .joinedload(AssetORM.product) 
-            )
-            .filter(ShipmentManifest.Id == manifest_id)
-            .first()
-        )
-
-    except Exception as e:
-        logger.error(f"Database error while fetching manifest {manifest_id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while accessing manifest data."
-        )
-
-    if manifest_orm is None:
+    if not header_row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Shipment Manifest with ID {manifest_id} not found."
         )
 
-    # 2. Process Lines and Map to Response Schema
-    response_lines: List[CountingManifestLineResponse] = []
-    
-    # Helper function to calculate different quantity
-    def get_asset_quantity(asset_orm_list: list[AssetORM], asset_statuses:list):
-        return sum(
-            1 for asset in asset_orm_list if asset.AssetStatus.lower() in asset_statuses
-        )
-        
-    for line_orm in manifest_orm.manifest_lines:
-        
-        # --- CORE LOGIC: Calculation ---
+    # ---------------------------------------------------------
+    # 2. Fetch Aggregated Lines
+    # ---------------------------------------------------------
+    lines_query = text("""
+        SELECT 
+            sml.Id,
+            sml.SupplierSku,
+            sml.QuantityDeclared,
+            MAX(p.ProductName) AS ProductName,
+            SUM(CASE 
+                WHEN a.AssetStatus IN ('Available', 'Awaiting QC') THEN 1 
+                ELSE 0 
+            END) AS QuantityReceived
+        FROM ShipmentManifestLine sml
+        LEFT JOIN Asset a ON sml.Id = a.ShipmentManifestLineId
+        LEFT JOIN Product p ON a.ProductId = p.ProductId
+        WHERE sml.ShipmentManifestId = :manifest_id
+        GROUP BY sml.Id, sml.SupplierSku, sml.QuantityDeclared
+    """)
 
-        qty_previously_received = get_asset_quantity(
-            line_orm.assets,
-            ['available', 'awaiting qc']
-        )
-        
-        # --- Data Derivation ---
-        product_name = None
-        if line_orm.assets and line_orm.assets[0].product:
-            product_name = line_orm.assets[0].product.ProductName
+    line_rows = db.execute(lines_query, {"manifest_id": manifest_id}).mappings().all()
 
-        po_number = f"PO-{manifest_orm.PurchaseOrderId}" if manifest_orm.PurchaseOrderId else None
+    # ---------------------------------------------------------
+    # 3. Construct Response (Safe Access)
+    # ---------------------------------------------------------
+    response_lines = []
+
+    for row in line_rows:
+        # Use .get(key, default) to prevent KeyErrors
+        # Defaulting numeric fields to 0 ensures math doesn't break
+        qty_received = row.get('QuantityReceived', 0) or 0
+        qty_declared = row.get('QuantityDeclared', 0) or 0
         
-        # --- Prepare the data dictionary for Pydantic mapping ---
+        # Safe Math
+        qty_remaining = qty_declared - qty_received
+        
+        # Handle optional strings safely
+        po_id = header_row.get('PurchaseOrderId')
+        po_number = f"PO-{po_id}" if po_id else None
+
         line_data = {
-            "id": line_orm.Id, # Maps directly to Pydantic 'id'
-            "supplier_sku": line_orm.SupplierSku, 
-            "quantity_declared": line_orm.QuantityDeclared, 
+            "id": row.get('Id'),
+            "supplier_sku": row.get('SupplierSku'),
+            "quantity_declared": qty_declared,
             "po_number": po_number,
-            "product_name": product_name,
-            "quantity_received": qty_previously_received,
-            "quantity_remaining": line_orm.QuantityDeclared - qty_previously_received
+            "product_name": row.get('ProductName'), # Returns None if key missing or value is NULL
+            "quantity_received": qty_received,
+            "quantity_remaining": qty_remaining
         }
-        # Validate and append using the Pydantic schema
-        response_line = CountingManifestLineResponse.model_validate(
-            line_data
-        )
-        
-        response_lines.append(response_line)
 
-    # 3. Construct Final Response
-    
+        response_lines.append(
+            CountingManifestLineResponse.model_validate(line_data)
+        )
+
     return ManifestLinesListResponse(
-        shipment_manifest_id=manifest_orm.Id,
-        supplier_id= manifest_orm.SupplierId,
-        purchase_order_id= manifest_orm.PurchaseOrderId,
-        tracking_number = manifest_orm.TrackingNumber,
-        carrier_name= manifest_orm.CarrierName,
-        estimated_arrival= manifest_orm.EstimatedArrival,
-        created_by_user_id= manifest_orm.CreatedByUserId,
-        status=manifest_orm.Status,
+        shipment_manifest_id=header_row.get('Id'),
+        supplier_id=header_row.get('SupplierId'),
+        purchase_order_id=header_row.get('PurchaseOrderId'),
+        tracking_number=header_row.get('TrackingNumber'),
+        carrier_name=header_row.get('CarrierName'),
+        estimated_arrival=header_row.get('EstimatedArrival'),
+        created_by_user_id=header_row.get('CreatedByUserId'),
+        status=header_row.get('Status'),
         lines=response_lines,
-        message=f"Shipment Manifest {manifest_id} details successfully retrieved with {len(response_lines)} lines.",
-        total_lines= len(response_lines)
+        message=f"Shipment Manifest {manifest_id} details retrieved safely.",
+        total_lines=len(response_lines)
     )
     
 class SearchType(str, Enum):

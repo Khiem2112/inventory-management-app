@@ -55,7 +55,7 @@ class AssetInput(AssetBase):
 
 class ShipmentManifestLineBase(BaseModel):
     """Common fields for ShipmentManifestLine model."""
-    purchase_order_item_id: int = Field(desciption = "Direct reference purchase order item")
+    purchase_order_item_id: int = Field(...,desciption = "Direct reference purchase order item")
     supplier_serial_number: Optional[str] = Field(default=None, description="Supplier injected supplier serial number on their shipment line")
     supplier_sku: Optional[str] = Field(default = None, description="Supplier SKU")
     
