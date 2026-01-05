@@ -15,7 +15,7 @@ const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
             lines: manifestData.lines.map(line => ({
                 ...line,
                 // Initialize input with 0 or existing received count
-                current_receive_input: line.qty_received || 0 
+                current_receive_input:  0 
             }))
         }
     });
@@ -75,8 +75,10 @@ const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
                             <TableRow>
                                 <TableCell>Product / SKU</TableCell>
                                 <TableCell align="center">Ref ID</TableCell>
-                                <TableCell align="right">Qty Declared</TableCell>
-                                <TableCell align="right" sx={{ width: 150 }}>Qty Received</TableCell>
+                                <TableCell align="right">Declared</TableCell>
+                                <TableCell align="right">Previously Received</TableCell>
+                                <TableCell align="right">Remaining</TableCell>
+                                <TableCell align="right" sx={{ width: 150 }}>Qty Input</TableCell>
                                 <TableCell align="center">Status</TableCell>
                             </TableRow>
                         </TableHead>
@@ -85,8 +87,10 @@ const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
                                 // Watch specific field for validation
                                 const currentInput = watch(`lines.${index}.current_receive_input`);
                                 const declared = line.quantity_declared;
-                                const isOver = Number(currentInput) > declared;
-                                const isComplete = Number(currentInput) === declared;
+                                const prev_received = line.quantity_received;
+                                const remaining = line.quantity_remaining;
+                                const isOver = Number(currentInput) > remaining;
+                                const isComplete = Number(currentInput) === remaining;
 
                                 return (
                                     <TableRow key={line.id} hover>
@@ -105,6 +109,12 @@ const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
                                             <Typography fontWeight="500">{declared}</Typography>
                                         </TableCell>
                                         <TableCell align="right">
+                                            <Typography fontWeight="500">{prev_received}</Typography>
+                                        </TableCell>
+                                        <TableCell align="right">
+                                            <Typography fontWeight="500">{remaining}</Typography>
+                                        </TableCell>
+                                        <TableCell align="right">
                                             <Controller
                                                 name={`lines.${index}.current_receive_input`}
                                                 control={control}
@@ -115,7 +125,7 @@ const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
                                                         type="number"
                                                         size="small"
                                                         error={isOver}
-                                                        helperText={isOver ? `+${Number(currentInput) - declared}` : ''}
+                                                        helperText={isOver ? `+${Number(currentInput) - remaining}` : ''}
                                                         InputProps={{
                                                             inputProps: { min: 0, style: { textAlign: 'right' } }
                                                         }}

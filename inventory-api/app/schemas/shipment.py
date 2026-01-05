@@ -104,13 +104,17 @@ class CountingManifestLineResponse(AutoReadSchema):
     # 2. Add calculated/derived fields
     po_number: Optional[str] = None 
     product_name: Optional[str] = None
-    qty_received: Optional[int] = Field(default=None, description="Count of linked Assets with Status = 'received'")
+    quantity_received: Optional[int] = Field(default=None, description="Count of linked Assets with Status = 'received'")
     quantity_declared: Optional[int] = Field(default= None, description= "Quantity that supplier want to ship on that SHipment Line")
+    quantity_remaining: Optional[int] = Field(default = None, description="= quantity_declared - quantity_received")
     
 class ManifestLinesListResponse(ShipmentManifestBase, StandardResponse):
     """
     The full response body for GET /manifests/{manifest_id}/lines.
     """
+    supplier_id:Optional[int] = Field(default=None, description="Supplier who created te Manifest")
+    created_by_user_id: Optional[int] = Field(default=None, description = "User ID who created the manifest")
+    
     shipment_manifest_id: Optional[int] = Field(default=None)
     status: Optional[str] = None
     lines: List[CountingManifestLineResponse] # Leveraging the existing Read schema
