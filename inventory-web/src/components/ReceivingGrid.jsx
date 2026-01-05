@@ -79,6 +79,7 @@ const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
                                 <TableCell align="right">Previously Received</TableCell>
                                 <TableCell align="right">Remaining</TableCell>
                                 <TableCell align="right" sx={{ width: 150 }}>Qty Input</TableCell>
+                                <TableCell align="right">Receiving Strategy</TableCell>
                                 <TableCell align="center">Status</TableCell>
                             </TableRow>
                         </TableHead>
@@ -140,6 +141,9 @@ const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
                                                     />
                                                 )}
                                             />
+                                        </TableCell>
+                                        <TableCell align="right">
+                                            <Typography fontWeight="500">{line.receiving_strategy || "Unknown strategy"}</Typography>
                                         </TableCell>
                                         <TableCell align="center">
                                             {isOver && (
