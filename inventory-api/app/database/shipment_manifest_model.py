@@ -92,6 +92,9 @@ class ShipmentManifestLine(Base):
     # QuantityDeclared (NOT NULL, int)
     QuantityDeclared: Mapped[int] = mapped_column(Integer, nullable=False)
 
+    # Receiving strategy to know whether current strategy is asset_specifed or quantity_declared
+    ReceivingStrategy: Mapped[str] = mapped_column("ReceivingStrategy", String, nullable=True)
+    
     # ORM Relationship: Many-to-One to ShipmentManifest
     shipment_manifest: Mapped["ShipmentManifest"] = relationship(
         back_populates="manifest_lines"
