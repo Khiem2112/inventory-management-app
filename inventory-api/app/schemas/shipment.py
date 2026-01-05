@@ -53,9 +53,9 @@ class AssetBase(BaseModel):
 class AssetInput(AssetBase):
     pass
 class ShipmentLineVerifyResponse(StandardResponse):
-    missing_asset_serials: list[str] 
-    redundant_asset_serials: list[str]
-    matched_asset_serials: list[str]
+    missing_asset_serials: list[str | None] 
+    redundant_asset_serials: list[str | None]
+    matched_asset_serials: list[str | None]
 
 class ShipmentManifestLineBase(BaseModel):
     """Common fields for ShipmentManifestLine model."""
