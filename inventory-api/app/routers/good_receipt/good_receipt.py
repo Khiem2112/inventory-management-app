@@ -81,12 +81,19 @@ async def get_all_manifest_lines(
     # 2. Process Lines and Map to Response Schema
     response_lines: List[CountingManifestLineResponse] = []
     
+    # Helper function to calculate different quantity
+    def get_asset_quantity(asset_orm_list: list[AssetORM], asset_statuses:list):
+        return sum(
+            1 for asset in asset_orm_list if asset.AssetStatus.lower() in asset_statuses
+        )
+        
     for line_orm in manifest_orm.manifest_lines:
         
         # --- CORE LOGIC: Calculation ---
-        qty_received = sum(
-            1 for asset in line_orm.assets 
-            if asset.AssetStatus.lower() == 'received'
+
+        qty_previously_received = get_asset_quantity(
+            line_orm.assets,
+            ['available', 'awaiting qc']
         )
         
         # --- Data Derivation ---
@@ -103,7 +110,8 @@ async def get_all_manifest_lines(
             "quantity_declared": line_orm.QuantityDeclared, 
             "po_number": po_number,
             "product_name": product_name,
-            "qty_received": qty_received 
+            "quantity_received": qty_previously_received,
+            "quantity_remaining": line_orm.QuantityDeclared - qty_previously_received
         }
         # Validate and append using the Pydantic schema
         response_line = CountingManifestLineResponse.model_validate(
