@@ -1,4 +1,3 @@
-import React from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { 
     Box, Paper, Typography, Table, TableBody, TableCell, 
@@ -8,14 +7,23 @@ import {
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import SaveAltIcon from '@mui/icons-material/SaveAlt';
+import QrCodeIcon from '@mui/icons-material/QrCode';
+import SerialNumberDialog from './modal/AssetSerialNumberDialog';
+import { useState } from 'react';
 
 const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
-    const { control, handleSubmit, watch } = useForm({
+
+    // State to control the Serial Dialog
+    const [serialDialogOpen, setSerialDialogOpen] = useState(false)
+    const [activeLineIndex, setActiveLineIndex] = useState(null);
+    
+
+    const { control, handleSubmit, watch, setValue,  getValues} = useForm({
         defaultValues: {
             lines: manifestData.lines.map(line => ({
                 ...line,
-                // Initialize input with 0 or existing received count
-                current_receive_input:  0 
+                // Initialize received asset items with [] or existing received count
+                asset_items: [] 
             }))
         }
     });
@@ -27,6 +35,22 @@ const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
 
     // Helper to calculate totals for the footer
     const watchedLines = watch("lines");
+
+    // Handle open the asset serial dialog
+    const openSerialDialog = (index) => {
+    setActiveLineIndex(index);
+    setSerialDialogOpen(true);
+};
+
+
+    // Save serials from dialog back to form state
+    const handleSaveSerials = (newSerials) => {
+        console.log(`Handle save dialog with new serial numbers`, newSerials)
+        setValue(`lines.${activeLineIndex}.asset_items`, newSerials);
+        // Also update the declared quantity to match the serial count
+        setValue(`lines.${activeLineIndex}.quantity_input`, newSerials.length); // Later I will get this value in the table
+    };
+
     // total_lines from API is the COUNT of lines, not sum of quantities. 
     // We sum quantity_declared for "Total Expected"
     const totalExpectedQty = manifestData.lines.reduce((acc, line) => acc + (line.quantity_declared || 0), 0);
@@ -78,18 +102,22 @@ const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
                                 <TableCell align="right">Declared</TableCell>
                                 <TableCell align="right">Previously Received</TableCell>
                                 <TableCell align="right">Remaining</TableCell>
-                                <TableCell align="right" sx={{ width: 150 }}>Qty Input</TableCell>
+                                <TableCell align="center" sx={{ width: 150 }}>Qty Input</TableCell>
                                 <TableCell align="right">Receiving Strategy</TableCell>
                                 <TableCell align="center">Status</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
                             {fields.map((line, index) => {
+                                console.log(`Mapping data for line ${index}, having asset items: ${JSON.stringify(line)}`)
                                 // Watch specific field for validation
-                                const currentInput = watch(`lines.${index}.current_receive_input`);
-                                const declared = line.quantity_declared;
-                                const prev_received = line.quantity_received;
-                                const remaining = line.quantity_remaining;
+                                const currentLineData = watchedLines[index]; 
+        
+                                // Use currentLineData instead of line for logic and display
+                                const assetItems = currentLineData?.asset_items || [];
+                                const currentInput = currentLineData?.quantity_input || 0;
+                                const remaining = currentLineData?.quantity_remaining || 0;
+                                
                                 const isOver = Number(currentInput) > remaining;
                                 const isComplete = Number(currentInput) === remaining;
 
@@ -107,40 +135,27 @@ const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
                                             <Chip label={line.id} size="small" variant="outlined" />
                                         </TableCell>
                                         <TableCell align="right">
-                                            <Typography fontWeight="500">{declared}</Typography>
+                                            <Typography fontWeight="500">{currentLineData?.quantity_declared || 0}</Typography>
                                         </TableCell>
                                         <TableCell align="right">
-                                            <Typography fontWeight="500">{prev_received}</Typography>
+                                            <Typography fontWeight="500">{currentLineData?.quantity_received || 0}</Typography>
                                         </TableCell>
                                         <TableCell align="right">
                                             <Typography fontWeight="500">{remaining}</Typography>
                                         </TableCell>
-                                        <TableCell align="right">
-                                            <Controller
-                                                name={`lines.${index}.current_receive_input`}
-                                                control={control}
-                                                rules={{ required: true, min: 0 }}
-                                                render={({ field }) => (
-                                                    <TextField
-                                                        {...field}
-                                                        type="number"
-                                                        size="small"
-                                                        error={isOver}
-                                                        helperText={isOver ? `+${Number(currentInput) - remaining}` : ''}
-                                                        InputProps={{
-                                                            inputProps: { min: 0, style: { textAlign: 'right' } }
-                                                        }}
-                                                        sx={{ 
-                                                            bgcolor: isOver ? '#fff4e5' : 'transparent',
-                                                            '& .MuiOutlinedInput-root': {
-                                                                '& fieldset': {
-                                                                    borderColor: isOver ? 'warning.main' : 'inherit',
-                                                                },
-                                                            }
-                                                        }}
-                                                    />
-                                                )}
-                                            />
+                                        
+                                        {/* Open Asset Dialog */}
+                                        <TableCell>
+                                            <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1 }}>
+                                                <Chip label={`${assetItems.length} Assets`} size="small" color={assetItems.length > 0 ? "primary" : "default"} />
+                                                <Button
+                                                    size="small" variant="outlined" startIcon={<QrCodeIcon />}
+                                                    onClick={() => openSerialDialog(index)}
+                                                >
+                                                    Manage
+                                                </Button>
+                                            </Box>
+
                                         </TableCell>
                                         <TableCell align="right">
                                             <Typography fontWeight="500">{line.receiving_strategy || "Unknown strategy"}</Typography>
@@ -161,6 +176,16 @@ const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
                         </TableBody>
                     </Table>
                 </TableContainer>
+
+                {/* Serial Number Modal */}
+                <SerialNumberDialog 
+                    open={serialDialogOpen}
+                    onClose={() => setSerialDialogOpen(false)}
+                    onSave={handleSaveSerials}
+                    initialSerials={activeLineIndex !== null ? getValues(`lines.${activeLineIndex}.asset_items`) : []}
+                    maxQty={activeLineIndex !== null ? getValues(`lines.${activeLineIndex}.quantity_remaining`) : 0}
+                    productName={activeLineIndex !== null ? getValues(`lines.${activeLineIndex}.product_name`) : ''}
+                />
 
                 {/* --- FOOTER ACTIONS --- */}
                 <Paper 
