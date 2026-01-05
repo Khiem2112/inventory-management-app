@@ -232,23 +232,26 @@ async def search_manifests(
 
         # 2. Apply Dynamic Filters
         if manifest_id:
+            logger.info(f"Just searching with manifest id: {manifest_id}")
             query = query.filter(ShipmentManifest.Id == manifest_id)
+        # Skipp searching other condition if already has manifest id
+        else:
+            if supplier_id:
+                query = query.filter(ShipmentManifest.SupplierId == supplier_id)
+            if supplier_name:
+                query = query.filter(SupplierORM.SupplierName.ilike(f"%{supplier_name}%"))
 
-        if supplier_id:
-            query = query.filter(ShipmentManifest.SupplierId == supplier_id)
-        if supplier_name:
-            query = query.filter(SupplierORM.SupplierName.ilike(f"%{supplier_name}%"))
+            if tracking_number:
+                query = query.filter(ShipmentManifest.TrackingNumber.ilike(f"%{tracking_number}%"))
 
-        if tracking_number:
-            query = query.filter(ShipmentManifest.TrackingNumber.ilike(f"%{tracking_number}%"))
-
-        if date_from:
-            query = query.filter(ShipmentManifest.EstimatedArrival >= date_from)
-        if date_to:
-            query = query.filter(ShipmentManifest.EstimatedArrival <= date_to)
+            if date_from:
+                query = query.filter(ShipmentManifest.EstimatedArrival >= date_from)
+            if date_to:
+                query = query.filter(ShipmentManifest.EstimatedArrival <= date_to)
 
         # 3. Execute & Deduplicate
         manifests = query.distinct().all()
+        logger.info(f"Seeing list of manifests: {manifests}")
 
         # 4. Map to Response (using snake_case arguments)
         results = []
