@@ -28,6 +28,7 @@ FinalizeManifestInput,
 FinalizeManifestResponse,
 AssetInput,
 ShipmentLineVerifyResponse,
+AssetUniquenessVerifyResponse,
 FinalizeManifestItem
 )
 from app.schemas.base import StandardResponse
@@ -198,6 +199,51 @@ async def verify_assets(
         missing_asset_serials= list(missing_serials) if missing_serials is not None else [],
         redundant_asset_serials= list(redundant_serials) if redundant_serials is not None else [],
         matched_asset_serials=list(matched_serials) if matched_serials is not None else []
+    )
+    
+# Verify asset uniqueness
+@router.post(
+    "/manifest/lines/verify_asset_uniqueness",
+    response_model=AssetUniquenessVerifyResponse,
+    description = "List of asset user typed in"
+)
+async def verify_assets_uniqueness(
+    asset_inputs: list[AssetInput],
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+        
+    input_asset_serials:list[str] = [ asset_input.serial_number  for asset_input in asset_inputs ]
+    # Check if all input asset is identical
+    # Show different asset serials number that has duplicated value
+    asset_serials_counter = Counter(input_asset_serials)
+    duplicated_asset_serials = [
+        key
+        for key, value in asset_serials_counter.items() if value > 1
+    ]
+    if len(duplicated_asset_serials) > 0:
+        raise HTTPException(
+            status_code=400,
+            detail = f"Observed redundant serial number: {duplicated_asset_serials}"
+        )
+    
+    # Search the input asset serials in the database to know which assets are existed
+    asset_serials_query = select(AssetORM.SerialNumber).where(
+                                     AssetORM.SerialNumber.in_(input_asset_serials),
+                                 )
+    assets_orm = db.execute(asset_serials_query).mappings().all()
+    # handle if shipment line doesn't have any assets
+    if len(assets_orm) == 0:
+        return AssetUniquenessVerifyResponse(
+            message="No serials are existed in database",
+            existed_asset_serials= [],
+            new_asset_serials= input_asset_serials
+        )
+    existed_asset_serials_set = set([asset_orm.get('SerialNumber') for asset_orm in assets_orm])
+    return AssetUniquenessVerifyResponse(
+        message= "Have calculated the differences in user input serials successfully",
+        existed_asset_serials= [asset_orm.get('SerialNumber') for asset_orm in assets_orm],
+        new_asset_serials= [asset_serial for asset_serial in input_asset_serials if asset_serial not in existed_asset_serials_set]
     )
     
     

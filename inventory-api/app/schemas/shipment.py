@@ -56,6 +56,9 @@ class ShipmentLineVerifyResponse(StandardResponse):
     missing_asset_serials: list[str | None] 
     redundant_asset_serials: list[str | None]
     matched_asset_serials: list[str | None]
+class AssetUniquenessVerifyResponse(StandardResponse):
+    existed_asset_serials: list[str | None]
+    new_asset_serials: list[str | None]
 
 class ShipmentManifestLineBase(BaseModel):
     """Common fields for ShipmentManifestLine model."""
