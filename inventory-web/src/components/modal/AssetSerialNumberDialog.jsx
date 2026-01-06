@@ -2,12 +2,72 @@ import { useState, useEffect } from 'react';
 import { 
     Box, Typography, TextField, Button, CircularProgress,
     IconButton, Dialog, DialogTitle, Alert, AlertTitle,
-    DialogContent, DialogActions, List, ListItem, ListItemText, ListItemSecondaryAction
+    DialogContent, DialogActions, List, ListItem, ListItemText, ListItemSecondaryAction, Link
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import { useMutation } from '@tanstack/react-query';
 import { verifyShipmentLineAssets } from '../../services/grServices';
+
+// --- Sub-Component: Detail View for Long Lists ---
+
+const SerialDetailDialog = ({ open, onClose, title, items }) => (
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+        <DialogTitle>{title}</DialogTitle>
+        <DialogContent dividers>
+            <List dense>
+                {items.map((item, idx) => (
+                    <ListItem key={idx} divider>
+                        <ListItemText primary={item} />
+                    </ListItem>
+                ))}
+            </List>
+        </DialogContent>
+        <DialogActions>
+            <Button onClick={onClose}>Close</Button>
+        </DialogActions>
+    </Dialog>
+);
+
+
+// --- Sub-Component: Truncated List Display ---
+const TruncatedSerialList = ({ items, title, maxDisplay = 5 }) => {
+    const [detailOpen, setDetailOpen] = useState(false);
+
+    if (!items || items.length === 0) return null;
+
+    const displayItems = items.slice(0, maxDisplay);
+    const remainingCount = items.length - maxDisplay;
+
+    return (
+        <>
+            <Typography variant="body2" component="span">
+                {displayItems.join(", ")}
+                {remainingCount > 0 && (
+                    <>
+                        {", "}
+                        <Link 
+                            component="button" 
+                            variant="body2" 
+                            onClick={() => setDetailOpen(true)}
+                            sx={{ verticalAlign: 'baseline', fontWeight: 'bold', cursor: 'pointer' }}
+                        >
+                            ... (+{remainingCount} more)
+                        </Link>
+                    </>
+                )}
+            </Typography>
+
+            <SerialDetailDialog 
+                open={detailOpen} 
+                onClose={() => setDetailOpen(false)} 
+                title={title} 
+                items={items} 
+            />
+        </>
+    );
+};
 
 const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty, productName, manifestLineId }) => {
     const [currentSerial, setCurrentSerial] = useState("");
@@ -53,14 +113,24 @@ const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty
                     <Box sx={{ mb: 2 }}>
                         {verifyResponse.redundant_asset_serials.length > 0 && (
                             <Alert severity="error" sx={{ mb: 1 }}>
-                                <AlertTitle>Invalid Serials Detected</AlertTitle>
-                                {verifyResponse.redundant_asset_serials.length} items not in manifest.
+                                <Box sx={{ mt: 1 }}>
+                                    <TruncatedSerialList 
+                                        items={verifyResponse.redundant_asset_serials} 
+                                        title="Invalid Serial Numbers"
+                                    />
+                                </Box>
                             </Alert>
                         )}
                         {verifyResponse.missing_asset_serials.length > 0 && (
                             <Alert severity="warning">
                                 <AlertTitle>Missing Items</AlertTitle>
-                                Remaining: {verifyResponse.missing_asset_serials.join(", ")}
+                                Remaining: 
+                                <Box component="span" sx={{ ml: 1 }}>
+                                    <TruncatedSerialList 
+                                        items={verifyResponse.missing_asset_serials} 
+                                        title="Missing Serial Numbers"
+                                    />
+                                </Box>
                             </Alert>
                         )}
                     </Box>
