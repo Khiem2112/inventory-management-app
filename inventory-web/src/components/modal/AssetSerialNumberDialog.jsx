@@ -2,19 +2,39 @@ import { useState, useEffect } from 'react';
 import { 
     Box, Typography, TextField, Button, CircularProgress,
     IconButton, Dialog, DialogTitle, Alert, AlertTitle,
-    DialogContent, DialogActions, List, ListItem, ListItemText, ListItemSecondaryAction, Link
+    DialogContent, DialogActions, List, ListItem, ListItemText, ListItemSecondaryAction, Link,
+    Snackbar, Chip
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy'; // Import Copy Icon
 import { useMutation } from '@tanstack/react-query';
 import { verifyShipmentLineAssets } from '../../services/grServices';
 
 // --- Sub-Component: Detail View for Long Lists ---
 
-const SerialDetailDialog = ({ open, onClose, title, items }) => (
+const SerialDetailDialog = ({ open, onClose, title, items }) => {
+
+    const [copyFeedback, setCopyFeedback] = useState(false);
+
+    const handleCopy = () => {
+        if (items && items.length > 0) {
+            // Join items with newlines for easy pasting elsewhere
+            const textToCopy = items.join('\n');
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                setCopyFeedback(true);
+                setTimeout(() => setCopyFeedback(false), 2000);
+            });
+        }
+    };
+    return(
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
         <DialogTitle>{title}</DialogTitle>
+        {/* 1. Copy Button in Header */}
+        <IconButton onClick={handleCopy} size="small" title="Copy list to clipboard">
+            <ContentCopyIcon fontSize="small" />
+        </IconButton>
         <DialogContent dividers>
             <List dense>
                 {items.map((item, idx) => (
@@ -23,12 +43,20 @@ const SerialDetailDialog = ({ open, onClose, title, items }) => (
                     </ListItem>
                 ))}
             </List>
+            {/* Tiny feedback toast inside dialog */}
+            <Snackbar
+                open={copyFeedback}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                message="Copied to clipboard!"
+                sx={{ position: 'absolute', bottom: 10 }}
+            />
         </DialogContent>
         <DialogActions>
             <Button onClick={onClose}>Close</Button>
         </DialogActions>
     </Dialog>
 );
+} 
 
 
 // --- Sub-Component: Truncated List Display ---
@@ -88,11 +116,35 @@ const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty
     });
 
     const handleAdd = () => {
-        const trimmed = currentSerial.trim();
-        if (!trimmed || serials.some(s => s.serial_number === trimmed) || serials.length >= maxQty) return;
-        setSerials([...serials, { serial_number: trimmed }]);
+        const rawInput = currentSerial;
+        if (!rawInput.trim()) return;
+
+        // 2. Bulk Input Logic
+        // Split by newlines, commas, or spaces (common delimiters for pasted lists)
+        const newItems = rawInput
+            .split(/[\n, ]+/) 
+            .map(s => s.trim())
+            .filter(s => s !== ""); // Remove empty strings
+
+        if (newItems.length === 0) return;
+
+        // Filter out duplicates and limit check
+        const uniqueNewItems = newItems.filter(newItem => 
+            !serials.some(s => s.serial_number === newItem)
+        );
+
+        // Check overflow
+        if (serials.length + uniqueNewItems.length > maxQty) {
+            alert(`Cannot add ${uniqueNewItems.length} items. Exceeds remaining quantity.`);
+            return;
+        }
+
+        // Add valid items
+        const newSerialObjects = uniqueNewItems.map(s => ({ serial_number: s }));
+        setSerials([...serials, ...newSerialObjects]);
+        
         setCurrentSerial("");
-        mutation.reset(); // Reset verification because the list changed
+        mutation.reset(); 
     };
 
     const handleSave = () => {
@@ -138,10 +190,21 @@ const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty
 
                 <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
                     <TextField 
-                        fullWidth size="small" label="Serial Number" 
+                        fullWidth 
+                        size="small" 
+                        label="Scan/Enter Serial Numbers" 
+                        placeholder="Paste list here (comma or newline separated)"
                         value={currentSerial}
+                        multiline // Allow multi-line pasting visibility
+                        maxRows={20}
                         onChange={(e) => setCurrentSerial(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && handleAdd()}
+                        onKeyPress={(e) => {
+                            // Allow Enter to submit if not holding Shift (standard text area behavior)
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleAdd();
+                            }
+                        }}
                     />
                     <Button variant="outlined" onClick={handleAdd} disabled={serials.length >= maxQty}>Add</Button>
                 </Box>
