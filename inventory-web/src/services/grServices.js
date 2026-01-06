@@ -60,14 +60,16 @@ export const verifyShipmentLineAssets = async (payload) => {
     // Ensure we don't send the request if line_id is missing
     if (!line_id) throw new Error("Missing manifest line ID");
 
-    const response = await api.post(`receiving/manifest/lines/${line_id}/verify_asset`, assets);
+    try {
+        const response = await api.post(`receiving/manifest/lines/${line_id}/verify_asset`, assets);
 
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Verification failed');
+        return response.data;
+    }
+    catch (error) {
+        console.error(`Failed to verify manifest line ${line_id}:`, error);
+        throw error
     }
 
-    return response.json();
 };
 /**
  * Submit the Receipt

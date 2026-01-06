@@ -20,7 +20,7 @@ const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty
             setCurrentSerial("")
             if (isVerificationEnabled) mutation.reset(); // Clear previous verification results
         }
-    }, [open]);
+    }, [open, initialSerials]);
 
     // TanStack Mutation for Verification [Requirement 2]
     const mutation = useMutation({
@@ -40,27 +40,27 @@ const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty
         onClose();
     };
 
+    const verifyResponse = mutation.data
     // Helper visibility checks [Requirement 1]
     const isVerificationEnabled = Boolean(manifestLineId);
-    const result = mutation.data; // { missing_asset_serials, redundant_asset_serials, matched_asset_serials }
-
+    console.log(`Get the raw mutation: ${JSON.stringify(mutation)}`, )
     return (
         <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
             <DialogTitle>Assets for {productName}</DialogTitle>
             <DialogContent dividers>
                 {/* 1. Conditional Alerts for Verification Mode */}
-                {isVerificationEnabled && result && (
+                {isVerificationEnabled && verifyResponse && (
                     <Box sx={{ mb: 2 }}>
-                        {result.redundant_asset_serials.length > 0 && (
+                        {verifyResponse.redundant_asset_serials.length > 0 && (
                             <Alert severity="error" sx={{ mb: 1 }}>
                                 <AlertTitle>Invalid Serials Detected</AlertTitle>
-                                {result.redundant_asset_serials.length} items not in manifest.
+                                {verifyResponse.redundant_asset_serials.length} items not in manifest.
                             </Alert>
                         )}
-                        {result.missing_asset_serials.length > 0 && (
+                        {verifyResponse.missing_asset_serials.length > 0 && (
                             <Alert severity="warning">
                                 <AlertTitle>Missing Items</AlertTitle>
-                                Remaining: {result.missing_asset_serials.join(", ")}
+                                Remaining: {verifyResponse.missing_asset_serials.join(", ")}
                             </Alert>
                         )}
                     </Box>
@@ -79,8 +79,8 @@ const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty
                 <List dense sx={{ maxHeight: 250, overflow: 'auto', bgcolor: '#f9f9f9', borderRadius: 1 }}>
                     {serials.map((item, idx) => {
                         // 2. Conditional status styling [Requirement 1]
-                        const isRedundant = isVerificationEnabled && result?.redundant_asset_serials.includes(item.serial_number);
-                        const isMatched = isVerificationEnabled && result?.matched_asset_serials.includes(item.serial_number);
+                        const isRedundant = isVerificationEnabled && verifyResponse?.redundant_asset_serials.includes(item.serial_number);
+                        const isMatched = isVerificationEnabled && verifyResponse?.matched_asset_serials.includes(item.serial_number);
 
                         return (
                             <ListItem key={idx} divider sx={{ bgcolor: isRedundant ? '#ffebee' : 'transparent' }}>
@@ -120,7 +120,7 @@ const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty
                 <Button 
                     onClick={handleSave} variant="contained" 
                     // Disable save if we are in verification mode and there are redundancies
-                    disabled={isVerificationEnabled && result?.redundant_asset_serials.length > 0}
+                    disabled={isVerificationEnabled && verifyResponse?.redundant_asset_serials.length > 0}
                 >
                     Save
                 </Button>
