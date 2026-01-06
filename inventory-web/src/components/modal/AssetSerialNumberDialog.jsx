@@ -12,14 +12,15 @@ import { verifyShipmentLineAssets } from '../../services/grServices';
 const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty, productName, manifestLineId }) => {
     const [currentSerial, setCurrentSerial] = useState("");
     const [serials, setSerials] = useState(initialSerials);
-
+    console.log(`Serial number dialog re-render with current serial number: `. currentSerial )
     // Reset local state when dialog opens
     useEffect(() => {
         if (open) {
             setSerials(initialSerials);
-            mutation.reset(); // Clear previous verification results
+            setCurrentSerial("")
+            if (isVerificationEnabled) mutation.reset(); // Clear previous verification results
         }
-    }, [open, initialSerials]);
+    }, [open]);
 
     // TanStack Mutation for Verification [Requirement 2]
     const mutation = useMutation({
