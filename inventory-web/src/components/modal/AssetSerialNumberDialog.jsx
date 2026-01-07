@@ -306,7 +306,7 @@ const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty
                         severity="info"
                         icon={<InfoIcon/>}
                         action={
-                            <Button color="inherit" size="small" onClick={() => mutation.mutate(serials)}>
+                            <Button color="inherit" size="small" onClick={() => mutation.mutate({ assets: serials })}>
                                 Verify Now
                             </Button>
                         }
