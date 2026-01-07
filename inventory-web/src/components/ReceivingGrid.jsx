@@ -1,4 +1,4 @@
-import { useForm, useFieldArray, Controller } from 'react-hook-form';
+import { useForm, useFieldArray, Controller, FormProvider } from 'react-hook-form';
 import { 
     Box, Paper, Typography, Table, TableBody, TableCell, 
     TableContainer, TableHead, TableRow, TextField, Button, 
@@ -18,7 +18,7 @@ const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
     const [activeLineIndex, setActiveLineIndex] = useState(null);
     
 
-    const { control, handleSubmit, watch, setValue,  getValues} = useForm({
+    const methods = useForm({
         defaultValues: {
             lines: manifestData.lines.map(line => ({
                 ...line,
@@ -28,6 +28,7 @@ const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
         }
     });
 
+    const { control, handleSubmit, watch, setValue,  getValues} = methods
     const { fields } = useFieldArray({
         control,
         name: "lines"
@@ -57,7 +58,8 @@ const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
     const totalScanned = watchedLines.reduce((acc, line) => acc + (Number(line.current_receive_input) || 0), 0);
     const activeLine = activeLineIndex !== null ? getValues(`lines.${activeLineIndex}`) : null;
     return (
-        <Paper elevation={2} sx={{ p: 3 }}>
+        <FormProvider {...methods}>
+             <Paper elevation={2} sx={{ p: 3 }}>
             {/* --- HEADER INFO --- */}
             <Box sx={{ mb: 3 }}>
                 <Grid container spacing={2}>
@@ -223,6 +225,7 @@ const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
                 </Paper>
             </form>
         </Paper>
+        </FormProvider>
     );
 };
 
