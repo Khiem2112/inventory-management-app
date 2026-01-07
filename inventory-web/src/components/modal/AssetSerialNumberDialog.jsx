@@ -1,28 +1,24 @@
 import { useState, useEffect } from 'react';
 import { 
-    Box, Typography, TextField, Button, CircularProgress,
-    IconButton, Dialog, DialogTitle, Alert, AlertTitle,
-    DialogContent, DialogActions, List, ListItem, ListItemText, ListItemSecondaryAction, Link,
-    Snackbar, Chip
+    Box, TextField, Button, CircularProgress, IconButton, Dialog, 
+    DialogTitle, DialogContent, DialogActions, List, ListItem, 
+    ListItemText, ListItemSecondaryAction, Alert, AlertTitle, 
+    Snackbar, Link, Typography, Chip, 
+    Tooltip
 } from '@mui/material';
-import { useFormContext } from 'react-hook-form'; //
 import DeleteIcon from '@mui/icons-material/Delete';
 import InfoIcon from '@mui/icons-material/Info';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
-import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy'; // Import Copy Icon
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { useMutation } from '@tanstack/react-query';
+import { useFormContext } from 'react-hook-form'; 
 import { verifyShipmentLineAssets, verifyAssetsExistence } from '../../services/grServices';
 
 // --- Sub-Component: Detail View for Long Lists ---
-
 const SerialDetailDialog = ({ open, onClose, title, items }) => {
-
     const [copyFeedback, setCopyFeedback] = useState(false);
 
     const handleCopy = () => {
         if (items && items.length > 0) {
-            // Join items with newlines for easy pasting elsewhere
             const textToCopy = items.join('\n');
             navigator.clipboard.writeText(textToCopy).then(() => {
                 setCopyFeedback(true);
@@ -31,35 +27,34 @@ const SerialDetailDialog = ({ open, onClose, title, items }) => {
         }
     };
     return(
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
-        <DialogTitle>{title}</DialogTitle>
-        {/* 1. Copy Button in Header */}
-        <IconButton onClick={handleCopy} size="small" title="Copy list to clipboard">
-            <ContentCopyIcon fontSize="small" />
-        </IconButton>
-        <DialogContent dividers>
-            <List dense>
-                {items.map((item, idx) => (
-                    <ListItem key={idx} divider>
-                        <ListItemText primary={item} />
-                    </ListItem>
-                ))}
-            </List>
-            {/* Tiny feedback toast inside dialog */}
-            <Snackbar
-                open={copyFeedback}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-                message="Copied to clipboard!"
-                sx={{ position: 'absolute', bottom: 10 }}
-            />
-        </DialogContent>
-        <DialogActions>
-            <Button onClick={onClose}>Close</Button>
-        </DialogActions>
-    </Dialog>
-);
-} 
-
+        <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                {title}
+                <IconButton onClick={handleCopy} size="small" title="Copy list">
+                    <ContentCopyIcon fontSize="small" />
+                </IconButton>
+            </DialogTitle>
+            <DialogContent dividers>
+                <List dense>
+                    {items.map((item, idx) => (
+                        <ListItem key={idx} divider>
+                            <ListItemText primary={item} />
+                        </ListItem>
+                    ))}
+                </List>
+                <Snackbar
+                    open={copyFeedback}
+                    anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                    message="Copied to clipboard!"
+                    sx={{ position: 'absolute', bottom: 10 }}
+                />
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={onClose}>Close</Button>
+            </DialogActions>
+        </Dialog>
+    );
+};
 
 // --- Sub-Component: Truncated List Display ---
 const TruncatedSerialList = ({ items, title, maxDisplay = 5 }) => {
@@ -99,43 +94,57 @@ const TruncatedSerialList = ({ items, title, maxDisplay = 5 }) => {
     );
 };
 
-const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty, productName, manifestLineId, receivingStrategy }) => {
+// --- Main Component ---
+const SerialNumberDialog = ({ 
+    open, onClose, onSave, 
+    initialSerials = [], maxQty, productName, manifestLineId, receivingStrategy 
+}) => {
+    const { getValues } = useFormContext(); 
+    
+    // --- STATE ---
+    const [serials, setSerials] = useState([]);
     const [currentSerial, setCurrentSerial] = useState("");
-    const [serials, setSerials] = useState(initialSerials);
-
-    // handle snack bar to warn user if we exceed the product
+    const [needsVerification, setNeedsVerification] = useState(false);
     const [snackbar, setSnackbar] = useState({ open: false, message: '' });
+    console.log(`Current serials: `, serials)
 
-    // Strategy Logic
-    const isAssetSpecified = receivingStrategy === 'asset_specified';
-    const isQuantityDeclared = receivingStrategy === 'quantity_declared';
-    console.log(`Serial number dialog re-render with current serial number: `. currentSerial )
-    const { getValues } = useFormContext();
-    // Reset local state when dialog opens
+    // --- INITIALIZATION ---
     useEffect(() => {
         if (open) {
-            setSerials(initialSerials);
-            setCurrentSerial("")
-            if (isVerificationEnabled) mutation.reset(); // Clear previous verification results
+            setSerials(initialSerials.map(s => ({ 
+                serial_number: s.serial_number, 
+                status: 'pending' 
+            })));
+            setNeedsVerification(false);
+            setCurrentSerial("");
+            mutation.reset(); 
         }
     }, [open, initialSerials]);
 
-    // TanStack Mutation for Verification [Requirement 2]
+    // --- MUTATION ---
     const mutation = useMutation({
-        mutationFn: (data) => {
-            if (isAssetSpecified) {
-                // Flow 1: Check against Manifest (Strict)
-                return verifyShipmentLineAssets({ line_id: manifestLineId, assets: data.assets });
+        // FIX: We destructure { assets } because your onClick passes an object.
+        mutationFn: ({ assets }) => {
+            // 1. Prepare the clean array of objects required by both services
+            const cleanAssetsArray = assets.map(s => ({ serial_number: s.serial_number }));
+
+            // 2. Branch Logic based on Strategy
+            if (receivingStrategy === 'asset_specified') {
+                // Strategy A: Shipment Line Verification (needs line_id wrapper)
+                return verifyShipmentLineAssets({ 
+                    line_id: manifestLineId, 
+                    assets: cleanAssetsArray 
+                });
             } else {
-                // Flow 2: Check Global Existence (Prevent Duplicates)
-                // verifyAssetsExistence expects just the list of assets
-                return verifyAssetsExistence(data.assets);
+                // Strategy B: Asset Existence/Uniqueness (needs array directly)
+                return verifyAssetsExistence(cleanAssetsArray);
             }
         },
         onSuccess: (data) => {
             let badSerials = [];
             let goodSerials = [];
-
+            
+            // Handle different response keys from the two services
             if (receivingStrategy === 'asset_specified') {
                 badSerials = data.redundant_asset_serials || [];
                 goodSerials = data.matched_asset_serials || [];
@@ -144,74 +153,78 @@ const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty
                 goodSerials = data.new_asset_serials || [];
             }
 
-            // Update status based on response
             setSerials(prev => prev.map(item => {
                 if (badSerials.includes(item.serial_number)) return { ...item, status: 'invalid' };
                 if (goodSerials.includes(item.serial_number)) return { ...item, status: 'valid' };
-                // If backend didn't return it (rare), keep it as pending
                 return item;
             }));
+
+            setNeedsVerification(false);
+        },
+        onError: (error) => {
+            console.error("Verification failed", error);
+            setSnackbar({ open: true, message: "Verification failed. Please check connection." });
         }
     });
+
+    // --- HANDLERS ---
+    const handleCloseSnackbar = () => setSnackbar({ ...snackbar, open: false });
 
     const handleAdd = () => {
         const rawInput = currentSerial;
         if (!rawInput.trim()) return;
 
-        // 2. Bulk Input Logic
-        // Split by newlines, commas, or spaces (common delimiters for pasted lists)
-        const newItems = rawInput
-            .split(/[\n, ]+/) 
+        const rawItems = rawInput
+            .split(/[\n, ]+/)
             .map(s => s.trim())
-            .filter(s => s !== ""); // Remove empty strings
+            .filter(s => s !== "");
 
-        if (newItems.length === 0) return;
+        if (rawItems.length === 0) return;
 
-        // Filter out duplicates and limit check
-        const uniqueNewItems = newItems.filter(newItem => 
+        const uniqueNewItems = rawItems.filter(newItem => 
             !serials.some(s => s.serial_number === newItem)
         );
 
-        // Check overflow
-        if (serials.length + uniqueNewItems.length > maxQty) {
-            const remainingSpace = maxQty - serials.length;
-            // 1. Trigger Snackbar
-            setSnackbar({
-                open: true,
-                message: `Cannot add ${newItems.length} items. Only ${remainingSpace} slots remaining.`
-            });
-            // 2. CANCEL the add (Return early)
+        if (uniqueNewItems.length === 0) {
+            setSnackbar({ open: true, message: "All items entered are already in the list." });
+            setCurrentSerial("");
             return;
         }
 
-        // Add valid items
-        const newSerialObjects = uniqueNewItems.map(s => ({ serial_number: s, status: 'pending' }));
-        setSerials([...serials, ...newSerialObjects]);
-        
+        if (serials.length + uniqueNewItems.length > maxQty) {
+            const remainingSpace = maxQty - serials.length;
+            setSnackbar({
+                open: true,
+                message: `Cannot add ${uniqueNewItems.length} items. Only ${remainingSpace} slots remaining.`
+            });
+            return; 
+        }
+
+        const newObjects = uniqueNewItems.map(sn => ({ serial_number: sn, status: 'pending' }));
+        setSerials([...serials, ...newObjects]);
         setCurrentSerial("");
+        setNeedsVerification(true);
+
+        if (rawItems.length > uniqueNewItems.length) {
+            const ignoredCount = rawItems.length - uniqueNewItems.length;
+            setSnackbar({
+                open: true,
+                message: `Added ${uniqueNewItems.length} items. ${ignoredCount} duplicates ignored.`
+            });
+        }
     };
 
-    const handleDelete = (idx) => {
+    const handleDelete = (index) => {
         const newList = [...serials];
-        newList.splice(idx, 1);
+        newList.splice(index, 1);
         setSerials(newList);
-    }
-
-    const handleSave = () => {
-        onSave(serials);
-        onClose();
+        setNeedsVerification(true);
     };
 
-    const handleVerify = () => {
-        // Prepare payload simply as the array of objects, the mutationFn adapter handles the rest
-        mutation.mutate({ assets: serials });
-    };
-
+    // --- COMPUTED LISTS ---
     const getGlobalDuplicates = () => {
         const allLines = getValues('lines') || [];
         const otherSerials = new Set();
-
-        // Collect serials from ALL OTHER lines
         allLines.forEach(line => {
             if (line.id !== manifestLineId && line.asset_items) {
                 line.asset_items.forEach(item => {
@@ -219,142 +232,100 @@ const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty
                 });
             }
         });
-
-        // Return local items that exist in that set
-        return serials
-            .map(s => s.serial_number)
-            .filter(sn => otherSerials.has(sn));
+        return new Set([...otherSerials]);
     };
+    const globalDuplicateSet = getGlobalDuplicates();
 
-    const globalDuplicateItems = getGlobalDuplicates();
-    
-    // NEW: Check for "Pending" items to trigger the warning bar
-    const hasUnverifiedItems = serials.some(s => s.status === 'pending');
-
-    // --- Derived State for UI Feedback ---
-    let invalidItems = [];
-    let validItems = [];
-    let warningMessage = null;
-    let errorMessage = null;
-
-    // Check Global Duplicates first
-    if (globalDuplicateItems.length > 0) {
-        errorMessage = (
-            <Alert severity="error" sx={{ mb: 1 }}>
-                <AlertTitle>Duplicate in Manifest</AlertTitle>
-                Found in other lines: <TruncatedSerialList items={globalDuplicateItems} title="Cross-Line Duplicates" />
-            </Alert>
-        );
-    }
-
-    const verifyResponse = mutation.data
-    // Helper visibility checks [Requirement 1]
-    const isVerificationEnabled = Boolean(manifestLineId) && (isAssetSpecified || isQuantityDeclared);
-
-    console.log(`Get the raw mutation: ${JSON.stringify(mutation)}`, )
-
-    // Dynamically handle invalid/validItems based on mode we are handliing
-    if (verifyResponse) {
-        if (isAssetSpecified) {
-            // Logic for Asset Specified (Strict Matching)
-            invalidItems = verifyResponse.redundant_asset_serials || [];
-            validItems = verifyResponse.matched_asset_serials || [];
-            
-            if (invalidItems.length > 0) {
-             const backendError = (
-                <Alert severity="error" sx={{ mb: 1 }}>
-                    <AlertTitle>Invalid Serials</AlertTitle>
-                    {invalidItems.length} items not in manifest: <TruncatedSerialList items={invalidItems} title="Invalid Items" />
-                </Alert>
-            );
-            errorMessage = <>{errorMessage}{backendError}</>;
-        }
-            if ((verifyResponse.missing_asset_serials || []).length > 0) {
-                warningMessage = (
-                    <Alert severity="warning">
-                        <AlertTitle>Missing Items</AlertTitle>
-                        Remaining: <TruncatedSerialList items={verifyResponse.missing_asset_serials} title="Missing Items" />
-                    </Alert>
-                );
-            }
-        } else {
-            // Logic for Quantity Declared (Existence Check)
-            // 'existed_asset_serials' are bad here (duplicates in DB)
-            invalidItems = verifyResponse.existed_asset_serials || [];
-            // 'new_asset_serials' are good
-            validItems = verifyResponse.new_asset_serials || [];
-
-            if (invalidItems.length > 0) {
-                errorMessage = (
-                    <Alert severity="error" sx={{ mb: 1 }}>
-                        <AlertTitle>Duplicate Assets Found</AlertTitle>
-                        {invalidItems.length} serials already exist in the system: <TruncatedSerialList items={invalidItems} title="Duplicate Assets" />
-                    </Alert>
-                );
-            }
-        }
-    }
+    const duplicateList = serials.filter(s => globalDuplicateSet.has(s.serial_number)).map(s => s.serial_number);
+    const invalidList = serials.filter(s => s.status === 'invalid').map(s => s.serial_number);
 
     return (
         <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-            <DialogTitle>Assets for {productName} <Chip label={receivingStrategy} size="small" sx={{ml: 1}} /></DialogTitle>
+            <DialogTitle>Assets for {productName}</DialogTitle>
             <DialogContent dividers>
-                {/* B. Verification Warning Bar (The User Request) */}
-                {hasUnverifiedItems && serials.length > 0 && (
-                    <Box>
-                        <Alert
-                        severity="info"
-                        icon={<InfoIcon/>}
-                        action={
-                            <Button color="inherit" size="small" onClick={() => mutation.mutate({ assets: serials })}>
-                                Verify Now
-                            </Button>
-                        }
-                    >
-                        <AlertTitle>Verification Needed</AlertTitle>
-                        List has changed. Please verify assets again.
+                
+                <Box sx={{ mb: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {duplicateList.length > 0 && (
+                        <Alert severity="error">
+                            <AlertTitle>Duplicate Scanning</AlertTitle>
+                            Found in other lines: <TruncatedSerialList items={duplicateList} title="Cross-Line Duplicates" />
                         </Alert>
-                    </Box>
-                )}                
-                <Box sx={{ mb: 2 }}>
-                    {errorMessage}
-                    {warningMessage}
+                    )}
+
+                    {needsVerification && serials.length > 0 && (
+                        <Alert 
+                            severity="info" 
+                            icon={<InfoIcon />}
+                            action={
+                                <Button color="inherit" size="small" onClick={() => mutation.mutate({ assets: serials })}>
+                                    Verify Now
+                                </Button>
+                            }
+                        >
+                            <AlertTitle>Verification Needed</AlertTitle>
+                            List has changed. Please verify assets again.
+                        </Alert>
+                    )}
+
+                    {invalidList.length > 0 && !needsVerification && (
+                        <Alert severity="error">
+                            <AlertTitle>Invalid Serials</AlertTitle>
+                            Please remove items: <TruncatedSerialList items={invalidList} title="Invalid Items" />
+                        </Alert>
+                    )}
                 </Box>
 
-                <Box sx={{ display: 'flex', gap: 1, mb: 2, alignItems: 'flex-start' }}>
+                <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
                     <TextField 
-                        fullWidth size="small" label="Scan/Enter Serial Numbers" 
-                        placeholder="Paste list here..." multiline maxRows={4}
-                        value={currentSerial} onChange={(e) => setCurrentSerial(e.target.value)}
-                        onKeyPress={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAdd(); }}}
+                         value={currentSerial} 
+                         onChange={(e) => setCurrentSerial(e.target.value)}
+                         onKeyDown={(e) => {
+                             if (e.key === 'Enter' && !e.shiftKey) {
+                                 e.preventDefault();
+                                 handleAdd();
+                             }
+                         }}
+                         placeholder="Scan or paste serials..." 
+                         fullWidth size="small"
+                         multiline maxRows={4}
                     />
-                    <Button variant="outlined" onClick={handleAdd} disabled={serials.length >= maxQty} sx={{ height: 40 }}>Add</Button>
+                    <Button onClick={handleAdd} variant="outlined">Add</Button>
                 </Box>
                 
                 <List dense sx={{ maxHeight: 250, overflow: 'auto', bgcolor: '#f9f9f9', borderRadius: 1 }}>
                     {serials.map((item, idx) => {
-                        // Check duplication against context
-                        const isGlobalDuplicate = globalDuplicateItems.includes(item.serial_number);
-                        const isBackendInvalid = invalidItems.includes(item.serial_number);
-                        const isError = isGlobalDuplicate || isBackendInvalid;
+                        const isGlobalDuplicate = globalDuplicateSet.has(item.serial_number);
+                        const isInvalid = item.status === 'invalid';
+                        const isValid = item.status === 'valid';
+                        
+                        let bgColor = 'transparent';
+                        let statusText = "Pending";
+                        let statusColor = "text.secondary";
+
+                        if (isGlobalDuplicate) {
+                            bgColor = '#ffebee';
+                            statusText = "Duplicate in other line";
+                            statusColor = "error.main";
+                        } else if (isInvalid) {
+                            bgColor = '#ffebee';
+                            statusText = "Invalid Serial";
+                            statusColor = "error.main";
+                        } else if (isValid) {
+                            bgColor = '#e8f5e9';
+                            statusText = "Verified";
+                            statusColor = "success.main";
+                        }
 
                         return (
-                            <ListItem
-                                key={idx} divider 
-                                sx={{ bgcolor: isError ? '#ffebee' : 'transparent' }}
-                            >
+                            <ListItem key={idx} divider sx={{ bgcolor: bgColor }}>
                                 <ListItemText 
                                     primary={item.serial_number} 
-                                    primaryTypographyProps={{ 
-                                        color: isError ? 'error' : 'textPrimary',
-                                        fontWeight: isGlobalDuplicate ? 'bold' : 'normal'
-                                    }}
-                                    secondary={isGlobalDuplicate ? "Already in another line" : null}
-                                    secondaryTypographyProps={{ color: 'error' }}
+                                    secondary={statusText}
+                                    primaryTypographyProps={{ fontWeight: isGlobalDuplicate ? 'bold' : 'normal' }}
+                                    secondaryTypographyProps={{ sx: { color: statusColor } }}
                                 />
                                 <ListItemSecondaryAction>
-                                    {!isError && <CheckCircleOutlineIcon color="success" sx={{ mr: 1, verticalAlign: 'middle' }} />}
-                                    <IconButton edge="end" size="small" onClick={handleDelete}>
+                                    <IconButton edge="end" size="small" onClick={() => handleDelete(idx)}>
                                         <DeleteIcon fontSize="small" />
                                     </IconButton>
                                 </ListItemSecondaryAction>
@@ -366,23 +337,45 @@ const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty
             <DialogActions>
                 <Button onClick={onClose}>Cancel</Button>
                 
-                {isVerificationEnabled && (
-                    <Button 
-                        onClick={handleVerify}
-                        disabled={mutation.isPending || serials.length === 0}
-                    >
-                        {mutation.isPending ? <CircularProgress size={20} /> : "Verify Assets"}
-                    </Button>
-                )}
-
                 <Button 
-                    onClick={handleSave} variant="contained" 
-                    // Block save if invalid items exist
-                    disabled={isVerificationEnabled && invalidItems.length > 0}
+                    // This matches the structure in mutationFn
+                    onClick={() => mutation.mutate({ assets: serials })}
+                    disabled={mutation.isPending || serials.length === 0}
                 >
-                    Save
+                    {mutation.isPending ? "Checking..." : "Verify Assets"}
                 </Button>
+                <Tooltip title={invalidList.length > 0 
+                                ? "Fix invalid serials" 
+                                : duplicateList.length > 0 
+                                ? "Remove duplicates" 
+                                : needsVerification 
+                                ? "Verify serials" 
+                                : "Save"} placement="right">
+                    <span style={{ display: 'inline-block' }}>
+                        <Button 
+                        onClick={() => onSave(serials)} 
+                        variant="contained" 
+                        disabled={invalidList.length > 0 || duplicateList.length > 0 || needsVerification}
+                    >
+                        Save
+                        </Button>
+
+                    </span>
+                    
+                </Tooltip>
+                
             </DialogActions>
+
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={4000}
+                onClose={handleCloseSnackbar}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+                <Alert onClose={handleCloseSnackbar} severity="warning" sx={{ width: '100%' }}>
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
         </Dialog>
     );
 };

@@ -50,6 +50,7 @@ const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
         setValue(`lines.${activeLineIndex}.asset_items`, newSerials);
         // Also update the declared quantity to match the serial count
         setValue(`lines.${activeLineIndex}.quantity_input`, newSerials.length); // Later I will get this value in the table
+        setSerialDialogOpen(false)
     };
 
     // total_lines from API is the COUNT of lines, not sum of quantities. 
