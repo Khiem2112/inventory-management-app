@@ -4,11 +4,15 @@ import {
     DialogTitle, DialogContent, DialogActions, List, ListItem, 
     ListItemText, ListItemSecondaryAction, Alert, AlertTitle, 
     Snackbar, Link, Typography, Chip, 
-    Tooltip
+    Tooltip, Stack
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import InfoIcon from '@mui/icons-material/Info';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber'; // For Duplicates
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline'; // For Invalid
+import CheckCircleIcon from '@mui/icons-material/CheckCircle'; // For Valid
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline'; // For Pending
 import { useMutation } from '@tanstack/react-query';
 import { useFormContext } from 'react-hook-form'; 
 import { verifyShipmentLineAssets, verifyAssetsExistence } from '../../services/grServices';
@@ -294,35 +298,69 @@ const SerialNumberDialog = ({
                 
                 <List dense sx={{ maxHeight: 250, overflow: 'auto', bgcolor: '#f9f9f9', borderRadius: 1 }}>
                     {serials.map((item, idx) => {
+                        // Calculate Independent States
                         const isGlobalDuplicate = globalDuplicateSet.has(item.serial_number);
-                        const isInvalid = item.status === 'invalid';
-                        const isValid = item.status === 'valid';
+                        const isBackendInvalid = item.status === 'invalid';
+                        const isBackendValid = item.status === 'valid';
+                        const isPending = item.status === 'pending';
                         
-                        let bgColor = 'transparent';
-                        let statusText = "Pending";
-                        let statusColor = "text.secondary";
-
-                        if (isGlobalDuplicate) {
-                            bgColor = '#ffebee';
-                            statusText = "Duplicate in other line";
-                            statusColor = "error.main";
-                        } else if (isInvalid) {
-                            bgColor = '#ffebee';
-                            statusText = "Invalid Serial";
-                            statusColor = "error.main";
-                        } else if (isValid) {
-                            bgColor = '#e8f5e9';
-                            statusText = "Verified";
-                            statusColor = "success.main";
-                        }
+                        // Row Color Logic: Red if ANY error exists
+                        const hasError = isGlobalDuplicate || isBackendInvalid;
+                        const rowBgColor = hasError ? '#ffebee' : (isBackendValid ? '#e8f5e9' : 'transparent');
+                        console.log(`Handle row ${idx} where those logic is `)
 
                         return (
-                            <ListItem key={idx} divider sx={{ bgcolor: bgColor }}>
+                            <ListItem key={idx} divider sx={{ bgcolor: rowBgColor }}>
                                 <ListItemText 
-                                    primary={item.serial_number} 
-                                    secondary={statusText}
-                                    primaryTypographyProps={{ fontWeight: isGlobalDuplicate ? 'bold' : 'normal' }}
-                                    secondaryTypographyProps={{ sx: { color: statusColor } }}
+                                    primary={
+                                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pr: 2 }}>
+                                            <Typography variant="body2">{item.serial_number}</Typography>
+                                            
+                                            {/* VISUAL TAGS FOR STATUS */}
+                                            <Stack direction="row" spacing={1}>
+                                                
+                                                {/* 1. FE Integrity Tag */}
+                                                {isGlobalDuplicate && (
+                                                    <Chip 
+                                                        label="Duplicate" 
+                                                        color="error" 
+                                                        size="small" 
+                                                        icon={<WarningAmberIcon />}
+                                                        variant="outlined"
+                                                    />
+                                                )}
+
+                                                {/* 2. BE Integrity Tag */}
+                                                {isBackendInvalid && (
+                                                    <Chip 
+                                                        label="Invalid" 
+                                                        color="error" 
+                                                        size="small" 
+                                                        icon={<ErrorOutlineIcon />} 
+                                                        variant="outlined"
+                                                    />
+                                                )}
+                                                {isBackendValid && (
+                                                    <Chip 
+                                                        label="Verified" 
+                                                        color="success" 
+                                                        size="small" 
+                                                        icon={<CheckCircleIcon />} 
+                                                        variant="outlined"
+                                                    />
+                                                )}
+                                                {isPending && (
+                                                    <Chip 
+                                                        label="Pending" 
+                                                        size="small" 
+                                                        icon={<HelpOutlineIcon />} 
+                                                        variant="outlined"
+                                                        sx={{ borderColor: 'text.disabled', color: 'text.secondary' }}
+                                                    />
+                                                )}
+                                            </Stack>
+                                        </Box>
+                                    }
                                 />
                                 <ListItemSecondaryAction>
                                     <IconButton edge="end" size="small" onClick={() => handleDelete(idx)}>
@@ -345,12 +383,12 @@ const SerialNumberDialog = ({
                     {mutation.isPending ? "Checking..." : "Verify Assets"}
                 </Button>
                 <Tooltip title={invalidList.length > 0 
-                                ? "Fix invalid serials" 
-                                : duplicateList.length > 0 
-                                ? "Remove duplicates" 
-                                : needsVerification 
-                                ? "Verify serials" 
-                                : "Save"} placement="right">
+                            ? "Fix invalid serials" 
+                            : duplicateList.length > 0 
+                            ? "Remove duplicates" 
+                            : needsVerification 
+                            ? "Verify serials" 
+                            : "Save"} placement="right">
                     <span style={{ display: 'inline-block' }}>
                         <Button 
                         onClick={() => onSave(serials)} 
