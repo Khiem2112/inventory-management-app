@@ -5,6 +5,7 @@ import {
     DialogContent, DialogActions, List, ListItem, ListItemText, ListItemSecondaryAction, Link,
     Snackbar, Chip
 } from '@mui/material';
+import { useFormContext } from 'react-hook-form'; //
 import DeleteIcon from '@mui/icons-material/Delete';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
@@ -105,6 +106,7 @@ const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty
     const isAssetSpecified = receivingStrategy === 'asset_specified';
     const isQuantityDeclared = receivingStrategy === 'quantity_declared';
     console.log(`Serial number dialog re-render with current serial number: `. currentSerial )
+    const { getValues } = useFormContext();
     // Reset local state when dialog opens
     useEffect(() => {
         if (open) {
@@ -170,11 +172,42 @@ const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty
         mutation.mutate({ assets: serials });
     };
 
+    const getGlobalDuplicates = () => {
+        const allLines = getValues('lines') || [];
+        const otherSerials = new Set();
+
+        // Collect serials from ALL OTHER lines
+        allLines.forEach(line => {
+            if (line.id !== manifestLineId && line.asset_items) {
+                line.asset_items.forEach(item => {
+                    if (item.serial_number) otherSerials.add(item.serial_number);
+                });
+            }
+        });
+
+        // Return local items that exist in that set
+        return serials
+            .map(s => s.serial_number)
+            .filter(sn => otherSerials.has(sn));
+    };
+
+    const globalDuplicateItems = getGlobalDuplicates();
+
     // --- Derived State for UI Feedback ---
     let invalidItems = [];
     let validItems = [];
     let warningMessage = null;
     let errorMessage = null;
+
+    // Check Global Duplicates first
+    if (globalDuplicateItems.length > 0) {
+        errorMessage = (
+            <Alert severity="error" sx={{ mb: 1 }}>
+                <AlertTitle>Duplicate in Manifest</AlertTitle>
+                Found in other lines: <TruncatedSerialList items={globalDuplicateItems} title="Cross-Line Duplicates" />
+            </Alert>
+        );
+    }
 
     const verifyResponse = mutation.data
     // Helper visibility checks [Requirement 1]
@@ -190,13 +223,13 @@ const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty
             validItems = verifyResponse.matched_asset_serials || [];
             
             if (invalidItems.length > 0) {
-                errorMessage = (
-                    <Alert severity="error" sx={{ mb: 1 }}>
-                        <AlertTitle>Invalid Serials</AlertTitle>
-                        {invalidItems.length} items not in manifest: <TruncatedSerialList items={invalidItems} title="Invalid Items" />
-                    </Alert>
-                );
-            }
+             const backendError = (
+                <Alert severity="error" sx={{ mb: 1 }}>
+                    {/* ... existing alert content ... */}
+                </Alert>
+            );
+            errorMessage = <>{errorMessage}{backendError}</>;
+        }
             if ((verifyResponse.missing_asset_serials || []).length > 0) {
                 warningMessage = (
                     <Alert severity="warning">
@@ -245,18 +278,27 @@ const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty
                 
                 <List dense sx={{ maxHeight: 250, overflow: 'auto', bgcolor: '#f9f9f9', borderRadius: 1 }}>
                     {serials.map((item, idx) => {
-                        // Check if item is in the 'invalid' list derived above
-                        const isInvalid = invalidItems.includes(item.serial_number);
-                        const isValid = validItems.includes(item.serial_number);
+                        // Check duplication against context
+                        const isGlobalDuplicate = globalDuplicateItems.includes(item.serial_number);
+                        const isBackendInvalid = invalidItems.includes(item.serial_number);
+                        const isError = isGlobalDuplicate || isBackendInvalid;
 
                         return (
-                            <ListItem key={idx} divider sx={{ bgcolor: isInvalid ? '#ffebee' : isValid ? '#e8f5e9' : 'transparent' }}>
+                            <ListItem
+                                key={idx} divider 
+                                sx={{ bgcolor: isError ? '#ffebee' : 'transparent' }}
+                            >
                                 <ListItemText 
                                     primary={item.serial_number} 
-                                    primaryTypographyProps={{ color: isInvalid ? 'error' : 'textPrimary' }}
+                                    primaryTypographyProps={{ 
+                                        color: isError ? 'error' : 'textPrimary',
+                                        fontWeight: isGlobalDuplicate ? 'bold' : 'normal'
+                                    }}
+                                    secondary={isGlobalDuplicate ? "Already in another line" : null}
+                                    secondaryTypographyProps={{ color: 'error' }}
                                 />
                                 <ListItemSecondaryAction>
-                                    {isValid && <CheckCircleOutlineIcon color="success" sx={{ mr: 1, verticalAlign: 'middle' }} />}
+                                    {!isError && <CheckCircleOutlineIcon color="success" sx={{ mr: 1, verticalAlign: 'middle' }} />}
                                     <IconButton edge="end" size="small" onClick={() => {
                                         const newList = [...serials];
                                         newList.splice(idx, 1);
