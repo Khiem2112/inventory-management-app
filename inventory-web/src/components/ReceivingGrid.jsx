@@ -55,7 +55,7 @@ const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
     // We sum quantity_declared for "Total Expected"
     const totalExpectedQty = manifestData.lines.reduce((acc, line) => acc + (line.quantity_declared || 0), 0);
     const totalScanned = watchedLines.reduce((acc, line) => acc + (Number(line.current_receive_input) || 0), 0);
-
+    const activeLine = activeLineIndex !== null ? getValues(`lines.${activeLineIndex}`) : null;
     return (
         <Paper elevation={2} sx={{ p: 3 }}>
             {/* --- HEADER INFO --- */}
@@ -158,7 +158,12 @@ const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
 
                                         </TableCell>
                                         <TableCell align="right">
-                                            <Typography fontWeight="500">{line.receiving_strategy || "Unknown strategy"}</Typography>
+                                            <Chip 
+                                                label={line.receiving_strategy === 'asset_specified' ? 'Specified' : 'Declared'} 
+                                                size="small" 
+                                                color={line.receiving_strategy === 'asset_specified' ? 'info' : 'default'}
+                                                variant="outlined"
+                                            />
                                         </TableCell>
                                         <TableCell align="center">
                                             {isOver && (
@@ -182,10 +187,12 @@ const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
                     open={serialDialogOpen}
                     onClose={() => setSerialDialogOpen(false)}
                     onSave={handleSaveSerials}
-                    initialSerials={activeLineIndex !== null ? getValues(`lines.${activeLineIndex}.asset_items`) : []}
-                    maxQty={activeLineIndex !== null ? getValues(`lines.${activeLineIndex}.quantity_remaining`) : 0}
-                    productName={activeLineIndex !== null ? getValues(`lines.${activeLineIndex}.product_name`) : ''}
-                    manifestLineId={activeLineIndex !== null ? getValues(`lines.${activeLineIndex}.id`) : ''}
+                    // Pass the Active Line Data
+                    initialSerials={activeLine ? activeLine.asset_items : []}
+                    maxQty={activeLine ? activeLine.quantity_remaining : 0}
+                    productName={activeLine ? activeLine.product_name : ''}
+                    manifestLineId={activeLine ? activeLine.id : ''}
+                    receivingStrategy={activeLine ? activeLine.receiving_strategy : 'quantity_declared'}
                 />
 
                 {/* --- FOOTER ACTIONS --- */}

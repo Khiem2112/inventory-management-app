@@ -10,7 +10,7 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'; // Import Copy Icon
 import { useMutation } from '@tanstack/react-query';
-import { verifyShipmentLineAssets } from '../../services/grServices';
+import { verifyShipmentLineAssets, verifyAssetsExistence } from '../../services/grServices';
 
 // --- Sub-Component: Detail View for Long Lists ---
 
@@ -97,9 +97,13 @@ const TruncatedSerialList = ({ items, title, maxDisplay = 5 }) => {
     );
 };
 
-const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty, productName, manifestLineId }) => {
+const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty, productName, manifestLineId, receivingStrategy }) => {
     const [currentSerial, setCurrentSerial] = useState("");
     const [serials, setSerials] = useState(initialSerials);
+
+    // Strategy Logic
+    const isAssetSpecified = receivingStrategy === 'asset_specified';
+    const isQuantityDeclared = receivingStrategy === 'quantity_declared';
     console.log(`Serial number dialog re-render with current serial number: `. currentSerial )
     // Reset local state when dialog opens
     useEffect(() => {
@@ -112,7 +116,16 @@ const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty
 
     // TanStack Mutation for Verification [Requirement 2]
     const mutation = useMutation({
-        mutationFn: verifyShipmentLineAssets,
+        mutationFn: (data) => {
+            if (isAssetSpecified) {
+                // Flow 1: Check against Manifest (Strict)
+                return verifyShipmentLineAssets({ line_id: manifestLineId, assets: data.assets });
+            } else {
+                // Flow 2: Check Global Existence (Prevent Duplicates)
+                // verifyAssetsExistence expects just the list of assets
+                return verifyAssetsExistence(data.assets);
+            }
+        },
     });
 
     const handleAdd = () => {
@@ -152,77 +165,98 @@ const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty
         onClose();
     };
 
+    const handleVerify = () => {
+        // Prepare payload simply as the array of objects, the mutationFn adapter handles the rest
+        mutation.mutate({ assets: serials });
+    };
+
+    // --- Derived State for UI Feedback ---
+    let invalidItems = [];
+    let validItems = [];
+    let warningMessage = null;
+    let errorMessage = null;
+
     const verifyResponse = mutation.data
     // Helper visibility checks [Requirement 1]
-    const isVerificationEnabled = Boolean(manifestLineId);
+    const isVerificationEnabled = Boolean(manifestLineId) && (isAssetSpecified || isQuantityDeclared);
+
     console.log(`Get the raw mutation: ${JSON.stringify(mutation)}`, )
+
+    // Dynamically handle invalid/validItems based on mode we are handliing
+    if (verifyResponse) {
+        if (isAssetSpecified) {
+            // Logic for Asset Specified (Strict Matching)
+            invalidItems = verifyResponse.redundant_asset_serials || [];
+            validItems = verifyResponse.matched_asset_serials || [];
+            
+            if (invalidItems.length > 0) {
+                errorMessage = (
+                    <Alert severity="error" sx={{ mb: 1 }}>
+                        <AlertTitle>Invalid Serials</AlertTitle>
+                        {invalidItems.length} items not in manifest: <TruncatedSerialList items={invalidItems} title="Invalid Items" />
+                    </Alert>
+                );
+            }
+            if ((verifyResponse.missing_asset_serials || []).length > 0) {
+                warningMessage = (
+                    <Alert severity="warning">
+                        <AlertTitle>Missing Items</AlertTitle>
+                        Remaining: <TruncatedSerialList items={verifyResponse.missing_asset_serials} title="Missing Items" />
+                    </Alert>
+                );
+            }
+        } else {
+            // Logic for Quantity Declared (Existence Check)
+            // 'existed_asset_serials' are bad here (duplicates in DB)
+            invalidItems = verifyResponse.existed_asset_serials || [];
+            // 'new_asset_serials' are good
+            validItems = verifyResponse.new_asset_serials || [];
+
+            if (invalidItems.length > 0) {
+                errorMessage = (
+                    <Alert severity="error" sx={{ mb: 1 }}>
+                        <AlertTitle>Duplicate Assets Found</AlertTitle>
+                        {invalidItems.length} serials already exist in the system: <TruncatedSerialList items={invalidItems} title="Duplicate Assets" />
+                    </Alert>
+                );
+            }
+        }
+    }
+
     return (
         <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-            <DialogTitle>Assets for {productName}</DialogTitle>
+            <DialogTitle>Assets for {productName} <Chip label={receivingStrategy} size="small" sx={{ml: 1}} /></DialogTitle>
             <DialogContent dividers>
-                {/* 1. Conditional Alerts for Verification Mode */}
-                {isVerificationEnabled && verifyResponse && (
-                    <Box sx={{ mb: 2 }}>
-                        {verifyResponse.redundant_asset_serials.length > 0 && (
-                            <Alert severity="error" sx={{ mb: 1 }}>
-                                <Box sx={{ mt: 1 }}>
-                                    <TruncatedSerialList 
-                                        items={verifyResponse.redundant_asset_serials} 
-                                        title="Invalid Serial Numbers"
-                                    />
-                                </Box>
-                            </Alert>
-                        )}
-                        {verifyResponse.missing_asset_serials.length > 0 && (
-                            <Alert severity="warning">
-                                <AlertTitle>Missing Items</AlertTitle>
-                                Remaining: 
-                                <Box component="span" sx={{ ml: 1 }}>
-                                    <TruncatedSerialList 
-                                        items={verifyResponse.missing_asset_serials} 
-                                        title="Missing Serial Numbers"
-                                    />
-                                </Box>
-                            </Alert>
-                        )}
-                    </Box>
-                )}
+                
+                <Box sx={{ mb: 2 }}>
+                    {errorMessage}
+                    {warningMessage}
+                </Box>
 
-                <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                <Box sx={{ display: 'flex', gap: 1, mb: 2, alignItems: 'flex-start' }}>
                     <TextField 
-                        fullWidth 
-                        size="small" 
-                        label="Scan/Enter Serial Numbers" 
-                        placeholder="Paste list here (comma or newline separated)"
-                        value={currentSerial}
-                        multiline // Allow multi-line pasting visibility
-                        maxRows={20}
-                        onChange={(e) => setCurrentSerial(e.target.value)}
-                        onKeyPress={(e) => {
-                            // Allow Enter to submit if not holding Shift (standard text area behavior)
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                                e.preventDefault();
-                                handleAdd();
-                            }
-                        }}
+                        fullWidth size="small" label="Scan/Enter Serial Numbers" 
+                        placeholder="Paste list here..." multiline maxRows={4}
+                        value={currentSerial} onChange={(e) => setCurrentSerial(e.target.value)}
+                        onKeyPress={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAdd(); }}}
                     />
-                    <Button variant="outlined" onClick={handleAdd} disabled={serials.length >= maxQty}>Add</Button>
+                    <Button variant="outlined" onClick={handleAdd} disabled={serials.length >= maxQty} sx={{ height: 40 }}>Add</Button>
                 </Box>
                 
                 <List dense sx={{ maxHeight: 250, overflow: 'auto', bgcolor: '#f9f9f9', borderRadius: 1 }}>
                     {serials.map((item, idx) => {
-                        // 2. Conditional status styling [Requirement 1]
-                        const isRedundant = isVerificationEnabled && verifyResponse?.redundant_asset_serials.includes(item.serial_number);
-                        const isMatched = isVerificationEnabled && verifyResponse?.matched_asset_serials.includes(item.serial_number);
+                        // Check if item is in the 'invalid' list derived above
+                        const isInvalid = invalidItems.includes(item.serial_number);
+                        const isValid = validItems.includes(item.serial_number);
 
                         return (
-                            <ListItem key={idx} divider sx={{ bgcolor: isRedundant ? '#ffebee' : 'transparent' }}>
+                            <ListItem key={idx} divider sx={{ bgcolor: isInvalid ? '#ffebee' : isValid ? '#e8f5e9' : 'transparent' }}>
                                 <ListItemText 
                                     primary={item.serial_number} 
-                                    primaryTypographyProps={{ color: isRedundant ? 'error' : 'textPrimary' }}
+                                    primaryTypographyProps={{ color: isInvalid ? 'error' : 'textPrimary' }}
                                 />
                                 <ListItemSecondaryAction>
-                                    {isMatched && <CheckCircleOutlineIcon color="success" sx={{ mr: 1, verticalAlign: 'middle' }} />}
+                                    {isValid && <CheckCircleOutlineIcon color="success" sx={{ mr: 1, verticalAlign: 'middle' }} />}
                                     <IconButton edge="end" size="small" onClick={() => {
                                         const newList = [...serials];
                                         newList.splice(idx, 1);
@@ -240,10 +274,9 @@ const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty
             <DialogActions>
                 <Button onClick={onClose}>Cancel</Button>
                 
-                {/* 3. Conditional Verify Button [Requirement 1] */}
                 {isVerificationEnabled && (
                     <Button 
-                        onClick={() => mutation.mutate( {line_id: manifestLineId, assets: serials} )}
+                        onClick={handleVerify}
                         disabled={mutation.isPending || serials.length === 0}
                     >
                         {mutation.isPending ? <CircularProgress size={20} /> : "Verify Assets"}
@@ -252,8 +285,8 @@ const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty
 
                 <Button 
                     onClick={handleSave} variant="contained" 
-                    // Disable save if we are in verification mode and there are redundancies
-                    disabled={isVerificationEnabled && verifyResponse?.redundant_asset_serials.length > 0}
+                    // Block save if invalid items exist
+                    disabled={isVerificationEnabled && invalidItems.length > 0}
                 >
                     Save
                 </Button>

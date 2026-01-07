@@ -71,6 +71,24 @@ export const verifyShipmentLineAssets = async (payload) => {
     }
 
 };
+
+export const verifyAssetsExistence = async (assets) => {
+
+    try {
+        // assets is typically [{serial_number: "A"}, {serial_number: "B"}]
+        // API likely expects array of strings or array of objects depending on backend.
+        // Assuming API expects list of objects similar to previous calls.
+        console.log("Payload received by verify function:", assets);
+        const response =await  api.post(`/receiving/manifest/lines/verify_asset_uniqueness`, assets)
+        console.log(`Received the response in API asset verify existence`, response.data)
+        return response.data
+
+    }
+    catch (error) {
+        console.error(`Failed to verify assets `, error)
+        throw error
+    }
+}
 /**
  * Submit the Receipt
  * Payload structure would typically be: { manifest_id, received_lines: [{ id, qty_received }] }
