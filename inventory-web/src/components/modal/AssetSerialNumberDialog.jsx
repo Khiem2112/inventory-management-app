@@ -225,7 +225,8 @@ const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty
             if (invalidItems.length > 0) {
              const backendError = (
                 <Alert severity="error" sx={{ mb: 1 }}>
-                    {/* ... existing alert content ... */}
+                    <AlertTitle>Invalid Serials</AlertTitle>
+                    {invalidItems.length} items not in manifest: <TruncatedSerialList items={invalidItems} title="Invalid Items" />
                 </Alert>
             );
             errorMessage = <>{errorMessage}{backendError}</>;
