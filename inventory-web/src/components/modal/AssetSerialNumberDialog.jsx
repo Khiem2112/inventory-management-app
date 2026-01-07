@@ -7,6 +7,7 @@ import {
 } from '@mui/material';
 import { useFormContext } from 'react-hook-form'; //
 import DeleteIcon from '@mui/icons-material/Delete';
+import InfoIcon from '@mui/icons-material/Info';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'; // Import Copy Icon
@@ -128,6 +129,26 @@ const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty
                 return verifyAssetsExistence(data.assets);
             }
         },
+        onSuccess: (data) => {
+            let badSerials = [];
+            let goodSerials = [];
+
+            if (receivingStrategy === 'asset_specified') {
+                badSerials = data.redundant_asset_serials || [];
+                goodSerials = data.matched_asset_serials || [];
+            } else {
+                badSerials = data.existed_asset_serials || [];
+                goodSerials = data.new_asset_serials || [];
+            }
+
+            // Update status based on response
+            setSerials(prev => prev.map(item => {
+                if (badSerials.includes(item.serial_number)) return { ...item, status: 'invalid' };
+                if (goodSerials.includes(item.serial_number)) return { ...item, status: 'valid' };
+                // If backend didn't return it (rare), keep it as pending
+                return item;
+            }));
+        }
     });
 
     const handleAdd = () => {
@@ -155,12 +176,17 @@ const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty
         }
 
         // Add valid items
-        const newSerialObjects = uniqueNewItems.map(s => ({ serial_number: s }));
+        const newSerialObjects = uniqueNewItems.map(s => ({ serial_number: s, status: 'pending' }));
         setSerials([...serials, ...newSerialObjects]);
         
         setCurrentSerial("");
-        mutation.reset(); 
     };
+
+    const handleDelete = (idx) => {
+        const newList = [...serials];
+        newList.splice(idx, 1);
+        setSerials(newList);
+    }
 
     const handleSave = () => {
         onSave(serials);
@@ -192,6 +218,9 @@ const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty
     };
 
     const globalDuplicateItems = getGlobalDuplicates();
+    
+    // NEW: Check for "Pending" items to trigger the warning bar
+    const hasUnverifiedItems = serials.some(s => s.status === 'pending');
 
     // --- Derived State for UI Feedback ---
     let invalidItems = [];
@@ -261,7 +290,23 @@ const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty
         <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
             <DialogTitle>Assets for {productName} <Chip label={receivingStrategy} size="small" sx={{ml: 1}} /></DialogTitle>
             <DialogContent dividers>
-                
+                {/* B. Verification Warning Bar (The User Request) */}
+                {hasUnverifiedItems && serials.length > 0 && (
+                    <Box>
+                        <Alert
+                        severity="info"
+                        icon={<InfoIcon/>}
+                        action={
+                            <Button color="inherit" size="small" onClick={() => mutation.mutate(serials)}>
+                                Verify Now
+                            </Button>
+                        }
+                    >
+                        <AlertTitle>Verification Needed</AlertTitle>
+                        List has changed. Please verify assets again.
+                        </Alert>
+                    </Box>
+                )}                
                 <Box sx={{ mb: 2 }}>
                     {errorMessage}
                     {warningMessage}
@@ -300,12 +345,7 @@ const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty
                                 />
                                 <ListItemSecondaryAction>
                                     {!isError && <CheckCircleOutlineIcon color="success" sx={{ mr: 1, verticalAlign: 'middle' }} />}
-                                    <IconButton edge="end" size="small" onClick={() => {
-                                        const newList = [...serials];
-                                        newList.splice(idx, 1);
-                                        setSerials(newList);
-                                        mutation.reset();
-                                    }}>
+                                    <IconButton edge="end" size="small" onClick={handleDelete}>
                                         <DeleteIcon fontSize="small" />
                                     </IconButton>
                                 </ListItemSecondaryAction>
