@@ -103,6 +103,9 @@ const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty
     const [currentSerial, setCurrentSerial] = useState("");
     const [serials, setSerials] = useState(initialSerials);
 
+    // handle snack bar to warn user if we exceed the product
+    const [snackbar, setSnackbar] = useState({ open: false, message: '' });
+
     // Strategy Logic
     const isAssetSpecified = receivingStrategy === 'asset_specified';
     const isQuantityDeclared = receivingStrategy === 'quantity_declared';
@@ -171,7 +174,13 @@ const SerialNumberDialog = ({ open, onClose, onSave, initialSerials = [], maxQty
 
         // Check overflow
         if (serials.length + uniqueNewItems.length > maxQty) {
-            alert(`Cannot add ${uniqueNewItems.length} items. Exceeds remaining quantity.`);
+            const remainingSpace = maxQty - serials.length;
+            // 1. Trigger Snackbar
+            setSnackbar({
+                open: true,
+                message: `Cannot add ${newItems.length} items. Only ${remainingSpace} slots remaining.`
+            });
+            // 2. CANCEL the add (Return early)
             return;
         }
 
