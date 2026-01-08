@@ -39,7 +39,7 @@ from app.utils.dependencies import get_db, get_current_user
 from app.utils.logger import setup_logger
 from app.utils.random_string import generate_random_string
 
-from app.services.procurement.goods_receipt import GRService
+from app.services.procurement.goods_receipt import get_gr_service, GRService
 
 # Initialize the router (assuming 'router' is already defined)
 router = APIRouter(prefix="/receiving", tags=["Receiving"])
@@ -471,7 +471,7 @@ def update_po_status_logic(db: Session, po_id: int):
 @router.post('/create', description="Create new good receipt referencing a shipment manifest")
 def createNewGR(
   inputDocument: Union[ShipmentReceptionInput, PurchaseOrderReceptionInput],
-  db: Session = Depends(get_db)
+  gr_service: GRService = Depends(get_gr_service)
   ):
   
   """ 
@@ -494,11 +494,10 @@ def createNewGR(
   try:
     strategy_type = inputDocument.type
     print(f"Start to process good receipt from a shipment manifest: {True if strategy_type == 'sm' else False}")
-    procurement_service = GRService(db)
     if strategy_type == "po":
-      return procurement_service._handle_gr_creation_from_po(inputDocument)
+      return gr_service._handle_gr_creation_from_po(inputDocument)
     if strategy_type == "sm":
-      return procurement_service._handle_gr_flow_from_sm(inputDocument)
+      return gr_service._handle_gr_flow_from_sm(inputDocument)
       
     # Process each flow independently and organize them in class later
     
