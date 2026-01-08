@@ -454,7 +454,7 @@ const Step1_Details = (
         );
     }
 
-
+    const activeLine = activeLineIndex !== null ? getValues(`lines.${activeLineIndex}`) : null;
     return (
         <FormProvider {...methods} >
             <form onSubmit={handleSubmit(onSubmit)}>
@@ -566,9 +566,9 @@ const Step1_Details = (
                     open={serialDialogOpen}
                     onClose={() => setSerialDialogOpen(false)}
                     onSave={handleSaveSerials}
-                    initialSerials={activeLineIndex !== null ? getValues(`lines.${activeLineIndex}.asset_items`) : []}
-                    maxQty={activeLineIndex !== null ? getValues(`lines.${activeLineIndex}.max_qty`) : 0}
-                    productName={activeLineIndex !== null ? getValues(`lines.${activeLineIndex}.product_name`) : ''}
+                    initialSerials={activeLine ? activeLine.asset_items : []}
+                    maxQty={activeLine ? activeLine.quantity_remaining : 0}
+                    productName={activeLine ? activeLine.product_name : ''}
                 />
                 {/* Error Dialog */}
                 <ErrorDialog
