@@ -14,10 +14,13 @@ from fastapi import HTTPException, Depends
 from typing import Union
 from app.utils.random import generate_random_serial
 from app.utils.dependencies import get_db
+from app.utils.logger import setup_logger
 from datetime import date, datetime
 import collections
 from app.services.enum import LocationID, ZoneID, AssetStatus
 from collections import defaultdict
+
+logger = setup_logger()
 
 class GRService():
   def __init__(self, db: Session):
@@ -342,16 +345,17 @@ class GRService():
     
     sm_lines_from_db_query = select(
       ShipmentManifestLineORM.Id,
-      ShipmentManifestLineORM.PurchaseOrderLineId).where(
+      ShipmentManifestLineORM.PurchaseOrderLineId,
+      ShipmentManifestLineORM.ReceivingStrategy).where(
       ShipmentManifestLineORM.ShipmentManifestId == sm.sm_id,
       ShipmentManifestLineORM.Id.in_(input_sm_line_ids)
     )
       
     sm_lines_from_db = self.db.execute(sm_lines_from_db_query).mappings().all()
         
-    sm_lines_map = {sm_line_orm["Id"]: sm_line_orm for sm_line_orm in sm_lines_from_db}
+    sm_lines_map_db = {sm_line_orm["Id"]: sm_line_orm for sm_line_orm in sm_lines_from_db}
     
-    sm_line_ids_from_db = set(sm_lines_map.keys())
+    sm_line_ids_from_db = set(sm_lines_map_db.keys())
     
     error_message = []
     for sm_line_id in input_sm_line_ids:
@@ -359,7 +363,7 @@ class GRService():
         error_message.append(f"Line ID: {sm_line_id} does not exist")
     if len(error_message) > 0:
       raise ValueError(f"Some shipment lines do not exist in shipment manifest id {sm.sm_id}: {error_message}")
-    
+    logger.info(f"Every shipment manifest line is valid")
     # Check received value of each independent shipment manifest line id
     """
     We check 2 cases:
@@ -368,7 +372,7 @@ class GRService():
     """
     # Check if any asset is not found in database
     
-    all_inputs_asset_ids = [asset.asset_id for line in sm.lines for asset in line.asset_items]
+    all_inputs_asset_serials = [asset.serial_number for line in sm.lines for asset in line.asset_items]
     
     target_manifest_id = sm.sm_id 
 
@@ -381,35 +385,43 @@ class GRService():
           AssetORM.ShipmentManifestLineId
       )
       .join(ShipmentManifestLineORM) # Joins Asset -> Manifest Line
-      .join(ShipmentManifestORM)     # Joins Manifest Line -> Manifest
       .where(
-          ShipmentManifestORM.Id == target_manifest_id,
-          AssetORM.AssetId.in_(all_inputs_asset_ids)
+          ShipmentManifestLineORM.ShipmentManifestId == target_manifest_id,
+          AssetORM.SerialNumber.in_(all_inputs_asset_serials),
+          AssetORM.AssetStatus == 'In Transit'
       )
     )
     
     all_assets_from_db = self.db.execute(all_assets_query).mappings().all()
     
-    all_asset_ids_from_db = [asset.AssetId for asset in all_assets_from_db]
+    logger.info(f"Success got all assets in database meet the condition")
+    
+    # Prepare asset serial map
+    serial_to_asset_map: dict = {}
+    line_placeholder_lists: dict[int, list] = {}
+    
+    for asset in all_assets_from_db:
+      if asset["SerialNumber"]:
+        serial_to_asset_map[asset["SerialNumber"]] = asset
+      else:
+        sm_line_id_db = asset["ShipmentManifestLineId"]
+        if not sm_line_id_db:
+          raise ValueError(f"There is no sm line id associates with asset: {asset['AssetId']}")
+        line_placeholder_lists[sm_line_id_db].append(asset)
+      
+    logger.info(f'Have built asset lookup map')
 
     # Check duplicated asset
     
     error_message = []
     
-    if len(all_inputs_asset_ids) != len(set(all_inputs_asset_ids)):
+    if len(all_inputs_asset_serials) != len(set(all_inputs_asset_serials)):
           
-      asset_ids_counter = collections.Counter(all_inputs_asset_ids)
+      asset_ids_counter = collections.Counter(all_inputs_asset_serials)
       duplicated_asset_ids = [item for item, count in asset_ids_counter.items() if  count > 1]
       raise ValueError(f"Duplicated asset ids: {duplicated_asset_ids}")
   
-    # Check non-existed asset id
-    for asset_id in all_inputs_asset_ids:
-      
-      if asset_id not in set(all_asset_ids_from_db):
-        error_message.append(f"Asset id: {asset_id} does not exist")
-        
-    if len(error_message) > 0:
-      raise ValueError(f"Some asset in input does not exits in database {error_message}")
+    logger.info(f"Check asset duplicated: PASSED")
     
     try:
       # Create new Goods Receipt
@@ -427,10 +439,6 @@ class GRService():
       self.db.flush()
       print(f"Have created goods receipt id {new_gr_orm.ReceiptId}")
       
-      assets_map_db = {
-        asset['AssetId']: asset for asset in all_assets_from_db
-      }
-      
       # Aggregatee a list of updated assets
       assets_update_payload = []
       assets_lookup_from_po_line_id = defaultdict(list)
@@ -440,23 +448,37 @@ class GRService():
         current_line_accepted_count = 0
         current_line_declined_count = 0
         
-        current_sm_line_orm = sm_lines_map.get(input_sm_line.sm_line_id)
+        current_sm_line_orm = sm_lines_map_db.get(input_sm_line.sm_line_id)
+        sm_line_strategy = current_sm_line_orm.get('ReceivingStrategy')
+        if sm_line_strategy not in ['asset_specified', 'quantity_declared'] or not sm_line_strategy:
+          raise ValueError(f"Shipment manifest line {input_sm_line.sm_line_id} does not have the valid strategy")
+        
         if current_sm_line_orm:
           print(f"Being able to get the data of current shipment manifest line: {current_sm_line_orm}")
         
         for asset in input_sm_line.asset_items:
-          asset_id = asset.asset_id
-          asset_orm = assets_map_db.get(asset_id)
           
-          # Check integrity
-          if not asset_orm:
-            raise ValueError(f"Asset {asset_id} not found in DB")
-          
-          # Check if we are pointing to the right shipment manifest line id since the whole assets list was flatten
-          if asset_orm["ShipmentManifestLineId"] != input_sm_line.sm_line_id:
-            raise ValueError(f"Input line {input_sm_line.sm_line_id} have unexpected asset id {asset_id}, it should be in {asset_orm['ShipmentManifestLineId'] }")
+          # Check if asset exists in the same shipment manifest line for access_specified strategy
+          if sm_line_strategy =="asset_specified":
+            asset_serial = asset.serial_number
+            target_asset_orm = serial_to_asset_map.get(asset_serial)
+            
+            # Check integrity
+            if not target_asset_orm:
+              raise ValueError(f"Asset {asset_serial} not found in DB")
+            
+            # Check if we are pointing to the right shipment manifest line id since the whole assets list was flatten
+            if target_asset_orm["ShipmentManifestLineId"] != input_sm_line.sm_line_id:
+              raise ValueError(f"Input line {input_sm_line.sm_line_id} have unexpected asset id {asset_serial}, it should be in {target_asset_orm['ShipmentManifestLineId'] }")
+            # Get the target asset
+          elif sm_line_strategy == "quantity_declared":
+            # Handle case when list of asset_orm in a shipment manifest line is empty
+            if len(line_placeholder_lists[sm_line_id]) == 0:
+              raise ValueError("No slots left")
+            target_asset_orm = line_placeholder_lists[sm_line_id].pop()
 
           # CHANGE 2: Create a DICTIONARY, not an AssetORM object
+          asset_id = target_asset_orm.get('AssetId')
           update_data = {
             "AssetId": asset_id,  # Primary Key is required
             "LastMovementDate": datetime.now(),
@@ -465,7 +487,11 @@ class GRService():
             "ShipmentManifestLineId": input_sm_line.sm_line_id
             # Retain existing data if needed, or rely on partial update
           }
-
+          
+          # Update serial number if receiving strategy is quantity_declared
+          if sm_line_strategy == "quantity_declared":
+            update_data['SerialNumber'] = asset.serial_number
+          logger.info(f"Have update asset serial number {asset.serial_number}")
           if asset.isAccepted:
             update_data.update({
                 "AssetStatus": AssetStatus.AwaitingQC.value,
