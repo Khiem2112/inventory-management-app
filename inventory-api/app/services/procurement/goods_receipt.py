@@ -1,13 +1,13 @@
 from sqlalchemy.orm import Session
 from app.schemas.shipment import PurchaseOrderReceptionInput, PurchaseOrderItemInput,  ShipmentReceptionInput, ShipmentLineReceptionInput
-from sqlalchemy import select, text, exists, bindparam
+from sqlalchemy import select, text, exists, bindparam, insert
 from app.database.purchase_order_model import PurchaseOrder as PurchaseOrderORM, PurchaseOrderItem as PurchaseOrderItemORM
 from app.database.product_model import Product
 from app.database.asset_model import Asset as AssetORM
 from app.database.user_model import User
 from app.database.warehouse_zone_model import Zone
 from app.database.good_receipt_model import GoodsReceipt as GoodsReceiptORM
-from app.database.stock_move import StockMove as StockMoveORM
+from app.database.stock_move import StockMove as StockMoveORM, AssetStockMove as AssetStockMoveORM
 from app.database.shipment_manifest_model import ShipmentManifest as ShipmentManifestORM, ShipmentManifestLine as ShipmentManifestLineORM
 
 from fastapi import HTTPException
@@ -16,6 +16,7 @@ from app.utils.random import generate_random_serial
 from datetime import date, datetime
 import collections
 from app.services.enum import LocationID, ZoneID, AssetStatus
+from collections import defaultdict
 
 class GRService():
   def __init__(self, db: Session):
@@ -431,6 +432,8 @@ class GRService():
       
       # Aggregatee a list of updated assets
       assets_update_payload = []
+      assets_lookup_from_po_line_id = defaultdict(list)
+      stock_moves_inserted: list[dict] = []
       
       for input_sm_line in sm.lines:
         current_line_accepted_count = 0
@@ -476,28 +479,63 @@ class GRService():
             current_line_declined_count += 1
           
           assets_update_payload.append(update_data)
+          
+          # Prepare asset lookup map from po line id
+          key = update_data['PurchaseOrderLineId']
+          assets_lookup_from_po_line_id[key].append(asset_id)
         if current_line_accepted_count > 0:
-          new_accepted_stock_move_orm = StockMoveORM(
-            PurchaseOrderItemId = current_sm_line_orm['PurchaseOrderLineId'],
-            Quantity = current_line_accepted_count,
-            MovementDate = datetime.now(),
-            SourceLocationId = LocationID.IN_TRANSIT.value,
-            DestinationLocationId = LocationID.AWAITING_QC.value
-          )
-          self.db.add(new_accepted_stock_move_orm)
+          new_accepted_stock_move_orm = {
+            'PurchaseOrderItemId': current_sm_line_orm['PurchaseOrderLineId'],
+            'GoodsReceiptId': new_gr_orm.ReceiptId,
+            'Quantity': current_line_accepted_count,
+            'MovementDate': datetime.now(),
+            'SourceLocationId': LocationID.IN_TRANSIT.value,
+            'DestinationLocationId': LocationID.AWAITING_QC.value
+            }
+          
+          stock_moves_inserted.append(new_accepted_stock_move_orm)
         if current_line_declined_count >0:
-          new_declined_stock_move_orm = StockMoveORM(
-            PurchaseOrderItemId = current_sm_line_orm['PurchaseOrderLineId'],
-            Quantity = current_line_declined_count,
-            MovementDate = datetime.now(),
-            SourceLocationId = LocationID.IN_TRANSIT.value,
-            DestinationLocationId = LocationID.REJECTED_DOCK.value
-          )
-          self.db.add(new_declined_stock_move_orm)
+          new_declined_stock_move_orm = {
+            'PurchaseOrderItemId': current_sm_line_orm['PurchaseOrderLineId'],
+            'GoodsReceiptId': new_gr_orm.ReceiptId,
+            'Quantity': current_line_declined_count,
+            'MovementDate': datetime.now(),
+            'SourceLocationId': LocationID.IN_TRANSIT.value,
+            'DestinationLocationId': LocationID.REJECTED_DOCK.value
+            }
+          stock_moves_inserted.append(new_declined_stock_move_orm)
         
       if assets_update_payload:
         self.db.bulk_update_mappings(AssetORM, assets_update_payload)
-      
+      if stock_moves_inserted:
+        stock_move_results = self.db.execute(
+          insert(StockMoveORM).returning(
+              StockMoveORM.Id, 
+              StockMoveORM.PurchaseOrderItemId
+          ), 
+          stock_moves_inserted
+      ).mappings().all()
+        
+      # update the StockMove_Asset relationship table
+      stock_moves_assets_rel_inserted: list[dict] = []
+      for stock_move_db in stock_move_results:
+        stock_move_id = stock_move_db.get('Id')
+        po_line_id = stock_move_db.get('PurchaseOrderItemId')
+        # Handle unexpected error when stock_move doesn't link to any po item id
+        if not po_line_id:
+          raise ValueError(f"Stock move id {stock_move_id} does not link to any po line id")
+        asset_ids_list = assets_lookup_from_po_line_id.get(po_line_id)
+        if not asset_ids_list:
+          # This catches the "it should never happen" scenario
+          # Prevents creating a Stock Move without associated Assets
+          raise ValueError(f"Data Mismatch: StockMove {stock_move_id} (PO: {po_line_id}) has no matching assets in the update payload.")
+        # Loop over each asset to build the inserted list with 
+        for asset_id in asset_ids_list:
+          stock_moves_assets_rel_inserted.append({
+            "AssetId": asset_id,
+            "StockMoveId": stock_move_id
+          })
+      self.db.execute(insert(AssetStockMoveORM), stock_moves_assets_rel_inserted)
       self.db.commit()
       return {
       "message" : f"Successfully create good receipt from SM id {sm.sm_id}"
