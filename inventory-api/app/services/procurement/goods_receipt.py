@@ -387,7 +387,8 @@ class GRService():
       .join(ShipmentManifestLineORM) # Joins Asset -> Manifest Line
       .where(
           ShipmentManifestLineORM.ShipmentManifestId == target_manifest_id,
-          AssetORM.SerialNumber.in_(all_inputs_asset_serials),
+          ShipmentManifestLineORM.Id.in_(sm_line_ids_from_db),
+          # AssetORM.SerialNumber.in_(all_inputs_asset_serials),
           AssetORM.AssetStatus == 'In Transit'
       )
     )
@@ -398,7 +399,7 @@ class GRService():
     
     # Prepare asset serial map
     serial_to_asset_map: dict = {}
-    line_placeholder_lists: dict[int, list] = {}
+    line_placeholder_lists = defaultdict(list)
     
     for asset in all_assets_from_db:
       if asset["SerialNumber"]:
@@ -410,6 +411,8 @@ class GRService():
         line_placeholder_lists[sm_line_id_db].append(asset)
       
     logger.info(f'Have built asset lookup map')
+    logger.info(f"serial to asset map is: {serial_to_asset_map}")
+    logger.info(f"line placeholder list looks like: {line_placeholder_lists}")
 
     # Check duplicated asset
     
@@ -445,6 +448,7 @@ class GRService():
       stock_moves_inserted: list[dict] = []
       
       for input_sm_line in sm.lines:
+        sm_line_id = input_sm_line.sm_line_id
         current_line_accepted_count = 0
         current_line_declined_count = 0
         
