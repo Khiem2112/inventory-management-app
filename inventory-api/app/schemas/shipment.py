@@ -20,7 +20,7 @@ class AssetInput(AssetBase):
 
 class AssetVerificationInput(BaseModel):
     """Used during Goods Receipt to verify asset acceptance."""
-    asset_id: int | None = Field(default=None)
+    serial_number: str = Field(..., description="Specific business identify number of an asset")
     isAccepted: bool = Field(...)
 
 # --- Verification Responses ---
