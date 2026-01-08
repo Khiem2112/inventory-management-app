@@ -5,7 +5,7 @@ from sqlalchemy import select, text, func, case, label, insert, bindparam
 from app.database.purchase_order_model import PurchaseOrder as PurchaseOrderORM, PurchaseOrderItem as PurchaseOrderItemORM
 from app.database.shipment_manifest_model import ShipmentManifest as ShipmentManifestORM, ShipmentManifestLine as ShipmentManifestLineORM
 from app.database.asset_model import Asset as AssetORM
-from app.schemas.shipment import ShipmentManifestInput, ShipmentManifestRead
+from app.schemas.shipment import ShipmentManifestCreatePayload, ShipmentManifestRead
 from app.database.user_model import User as UserORM
 from app.database.stock_move import StockMove as StockMoveORM, AssetStockMove as AssetStockMoveORM
 from app.utils.logger import setup_logger
@@ -16,31 +16,9 @@ from enum import Enum
 from collections import defaultdict  
 from app.utils.dependencies import get_db, get_current_user
 import traceback
+from app.services.enum import LocationID, ZoneID, AssetStatus
 
 logger = setup_logger()
-
-# Helper function
-
-class LocationID(Enum):
-  AVAILABLE = 1
-  IN_RECEIVING = 2
-  IN_TRANSIT = 3
-  AWAITING_QC = 4
-  COMMITTED = 5
-  DISABLED = 6
-  REJECTED_DOCK = 7 
-  QUARANTINE = 8
-  VENDOR = 1007 # Example
-class ZoneID(Enum):
-  QUARANTINE = 14
-  DEFAULT_STORAGE = 7
-
-class AssetStatus(Enum):
-  Available = "Available"
-  InTransit = "In Transit"
-  AwaitingQC = "Awaiting QC"
-  Rejected = "Rejected"
-
   
 class SupplierService():
   
@@ -53,7 +31,7 @@ class SupplierService():
   
   def create_shipment_manifest(
     self,
-    sm_data: ShipmentManifestInput,
+    sm_data: ShipmentManifestCreatePayload,
     
   ) -> ShipmentManifestRead: 
     

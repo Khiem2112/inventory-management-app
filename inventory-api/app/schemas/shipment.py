@@ -1,37 +1,117 @@
 from typing import Optional, List, Literal, Union
-from datetime import datetime
-from pydantic import Field, BaseModel
+from datetime import datetime, date
+from pydantic import Field, BaseModel, model_validator, field_validator
+from collections import Counter
 
-# Import the custom base schemas for auto-conversion
+# Import your custom base schemas
 from app.schemas.base import AutoReadSchema, AutoWriteSchema, StandardResponse
+
+# ==========================================
+# 1. SHARED ASSETS & CORE UTILS
+# ==========================================
+
+class AssetBase(BaseModel):
+    """Base identification for a single physical asset."""
+    serial_number: str = Field(..., description="Unique serial number of a product provided by supplier")
+
+class AssetInput(AssetBase):
+    """Simple wrapper for asset input."""
+    pass
+
+class AssetVerificationInput(BaseModel):
+    """Used during Goods Receipt to verify asset acceptance."""
+    asset_id: int | None = Field(default=None)
+    isAccepted: bool = Field(...)
+
+# --- Verification Responses ---
+class ShipmentLineVerifyResponse(StandardResponse):
+    missing_asset_serials: list[str | None] 
+    redundant_asset_serials: list[str | None]
+    matched_asset_serials: list[str | None]
+
+class AssetUniquenessVerifyResponse(StandardResponse):
+    existed_asset_serials: list[str | None]
+    new_asset_serials: list[str | None]
+
+
+# ==========================================
+# 2. SHIPMENT MANIFEST (The Header)
+# ==========================================
+
 class ShipmentManifestBase(BaseModel):
-    """Common fields for ShipmentManifest model."""
+    """Shared fields for ShipmentManifest."""
     purchase_order_id: Optional[int] = None
     tracking_number: Optional[str] = Field(None, max_length=200)
     carrier_name: Optional[str] = Field(None, max_length=200)
     estimated_arrival: Optional[datetime] = None
     status: Optional[str] = Field(..., max_length=100)
 
-# (2) INPUT/WRITE: Inherits Base fields and AutoWriteSchema for ORM conversion
 class ShipmentManifestWrite(ShipmentManifestBase, AutoWriteSchema):
-    """Schema for creating or updating a ShipmentManifest (input)."""
+    """Schema for WRITING to DB (Create/Update)."""
     pass
 
-# (3) OUTPUT/READ: Inherits Base fields and AutoReadSchema, plus read-only fields
 class ShipmentManifestRead(ShipmentManifestBase, AutoReadSchema):
-    """Schema for reading a ShipmentManifest (response)."""
-    id: int # Primary Key
-    supplier_id: Optional[int] = Field(default=None) # Only showing Shipment manifest read supplier id
+    """Schema for READING from DB."""
+    id: int
+    supplier_id: Optional[int] = Field(default=None)
     created_by_user_id: Optional[int] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
-# Search Schema Result
+
+
+# ==========================================
+# 3. SHIPMENT LINES (The Items)
+# ==========================================
+
+class ShipmentManifestLineBase(BaseModel):
+    """Common fields for ShipmentManifestLine."""
+    purchase_order_item_id: int = Field(..., description="Direct reference purchase order item")
+    supplier_serial_number: Optional[str] = Field(default=None, description="Supplier injected serial number on their shipment line")
+    supplier_sku: Optional[str] = Field(default=None, description="Supplier SKU")
+
+# --- Specialized Inputs for Line Creation ---
+class ShipmentManifestLineAssetInput(ShipmentManifestLineBase):
+    """Input flow: Supplier specifies exact assets."""
+    shipment_mode: Literal["asset_specified"] = "asset_specified"
+    asset_items: list[AssetInput] = Field(..., description="List of asset items defined by supplier")
+
+    @property
+    def quantity(self) -> int:
+        return len(self.asset_items)
+
+class ShipmentManifestLineQuantityInput(ShipmentManifestLineBase):
+    """Input flow: Supplier just declares a quantity."""
+    shipment_mode: Literal["quantity_declared"] = "quantity_declared"
+    quantity: int = Field(..., gt=0)
+
+# --- Standard Database Schemas ---
+class ShipmentManifestLineWrite(ShipmentManifestLineBase, AutoWriteSchema):
+    pass
+
+class ShipmentManifestLineRead(ShipmentManifestLineBase, AutoReadSchema):
+    id: int
+
+
+# ==========================================
+# 4. COMPOSITE MANIFEST OPERATIONS
+# ==========================================
+# These combine Header + Lines for API payloads
+
+class ShipmentManifestCreatePayload(ShipmentManifestWrite):
+    """
+    MASTER PAYLOAD: Creating a new Shipment Manifest.
+    (Renamed from 'ShipmentManifestCreate' to avoid collision with Receipt logic)
+    """
+    purchase_order_id: int = Field(..., description="Linked PO is required to determine the Supplier")
+    lines: List[Union[ShipmentManifestLineAssetInput, ShipmentManifestLineQuantityInput]] = Field(..., description="List of items in this shipment")
+
+
+# ==========================================
+# 5. SEARCH & REPORTING
+# ==========================================
+
 class ManifestSearchResultItem(ShipmentManifestRead):
-    """
-    Enhanced schema for search results.
-    Inherits standard fields (id, status, dates) and adds joined/derived info.
-    """
-    # Override/Add fields for the specific search response format
+    """Enhanced schema for search results with joined fields."""
     manifest_code: str = Field(..., description="Formatted Manifest ID (e.g., SM-1002)")
     supplier_name: Optional[str] = Field(None, description="Name of the Supplier")
     tracking_number: Optional[str] = Field(None, validation_alias="TrackingNumber")
@@ -41,123 +121,119 @@ class ManifestSearchResultItem(ShipmentManifestRead):
     item_count: int = Field(default=0, description="Total items in this manifest")
 
 class ManifestSearchResponse(BaseModel):
-    """
-    Wrapper for the search results array as per the API design.
-    """
     results: List[ManifestSearchResultItem]
-# --- 2. ShipmentManifestLine Schemas ---
-
-class AssetBase(BaseModel):
-    serial_number: str = Field(..., description=" Unique serial number of a product provide by supplier")
-
-class AssetInput(AssetBase):
-    pass
-class ShipmentLineVerifyResponse(StandardResponse):
-    missing_asset_serials: list[str | None] 
-    redundant_asset_serials: list[str | None]
-    matched_asset_serials: list[str | None]
-class AssetUniquenessVerifyResponse(StandardResponse):
-    existed_asset_serials: list[str | None]
-    new_asset_serials: list[str | None]
-
-class ShipmentManifestLineBase(BaseModel):
-    """Common fields for ShipmentManifestLine model."""
-    purchase_order_item_id: int = Field(...,desciption = "Direct reference purchase order item")
-    supplier_serial_number: Optional[str] = Field(default=None, description="Supplier injected supplier serial number on their shipment line")
-    supplier_sku: Optional[str] = Field(default = None, description="Supplier SKU")
-    
-class ShipmentManifestLineAssetInput(ShipmentManifestLineBase):
-    """Shipment manifest line model for Asset input flow."""
-    shipment_mode: Literal["asset_specified"] = "asset_specified"
-    asset_items: list[AssetInput] = Field(..., description = "List of asset items defined by supplier")
-    @property
-    def quantity(
-        self
-    ) -> int:
-        return len(self.asset_items)
-    
-class ShipmentManifestLineQuantityInput(ShipmentManifestLineBase):
-    """Shipment manifest line model for Quantity input flow."""
-    shipment_mode: Literal["quantity_declared"] = "quantity_declared"
-    quantity: int = Field(..., gt=0)
-
-# (2) INPUT/WRITE: Inherits Base fields and AutoWriteSchema
-class ShipmentManifestLineWrite(ShipmentManifestLineBase, AutoWriteSchema):
-    """Schema for creating or updating a ShipmentManifestLine (input)."""
-    pass
-
-# (3) OUTPUT/READ: Inherits Base fields and AutoReadSchema, plus read-only fields
-class ShipmentManifestLineRead(ShipmentManifestLineBase, AutoReadSchema):
-    """Schema for reading a ShipmentManifestLine (response)."""
-    id: int
-    
-
-class ShipmentManifestInput(ShipmentManifestWrite):
-    """
-    Master payload for creating a Shipment Manifest.
-    Includes the header fields and a list of lines.
-    """
-    purchase_order_id: int = Field(..., description="Linked PO is required to determine the Supplier")
-    lines: List[Union[ ShipmentManifestLineAssetInput, ShipmentManifestLineQuantityInput ]] = Field(..., description="List of items in this shipment")
 
 class CountingManifestLineResponse(AutoReadSchema):
-    """
-    Schema for a single line item in the Manifest Details response.
-    Inherits fields like supplier_sku directly.
-    Aliases fields line_id and qty_shipped to adhere to the base contract.
-    """
-    id: Optional[int] = Field(default=None, description= "Line ID of Shipment Manifest")
-    # 1. Alias fields to match the specific API contract output names (keeping line_id and qty_shipped)
-    # 2. Add calculated/derived fields
-    receiving_strategy: Optional[Literal['asset_specified','quantity_declared']] = Field(default = None,)
+    """Detailed line view for receiving screens."""
+    id: Optional[int] = Field(default=None, description="Line ID of Shipment Manifest")
+    receiving_strategy: Optional[Literal['asset_specified','quantity_declared']] = Field(default=None)
     po_number: Optional[str] = None 
     product_name: Optional[str] = None
     quantity_received: Optional[int] = Field(default=None, description="Count of linked Assets with Status = 'received'")
-    quantity_declared: Optional[int] = Field(default= None, description= "Quantity that supplier want to ship on that SHipment Line")
-    quantity_remaining: Optional[int] = Field(default = None, description="= quantity_declared - quantity_received")
-    
+    quantity_declared: Optional[int] = Field(default=None, description="Quantity supplier wanted to ship")
+    quantity_remaining: Optional[int] = Field(default=None, description="= quantity_declared - quantity_received")
+
 class ManifestLinesListResponse(ShipmentManifestBase, StandardResponse):
-    """
-    The full response body for GET /manifests/{manifest_id}/lines.
-    """
-    supplier_id:Optional[int] = Field(default=None, description="Supplier who created te Manifest")
-    created_by_user_id: Optional[int] = Field(default=None, description = "User ID who created the manifest")
-    
+    """Full response for GET /manifests/{id}/lines"""
+    supplier_id: Optional[int] = Field(default=None)
+    created_by_user_id: Optional[int] = Field(default=None)
     shipment_manifest_id: Optional[int] = Field(default=None)
     status: Optional[str] = None
-    lines: List[CountingManifestLineResponse] # Leveraging the existing Read schema
+    lines: List[CountingManifestLineResponse]
     total_lines: Optional[int] = Field(default=None)
 
 
-# --- 3. GoodsReceipt Schemas ---
+# ==========================================
+# 6. GOODS RECEIPT & STOCK MOVEMENT (The Execution)
+# ==========================================
 
-# (1) BASE: All common fields, used for inheritance
 class GoodsReceiptBase(BaseModel):
-    """Common fields for GoodsReceipt model."""
     receipt_number: str = Field(..., max_length=50)
     received_by_user_id: int
     tracking_number: Optional[str] = Field(None, max_length=50)
-    shipment_manifest_id: Optional[int] = None # FK for the 1:1 relationship
+    shipment_manifest_id: Optional[int] = None 
 
-# (2) INPUT/WRITE: Inherits Base fields and AutoWriteSchema
 class GoodsReceiptWrite(GoodsReceiptBase, AutoWriteSchema):
-    """Schema for creating or updating a GoodsReceipt (input)."""
     pass
 
-# (3) OUTPUT/READ: Inherits Base fields and AutoReadSchema, plus read-only fields
 class GoodsReceiptRead(GoodsReceiptBase, AutoReadSchema):
-    """Schema for reading a GoodsReceipt (response)."""
-    receipt_id: int # Primary Key 'ReceiptId' maps to 'receipt_id'
+    receipt_id: int
     received_date: Optional[datetime] = None
-    
+
+# --- Stock Movement / Finalization Logic ---
+
+class StockMoveBase(BaseModel):
+    po_item_id: int | None = Field(default=None)
+    quantity: int | None = Field(default=None)
+    source_location_id: int|None = Field(default=None)
+    destination_location_id: int|None = Field(default=None)
+
+class StockMovePublic(StockMoveBase):
+    id: int|None = Field(default=None)
+    movement_date: date|None = Field(default=None)
+
 class FinalizeManifestItem(BaseModel):
     line_id: int = Field(..., description="ID of the Manifest Line Item being counted")
     qty_actual: int = Field(..., gt=0, description="Actual quantity received and counted")
 
 class FinalizeManifestInput(BaseModel):
-    dock_location: str = Field(..., description="Name of the Dock/Zone where goods are received (e.g., 'Dock-04')")
+    dock_location: str = Field(..., description="Name of the Dock/Zone")
     counts: List[FinalizeManifestItem]
 
 class FinalizeManifestResponse(BaseModel):
     receipt_number: str
     message: str
+
+
+# ==========================================
+# 7. COMPLEX RECEPTION INPUTS (The Polymorphic Inputs)
+# ==========================================
+
+# NOTE: These were previously causing confusion/collisions.
+# I have renamed them to clear 'Input' names based on their structure.
+
+class PurchaseOrderItemInput(BaseModel):
+    """Used when receiving directly against a PO."""
+    po_line_id: int | None = Field(default=None)
+    received_quantity: int = Field(...)
+    asset_items: list[AssetVerificationInput] = Field(...)
+
+class PurchaseOrderReceptionInput(BaseModel):
+    """Payload for PO Reception."""
+    type: Literal['po']
+    po_id: int | None = Field(default=None)
+    lines: list[PurchaseOrderItemInput] = Field(...)
+
+class ShipmentLineReceptionInput(BaseModel):
+    """Used when receiving against a Shipment Manifest."""
+    sm_line_id: int | None = Field(default=None)
+    received_quantity: int | None = Field(default=None)
+    asset_items: list[AssetVerificationInput] = Field(...)
+
+    @model_validator(mode='after')
+    def verify_counts_match(self):
+        actual_count = len(self.asset_items)
+        if self.received_quantity != actual_count:
+            raise ValueError(
+                f"Safety Check Failed: Declared {self.received_quantity}, "
+                f"but provided {actual_count} asset records."
+            )
+        return self
+
+class ShipmentReceptionInput(BaseModel):
+    """
+    Payload for Shipment Manifest Reception.
+    (PREVIOUSLY named ShipmentManifestCreate in your code, which was a bug/conflict).
+    """
+    type: Literal['sm']
+    sm_id: int | None = Field(default=None)
+    lines: list[ShipmentLineReceptionInput] = Field(..., description="Each line item received")
+    
+    @field_validator('lines')
+    @classmethod
+    def check_duplicate_manifest_ids(cls, v: list[ShipmentLineReceptionInput]):
+        ids = [item.sm_line_id for item in v]
+        if len(ids) != len(set(ids)):
+            duplicates = [id for id, count in Counter(ids).items() if count > 1]
+            raise ValueError(f"Duplicate manifest_line_id(s) found: {duplicates}")
+        return v
