@@ -10,9 +10,10 @@ from app.database.good_receipt_model import GoodsReceipt as GoodsReceiptORM
 from app.database.stock_move import StockMove as StockMoveORM, AssetStockMove as AssetStockMoveORM
 from app.database.shipment_manifest_model import ShipmentManifest as ShipmentManifestORM, ShipmentManifestLine as ShipmentManifestLineORM
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Depends
 from typing import Union
 from app.utils.random import generate_random_serial
+from app.utils.dependencies import get_db
 from datetime import date, datetime
 import collections
 from app.services.enum import LocationID, ZoneID, AssetStatus
@@ -546,6 +547,9 @@ class GRService():
     except Exception as e:
       self.db.rollback()
       raise e
-      
+def get_gr_service(
+  db:Session = Depends(get_db)
+) -> GRService:
+  return GRService(db=db)
     
     
