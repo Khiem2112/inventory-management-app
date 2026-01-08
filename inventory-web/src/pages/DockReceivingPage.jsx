@@ -61,18 +61,22 @@ const DockReceivingPage = () => {
     const handleSubmitReceipt = (formData) => {
         // Construct the payload required by the API
         const payload = {
-            dock_location: "ReceivingZone", // Hardcoded for now, or add a selector in UI if needed
-            counts: formData.lines.map(line => ({
-                line_id: line.id, // Maps to 'id' from the fetchManifestDetails response (e.g., 26, 31)
-                qty_actual: Number(line.current_receive_input)
+            type: 'sm',
+            sm_id: activeManifestId,
+            lines: formData.lines.map(line => ({
+                sm_line_id: line.id, // Maps to 'id' from the fetchManifestDetails response (e.g., 26, 31)
+                received_quantity: line?.asset_items.length || 0,
+                asset_items: line.asset_items.map(asset_item => ({
+                    serial_number: asset_item?.serial_number,
+                    isAccepted: true
+                }))
             }))
         };
 
         // Trigger mutation
-        finalizeMutation.mutate({ 
-            manifestId: activeManifestId, 
+        finalizeMutation.mutate(
             payload 
-        });
+        );
     };
 
     const pageLayoutStyles = {
