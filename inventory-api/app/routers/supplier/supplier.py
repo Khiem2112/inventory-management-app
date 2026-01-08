@@ -6,7 +6,7 @@ from app.database.purchase_order_model import PurchaseOrder, PurchaseOrderItem
 from app.database.shipment_manifest_model import ShipmentManifest, ShipmentManifestLine
 from app.database.asset_model import Asset
 from app.database.warehouse_zone_model import Zone, ZoneType
-from app.schemas.shipment import ShipmentManifestRead, ShipmentManifestInput
+from app.schemas.shipment import ShipmentManifestRead, ShipmentManifestCreatePayload
 from app.schemas.supplier import SupplierPublic
 from app.utils.dependencies import get_current_user, get_db
 from sqlalchemy.orm import Session, joinedload
@@ -44,7 +44,7 @@ def get_all_supplers(db: Session = Depends(get_db),
              status_code=status.HTTP_201_CREATED,
              description="Create a new Shipment Manifest. Assets are 'Disabled' if Draft, 'In Transit' if Issued.")
 def create_shipment_manifest(
-    payload: ShipmentManifestInput = Body(...),
+    payload: ShipmentManifestCreatePayload = Body(...),
     supplier_service: SupplierService = Depends(get_supplier_service)
 ):
     

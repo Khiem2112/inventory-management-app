@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session, selectinload, joinedload
 from sqlalchemy import select, func, text
@@ -29,12 +29,17 @@ FinalizeManifestResponse,
 AssetInput,
 ShipmentLineVerifyResponse,
 AssetUniquenessVerifyResponse,
+ShipmentLineReceptionInput,
+PurchaseOrderReceptionInput,
+ShipmentReceptionInput,
 FinalizeManifestItem
 )
 from app.schemas.base import StandardResponse
 from app.utils.dependencies import get_db, get_current_user
 from app.utils.logger import setup_logger
 from app.utils.random_string import generate_random_string
+
+from app.services.procurement.goods_receipt import GRService
 
 # Initialize the router (assuming 'router' is already defined)
 router = APIRouter(prefix="/receiving", tags=["Receiving"])
@@ -462,3 +467,48 @@ def update_po_status_logic(db: Session, po_id: int):
     if po and po.Status != new_status:
         logger.info(f"Updating PO {po_id} status from {po.Status} to {new_status}")
         po.Status = new_status
+
+@router.post('/create', description="Create new good receipt referencing a shipment manifest")
+def createNewGR(
+  inputDocument: Union[ShipmentReceptionInput, PurchaseOrderReceptionInput],
+  db: Session = Depends(get_db)
+  ):
+  
+  """ 
+  Check if Purchase Order ID exist
+  Check if its status is "Delivered" or "Partially Received" -> continue, if not, stop API at this point
+  Handle each Line Item in a PO which includes: 
+      - Check if that line id is in the PO document
+      - Check if any lines are duplicated
+      - Get the remaining quantity of in a purchase order line and then check if the received quantity we type exceed this
+      - Check if total number of assets match the received quantity
+      - Create a good receipt
+      - create n of received assets when it is accepted, each asset references the good receipt
+      - create a stock move document reflecting source --> destination = "In transit" --> "Awaiting QC" and received quantity
+      
+  Create Good Receipts from shipment manifest is similiar as from PO, those things change:
+      - Update the Asset instead of insert them
+      - Check if Asset idd are not duplicated and in the database
+      - Check their current status if it is 'In Transit'
+  """
+  try:
+    strategy_type = inputDocument.type
+    print(f"Start to process good receipt from a shipment manifest: {True if strategy_type == 'sm' else False}")
+    procurement_service = GRService(db)
+    if strategy_type == "po":
+      return procurement_service._handle_gr_creation_from_po(inputDocument)
+    if strategy_type == "sm":
+      return procurement_service._handle_gr_flow_from_sm(inputDocument)
+      
+    # Process each flow independently and organize them in class later
+    
+    # PO
+    # Get current status of the PO
+
+    # If current status of PO is
+  except ValueError as e:
+    print(f"{e}")
+    raise HTTPException(500, detail=f"{e}")
+  except Exception as e:
+    print(f"{e}")
+    raise HTTPException(500, detail = f"Unexpected error: {e}")
