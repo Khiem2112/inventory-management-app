@@ -97,8 +97,13 @@ export const finalizeManifest = async (payload) => {
     try {
         // Placeholder for the actual submission endpoint
         console.log("Submitting Receipt:", payload);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        return { success: true, receipt_id: "GR-" + Math.floor(Math.random() * 10000) };
+        const response = await api.post(`/receiving/manifest/finalize-gr`, payload)
+        const newGRId = 123123
+        return { 
+            success: true, 
+            receipt_id: newGRId,
+            message: 'Successfully create new goods receipt'
+         };
     } catch (error) {
         console.error("Submission failed", error);
         throw error;
