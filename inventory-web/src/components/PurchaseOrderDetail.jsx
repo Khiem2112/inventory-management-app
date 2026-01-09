@@ -20,6 +20,7 @@ import {
     IconButton,
     Button, Dialog, DialogTitle, DialogContent, 
     DialogContentText, TextField, DialogActions, CircularProgress,
+    useTheme,
     Alert
 } from '@mui/material';
 import InventoryIcon from '@mui/icons-material/Inventory';
@@ -148,6 +149,7 @@ const DetailHeader = ({ headerData, onClose }) => {
 
 // --- 2. Line Items Table (Smart Component - Fetches its own data) ---
 const LineItemsTable = ({ items, loading }) => {
+    const theme = useTheme()
 
     // Loading State
     if (loading && items.length === 0) {
@@ -170,7 +172,12 @@ const LineItemsTable = ({ items, loading }) => {
     }
 
     return (
-        <TableContainer component={Box}>
+        <TableContainer 
+        component={Box}
+        sx ={{
+            borderRadius: 2
+        }}
+        >
             <Table stickyHeader size="small">
                 <TableHead>
                     <TableRow>
@@ -178,7 +185,12 @@ const LineItemsTable = ({ items, loading }) => {
                             <TableCell 
                                 key={col.key} 
                                 align={col.type === 'number' || col.type === 'currency' ? 'right' : 'left'}
-                                sx={{ bgcolor: '#fafafa', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.75rem' }}
+                                sx={{ 
+                                    bgcolor: `${theme.palette.primary.main}`,
+                                    color: `white`,
+                                    fontWeight: 'bold', 
+                                    fontSize: '0.9rem' 
+                                }}
                             >
                                 {col.label}
                             </TableCell>
