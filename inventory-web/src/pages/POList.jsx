@@ -91,7 +91,7 @@ const PurchaseOrderList = ({ isCompact }) => {
                     p: 2, 
                     borderRadius: 2, 
                     border: `1px solid ${theme.palette.divider}`,
-                    bgcolor: 'transparent'
+                    bgcolor: `${theme.palette.background.paper}`
                 }}
             >
                 <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-start' }}>
@@ -132,7 +132,8 @@ const PurchaseOrderList = ({ isCompact }) => {
                 sx={{ 
                     border: `1px solid ${theme.palette.divider}`, 
                     borderRadius: 2, 
-                    overflow: 'hidden'
+                    overflow: 'hidden',
+                    bgcolor: 'transparent'
                 }}
             >
                 {/* Table Area */}
@@ -148,7 +149,12 @@ const PurchaseOrderList = ({ isCompact }) => {
                 </Box>
 
                 {/* Pagination Area */}
-                <Box sx={{ p: 1, borderTop: `1px solid ${theme.palette.divider}`, bgcolor: 'transparent' }}>
+                <Box 
+                sx={{ 
+                    p: 1, 
+                    borderTop: `1px solid ${theme.palette.divider}`, 
+                    bgcolor: `${theme.palette.background.paper}` 
+                    }}>
                     <TablePagination
                         component="div"
                         count={meta.total_records}
