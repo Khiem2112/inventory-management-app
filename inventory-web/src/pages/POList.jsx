@@ -72,7 +72,6 @@ const PurchaseOrderList = ({ isCompact }) => {
 
     return (
         <Box sx={{ 
-          p: isCompact ? 1 : 3,
           overflow: 'hidden',
           bgcolor: 'transparent'
           }}> {/* Outer Page Container */}
