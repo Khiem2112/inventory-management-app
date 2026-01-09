@@ -114,6 +114,15 @@ const ServerSideTable = ({
                             </tr>
                         );
                     })}
+                    {/* Render Empty Filler Rows */}
+                    {emptyRowsCount > 0 && [...Array(emptyRowsCount)].map((_, index) => (
+                        <tr 
+                            key={`empty-${index}`} className="body__row--empty" 
+                            style={{ 
+                                border: null 
+                                }}>
+                        </tr>
+                    ))}
                 </tbody>
             </table>
 
