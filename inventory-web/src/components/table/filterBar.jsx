@@ -1,4 +1,5 @@
 import React, { useState, useEffect,useMemo, useCallback } from 'react';
+import { PO_COLUMNS_CONFIG } from '../../services/poService';
 import './filterBar.css'
 import './columnToggler.css'
 // Defines all possible columns for the PO list
@@ -51,9 +52,7 @@ const ColumnToggler = ({ allColumnsConfig, suppliers, users, statuses, onToggle 
 
     const handleReset = () => {
         // Reset to default columns (PO ID, Vendor, Status, Amount, Creator)
-        const defaultKeys = allColumnsConfig.map(c => c.key).filter(k => 
-            ['po_id', 'vendor_name', 'status', 'total_amount', 'creator_name'].includes(k)
-        );
+        const defaultKeys = PO_COLUMNS_CONFIG.filter(c=>c.isVisible).map(c => c.key)
         setPendingKeys(defaultKeys);
     };
 
@@ -121,9 +120,18 @@ const ColumnToggler = ({ allColumnsConfig, suppliers, users, statuses, onToggle 
 };
 
 
-const FilterBar = ({ onSupplierChange, onStatusChange, onColumnToggle, allColumnsConfig, suppliers, statuses, users}) => {
-    const [selectedSupplier, setSelectSupplier] = useState({})
-    const [selectedStatus, setSelectedStatus] = useState({})
+const FilterBar = ({ 
+    onSupplierChange, 
+    onStatusChange, 
+    initialSupplierId,
+    initialStatus,
+    onColumnToggle, 
+    allColumnsConfig, 
+    suppliers, 
+    statuses, 
+    sers}) => {
+
+    const [selectedStatus, setSelectedStatus] = useState(initialStatus)
     const [selectedUser, setSelectedUser] = useState({})
     return (
         <div className="filter-bar">
@@ -137,11 +145,9 @@ const FilterBar = ({ onSupplierChange, onStatusChange, onColumnToggle, allColumn
                     <select 
                         id="vendor-filter"
                         className="filter-group__input"
-                        value={selectedSupplier?.supplier_id || ""}
+                        value={initialSupplierId || ""}
                         onChange={(e) => {
                             const newID = Number(e.target.value)
-                            const newSupplierRecord = suppliers.find(supplier => supplier.supplier_id === newID)
-                            setSelectSupplier(newSupplierRecord)
                             // Call update on new supplier
                             onSupplierChange(newID)
                             }}

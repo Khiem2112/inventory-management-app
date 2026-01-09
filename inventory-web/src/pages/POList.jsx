@@ -1,5 +1,5 @@
 // src/views/PurchaseOrderList.jsx (Simulated Render)
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query'; // <--- 1. Import Hook
 import FilterBar from '../components/table/filterBar';
 import ServerSideTable from '../components/table/poTable';
@@ -14,7 +14,7 @@ import { usePoUrlState } from '../hooks/PurchaseOrder/usePoUrlsState';
 
 
 const PurchaseOrderList = ({
-    isCompact = true
+    isCompact
 }) => {
     const { 
         filterState, 
@@ -29,6 +29,16 @@ const PurchaseOrderList = ({
         ? ['purchase_order_id', 'status', 'total_price'] 
         : getInitialVisibleKeys()
     );
+    // Change the visible keys whenever the Purchase Order List changes its mode
+    // *Note: The previous initial state just fires when the component first mount, just re-render doesn't trigger the visibleKeys change
+    useEffect(() => {
+        setVisibleKeys(
+            isCompact 
+            ? ['purchase_order_id', 'status', 'total_price'] 
+            : getInitialVisibleKeys()
+        );
+    }, [isCompact]);
+    console.log(`re-render po list page with  compact mode = ${isCompact} with initial column keys: ${visibleKeys}`)
 
     const { 
     data: queryResult, // Contains { data, meta } from your service
@@ -134,7 +144,9 @@ const PurchaseOrderList = ({
             // 1. Pass the full configuration for the checklist build (LABEL, isRequired)
             allColumnsConfig={PO_COLUMNS_CONFIG}
             onStatusChange={handleStatusFilterirng}
-            onSupplierChange={handleSupplierFiltering} 
+            onSupplierChange={handleSupplierFiltering}
+            initialStatus={filterState?.status}
+            initialSupplierId={filterState?.vendor_id}
             suppliers={suppliersList}
             statuses={statusesList}
             users={usersList}

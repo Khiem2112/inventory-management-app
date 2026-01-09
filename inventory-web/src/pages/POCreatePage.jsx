@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useForm, FormProvider, useWatch } from 'react-hook-form';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useBlocker, useBeforeUnload, useParams } from 'react-router-dom';
 import { 
     Box, Typography, Grid, Paper, Button, Autocomplete, TextField, 
@@ -20,6 +20,7 @@ const POCreatePage = () => {
     const navigate = useNavigate();
     // Check for ID in case the current page is for Update
     const { id } = useParams();
+    const queryClient = useQueryClient()
     const isEditMode = Boolean(id);
     const [vendorOptions, setVendorOptions] = useState([]);
     
@@ -85,6 +86,7 @@ const POCreatePage = () => {
         onSuccess: (data) => {
             // AC: Redirect to Detail View on success
             // Assuming API returns { purchase_order_id: 123, ... }
+            queryClient.invalidateQueries({ queryKey: ['purchaseOrders'] }); // force the parent to re-render
             navigate(`/purchase-orders/${data.purchase_order_id}`, { replace: true });
         },
         onError: (error) => {
@@ -94,7 +96,13 @@ const POCreatePage = () => {
 
     const updateMutation = useMutation({
         mutationFn: (payload) => updatePurchaseOrder({ poId: id, payload }),
-        onSuccess: (data) => navigate(`/purchase-orders/${id}`, { replace: true }),
+        onSuccess: (data) => {
+            // re-fetch the po detail
+            queryClient.invalidateQueries({ queryKey: ['poDetail', id] }); 
+            // re-fetch the po list
+            queryClient.invalidateQueries({ queryKey: ['purchaseOrders'] });
+            navigate(`/purchase-orders/${id}`, { replace: true })
+        },
         onError: (error) => console.error("Update failed", error)
     });
 
