@@ -45,7 +45,13 @@ const DockReceivingSearch = ({ onManifestSelect }) => {
 
     return (
         <LocalizationProvider dateAdapter={AdapterDateFns}>
-            <Paper elevation={2} sx={{height: '100%', bgcolor: 'white' }}>
+            <Paper 
+            elevation={2} 
+            sx={{
+                height: '100%', 
+                bgcolor: 'white',
+                padding: 2 
+                }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 1 }}>
                     <FilterAltIcon color="primary" />
                     <Typography variant="h6" fontWeight="bold">
