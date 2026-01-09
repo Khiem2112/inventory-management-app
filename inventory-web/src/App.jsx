@@ -6,7 +6,9 @@ import SignInForm from './components/SignInForm.jsx';
 import { Routes, Route,
   RouterProvider,
   createBrowserRouter,
-  createRoutesFromElements
+  createRoutesFromElements,
+  Navigate,
+  Outlet
  } from 'react-router-dom';
 import Dashboard from './pages/DashBoard.jsx';
 import PurchaseOrderList from './pages/POList.jsx';
@@ -26,40 +28,55 @@ import { TestPODetail } from '../test/testPurchaseOrderDetail.jsx';
 import DockReceivingPage from './pages/DockReceivingPage.jsx';
 import POCreatePage from './pages/POCreatePage.jsx';
 import ShipmentManifestCreatePage from './pages/ShipmentManifestCreatePage.jsx';
+import MainLayout from './components/layout/MainLayout';
+import { useAuth } from './context/AuthContext';
 // Create new Query Client
 const queryClient = new QueryClient()
+
+const AuthorizationGuard = ({ allowedRoles }) => {
+    const { userData } = useAuth();
+    const userRole = userData?.role?.toLowerCase() || 'staff';
+    
+    if (!allowedRoles.includes(userRole)) {
+        return <Navigate to="/dashboard" replace />;
+    }
+    return <Outlet />;
+};
 
 // Create Router
 const router = createBrowserRouter(
   createRoutesFromElements(
     <>
       <Route path="/sign-in" element={<SignInForm />} />
-      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-      <Route path="/products" element={<ProtectedRoute><ProductsList /></ProtectedRoute>} />
       
-      {/* Functional Pages */}
-      <Route path="/warehouse" element={<WarehousePage />} />
-      <Route path="/purchase-orders-single" element={<PurchaseOrderList isCompact={false} />} />
-      <Route path="/test-po-detail" element={<TestPODetail />} />
-      
-      {/* Nested Route for Master/Detail View */}
-      <Route path="/purchase-orders" element={<POMasterView />}>
-        <Route index element={<div style={{ padding: 20 }}>Select an order from the list</div>} />
-        <Route path=":id" element={<PODetailPage />}>
-          <Route path= "create-shipment-manifest" element={<ShipmentManifestCreatePage/>} />
+      {/* AUTHENTICATED ROUTES SHELL */}
+      <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+        
+        {/* Pages accessible to EVERYONE */}
+        <Route path="/dashboard" element={<Dashboard />} />
+
+        {/* ADMIN/STAFF ONLY PAGES */}
+        <Route element={<AuthorizationGuard allowedRoles={['admin', 'staff']} />}>
+            <Route path="/products" element={<ProductsList />} />
+            <Route path="/warehouse" element={<WarehousePage />} />
+            <Route path="/good-receipt" element={<DockReceivingPage />} />
+            <Route path="/purchase-orders" element={<POMasterView />}>
+                <Route index element={<div style={{ padding: 20 }}>Select an order from the list</div>} />
+                <Route path=":id" element={<PODetailPage />} />
+            </Route>
+            <Route path="/purchase-orders/create" element={<POCreatePage />} />
+            <Route path="/purchase-orders/:id/edit" element={<POCreatePage />} />
         </Route>
+
+        {/* SUPPLIER ONLY PAGES */}
+        <Route element={<AuthorizationGuard allowedRoles={['supplier', 'staff']} />}>
+            <Route path="/supplier/manifest/create/*" element={<ShipmentManifestCreatePage />} />
+        </Route>
+
       </Route>
 
-      <Route path ="/supplier/manifest/create/*" element={<ShipmentManifestCreatePage/>} />
-
-      {/* The Page using useBlocker */}
-      <Route path="/purchase-orders/create" element={<POCreatePage />} />
-      <Route path="/purchase-orders/:id/edit" element={<POCreatePage />} /> {/* Same Component */}
-      
-      {/* Legacy Route */}
-      <Route path="/purchase-orders-detail" element={<POMasterView />} />
-
-      <Route path="/good-receipt" element={<DockReceivingPage/>}/>
+      {/* Redirect root to dashboard */}
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
     </>
   )
 );
