@@ -207,7 +207,11 @@ function ProductsList() {
           overflow: 'hidden' }}
       >
         <TableContainer> {/* A wrapper component that enables a horizontal scrollbar for large tables */}
-          <Table>
+          <Table
+          sx={{
+            overflow: 'hidden'
+          }}
+          >
             <TableHead> {/* Defines the header section of the table */}
               <TableRow 
                 sx={{ 
