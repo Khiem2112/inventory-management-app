@@ -12,7 +12,8 @@ const POMasterView = () => {
 const layoutStyles = {
     display: 'grid',
     gridTemplateColumns: isDetailView ? '450px 1fr' : '1fr', 
-    height: 'calc(100vh - 64px)', // Full height minus Navbar
+    height: '100%', // Fit within the MainLayout's padded box
+    minHeight: '600px',
     overflow: 'hidden',
     bgcolor: 'transparent',
     transition: 'all 0.3s ease'
