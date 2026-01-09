@@ -134,7 +134,9 @@ const PurchaseOrderList = ({
             // 1. Pass the full configuration for the checklist build (LABEL, isRequired)
             allColumnsConfig={PO_COLUMNS_CONFIG}
             onStatusChange={handleStatusFilterirng}
-            onSupplierChange={handleSupplierFiltering} 
+            onSupplierChange={handleSupplierFiltering}
+            initialStatus={filterState?.status}
+            initialSupplierId={filterState?.vendor_id}
             suppliers={suppliersList}
             statuses={statusesList}
             users={usersList}

@@ -121,9 +121,18 @@ const ColumnToggler = ({ allColumnsConfig, suppliers, users, statuses, onToggle 
 };
 
 
-const FilterBar = ({ onSupplierChange, onStatusChange, onColumnToggle, allColumnsConfig, suppliers, statuses, users}) => {
-    const [selectedSupplier, setSelectSupplier] = useState({})
-    const [selectedStatus, setSelectedStatus] = useState({})
+const FilterBar = ({ 
+    onSupplierChange, 
+    onStatusChange, 
+    initialSupplierId,
+    initialStatus,
+    onColumnToggle, 
+    allColumnsConfig, 
+    suppliers, 
+    statuses, 
+    sers}) => {
+
+    const [selectedStatus, setSelectedStatus] = useState(initialStatus)
     const [selectedUser, setSelectedUser] = useState({})
     return (
         <div className="filter-bar">
@@ -137,11 +146,9 @@ const FilterBar = ({ onSupplierChange, onStatusChange, onColumnToggle, allColumn
                     <select 
                         id="vendor-filter"
                         className="filter-group__input"
-                        value={selectedSupplier?.supplier_id || ""}
+                        value={initialSupplierId || ""}
                         onChange={(e) => {
                             const newID = Number(e.target.value)
-                            const newSupplierRecord = suppliers.find(supplier => supplier.supplier_id === newID)
-                            setSelectSupplier(newSupplierRecord)
                             // Call update on new supplier
                             onSupplierChange(newID)
                             }}
