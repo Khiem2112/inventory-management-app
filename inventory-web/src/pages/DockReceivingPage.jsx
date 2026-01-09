@@ -88,7 +88,7 @@ const DockReceivingPage = () => {
     };
 
     return (
-        <Box sx={{ p: 3, maxWidth: 1600, mx: 'auto', height: '100%' }}>
+        <Box sx={{maxWidth: 1600, mx: 'auto', height: '100%' }}>
             
             <Box sx={{ mb: 2 }}>
                 <Typography variant="h4" fontWeight="bold">Dock Receiving</Typography>

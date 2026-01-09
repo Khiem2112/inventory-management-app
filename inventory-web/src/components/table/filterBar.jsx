@@ -133,7 +133,6 @@ const FilterBar = ({
             elevation={0} 
             sx={{ 
                 p: 2, 
-                mb: 3, 
                 borderRadius: 2, 
                 border: `1px solid ${theme.palette.divider}`,
                 bgcolor: 'background.paper'

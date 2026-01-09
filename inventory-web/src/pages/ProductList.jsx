@@ -155,11 +155,7 @@ function ProductsList() {
   }
   // --- End of Conditional Rendering ---
   return (
-    <Box
-      sx={{ 
-        p: 3 // Adds a padding of 3 units on all sides
-      }}
-    >
+    <Box>
       <Stack 
       direction="row" 
       justifyContent="space-between" 

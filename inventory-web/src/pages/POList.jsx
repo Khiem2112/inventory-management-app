@@ -72,14 +72,13 @@ const PurchaseOrderList = ({ isCompact }) => {
 
     return (
         <Box sx={{ 
-          p: isCompact ? 1 : 3,
           overflow: 'hidden',
           bgcolor: 'transparent'
           }}> {/* Outer Page Container */}
             
             {/* 1. Page Title Section */}
             <Box sx={{ mb: 3 }}>
-                <Typography variant={isCompact ? "h6" : "h4"} fontWeight="700" color="text.primary">
+                <Typography variant="h4" fontWeight="700" color="text.primary">
                     {isCompact ? "Orders" : "Purchase Order List"}
                 </Typography>
             </Box>
