@@ -9,8 +9,10 @@ import {
     Paper, 
     Skeleton,
     Box,
-    Typography
+    Typography,
+    useTheme
 } from '@mui/material';
+import { alpha } from '@mui/material';
 import StatusBadge from "../status/statusBadge";
 import RowActions from "./rowActions";
 
@@ -44,6 +46,8 @@ const ServerSideTable = ({
     return value;
   };
 
+  const theme = useTheme()
+
   // Loading State
   if (loading) {
     return (
@@ -75,81 +79,85 @@ const ServerSideTable = ({
   const emptyRowsCount = Math.max(0, limit - data.length);
 
   return (
-    <TableContainer 
-        component={Paper} 
-        elevation={0} 
-        sx={{ 
-            borderRadius: 0, 
-            overflowY: 'hidden', // Disable vertical overflow
-            border: 'none',      // Remove container border
-            bgcolor: 'transparent'
-        }}
+    // Add a Paper to set border
+    <Paper
+      elevation={3} // Adds a shadow effect to the component, with a value of 3 (higher is more prominent)
+      sx={{ 
+        border: `1px solid ${theme.palette.divider}`, 
+        borderRadius: 2, 
+        overflow: 'hidden' }}
     >
-      <Table stickyHeader size="medium" sx={{ border: 'none' }}>
-        <TableHead>
-          <TableRow sx={{ border: 'none' }}>
-            {columnsConfig.map((col) => (
-              <TableCell 
-                key={col.key}
-                align={getAlignment(col)}
-                sx={{ 
-                    bgcolor: '#f8f9fa', 
-                    fontWeight: 'bold', 
-                    textTransform: 'uppercase', 
-                    fontSize: '0.75rem',
-                    color: 'text.secondary',
-                    borderBottom: 'none', // Remove header bottom border
-                }}
-              >
-                {col.label}
-              </TableCell>
-            ))}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {data.map((item, index) => {
-            const isSelected = String(item.purchase_order_id) === String(selectedId);
-            return (
-              <TableRow 
-                key={item.purchase_order_id || index}
-                hover
-                onClick={() => onRowClick && onRowClick(item)}
-                selected={isSelected}
-                sx={{ 
-                    cursor: onRowClick ? 'pointer' : 'default',
-                    border: 'none', // Ensure row has no border
-                    '&.Mui-selected': { 
-                        bgcolor: 'rgba(33, 150, 243, 0.08)', // Soft blue for selection
-                    },
-                    '&.Mui-selected:hover': { 
-                        bgcolor: 'rgba(33, 150, 243, 0.12)' 
-                    },
-                    '& .MuiTableCell-root': {
-                        borderBottom: 'none' // Remove individual cell borders
-                    }
-                }}
-              >
-                {columnsConfig.map((col) => (
-                  <TableCell 
-                    key={col.key} 
-                    align={getAlignment(col)}
-                  >
-                    <RenderCellData item={item} colKey={col.key} />
-                  </TableCell>
-                ))}
-              </TableRow>
-            );
-          })}
-
-          {/* Empty Filler Rows */}
-          {emptyRowsCount > 0 && [...Array(emptyRowsCount)].map((_, index) => (
-            <TableRow key={`empty-${index}`} sx={{ height: 60, border: 'none' }}>
-              <TableCell colSpan={columnsConfig.length} sx={{ borderBottom: 'none' }} />
+       <TableContainer 
+          component={Paper} 
+          elevation={0} 
+          sx={{ 
+              borderRadius: 0, 
+              overflowY: 'hidden', // Disable vertical overflow
+              border: 'none',      // Remove container border
+              bgcolor: 'transparent'
+          }}
+      >
+        <Table stickyHeader size="medium" sx={{ border: 'none' }}>
+          <TableHead>
+            <TableRow sx={{ border: 'none' }}>
+              {columnsConfig.map((col) => (
+                <TableCell 
+                  key={col.key}
+                  align={getAlignment(col)}
+                  sx={{ 
+                      bgcolor: 'primary.main', 
+                      fontWeight: 'bold', 
+                      fontSize: '0.85rem',
+                      color: 'white',
+                      borderBottom: 'none', // Remove header bottom border
+                  }}
+                >
+                  {col.label}
+                </TableCell>
+              ))}
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
+          </TableHead>
+          <TableBody>
+            {data.map((item, index) => {
+              const isSelected = String(item.purchase_order_id) === String(selectedId);
+              return (
+                <TableRow 
+                  key={item.purchase_order_id || index}
+                  hover
+                  onClick={() => onRowClick && onRowClick(item)}
+                  selected={isSelected}
+                  sx={{ 
+                      cursor: onRowClick ? 'pointer' : 'default',
+                      '&.Mui-selected': { 
+                          bgcolor: alpha(theme.palette.primary.main, 0.08), // Theme-aware selection
+                          '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.12) }
+                      }
+                  }}
+                >
+                  {columnsConfig.map((col) => (
+                    <TableCell 
+                      key={col.key} 
+                      align={getAlignment(col)}
+                    >
+                      <RenderCellData item={item} colKey={col.key} />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              );
+            })}
+
+            {/* Empty Filler Rows */}
+            {emptyRowsCount > 0 && [...Array(emptyRowsCount)].map((_, index) => (
+              <TableRow key={`empty-${index}`} sx={{ height: 60, border: 'none' }}>
+                <TableCell colSpan={columnsConfig.length} sx={{ borderBottom: 'none' }} />
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Paper>
+
+   
   );
 };
 
