@@ -72,8 +72,11 @@ const PurchaseOrderList = ({ isCompact }) => {
 
     return (
         <Box sx={{ 
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
           overflow: 'hidden',
-          bgcolor: 'transparent'
+          bgcolor: 'transparent',
           }}> {/* Outer Page Container */}
             
             {/* 1. Page Title Section */}
@@ -132,11 +135,23 @@ const PurchaseOrderList = ({ isCompact }) => {
                     border: `1px solid ${theme.palette.divider}`, 
                     borderRadius: 2, 
                     overflow: 'hidden',
-                    bgcolor: 'transparent'
+                    bgcolor: 'transparent',
+                    
+                    // FLEX GROW IS KEY:
+                    flexGrow: 1,  // "Fill whatever vertical space is left"
+                    display: 'flex',
+                    flexDirection: 'column',
+                    
+                    transition: 'all 0.3s ease'
                 }}
             >
                 {/* Table Area */}
-                <Box sx={{ minHeight: 400 }}>
+                <Box sx={{ 
+                    minHeight: 400,
+                    flexGrow: 1, 
+                    overflow: 'auto'
+                    
+                    }}>
                     <ServerSideTable 
                         data={poData}
                         limit={paginationState.limit}
