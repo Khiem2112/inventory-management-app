@@ -1,4 +1,5 @@
 import React, { useState, useEffect,useMemo, useCallback } from 'react';
+import { PO_COLUMNS_CONFIG } from '../../services/poService';
 import './filterBar.css'
 import './columnToggler.css'
 // Defines all possible columns for the PO list
@@ -51,9 +52,7 @@ const ColumnToggler = ({ allColumnsConfig, suppliers, users, statuses, onToggle 
 
     const handleReset = () => {
         // Reset to default columns (PO ID, Vendor, Status, Amount, Creator)
-        const defaultKeys = allColumnsConfig.map(c => c.key).filter(k => 
-            ['po_id', 'vendor_name', 'status', 'total_amount', 'creator_name'].includes(k)
-        );
+        const defaultKeys = PO_COLUMNS_CONFIG.filter(c=>c.isVisible).map(c => c.key)
         setPendingKeys(defaultKeys);
     };
 
