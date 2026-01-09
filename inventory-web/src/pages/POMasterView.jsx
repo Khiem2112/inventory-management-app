@@ -13,7 +13,7 @@ const layoutStyles = {
     gridTemplateColumns: isDetailView ? '450px 1fr' : '1fr', 
     height: 'calc(100vh - 64px)', // Full height minus Navbar
     overflow: 'hidden',
-    bgcolor: '#f5f5f5',
+    bgcolor: 'background.paper',
     transition: 'all 0.3s ease'
 };
     return (
