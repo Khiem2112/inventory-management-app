@@ -124,9 +124,38 @@ const MainLayout = () => {
                 </Drawer>
             </Box>
 
-            <Box component="main" sx={{ flexGrow: 1, p: 3, width: { sm: `calc(100% - ${drawerWidth}px)` }, minHeight: '100vh', bgcolor: '#f8f9fa' }}>
-                <Toolbar />
-                <Outlet />
+            <Box 
+                component="main" 
+                sx={{ 
+                    flexGrow: 1, 
+                    minHeight: '100vh',
+                    bgcolor: '#f8f9fa',
+                    overflowX: 'hidden',
+                    display: 'flex',       // Ensure children stack correctly
+                    flexDirection: 'column'
+                }}
+            >
+                {/* 1. The Spacer: Sits flush at the top, unpadded */}
+                <Toolbar /> 
+
+                {/* 2. The Content Canvas: Handles ALL the spacing logic */}
+                <Box 
+                    sx={{ 
+                        flexGrow: 1, // Fill the remaining height
+                        
+                        // Move your "Page Spacing" rules here
+                        pt: 3,   // Top spacing (starts AFTER the toolbar)
+                        pb: 5,   // Bottom spacing
+                        pl: 5,   // Left spacing
+                        pr: '20%', // The specific right margin you wanted
+                        
+                        // Ensure this Box is the definitive "boundary"
+                        width: '100%', 
+                        position: 'relative' 
+                    }}
+                >
+                    <Outlet />
+                </Box>
             </Box>
 
             <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleProfileMenuClose}
