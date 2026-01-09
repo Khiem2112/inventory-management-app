@@ -52,7 +52,11 @@ const ServerSideTable = ({
   if (loading) {
     return (
       <TableContainer component={Paper} elevation={0} sx={{ border: 'none', overflowY: 'hidden' }}>
-        <Table>
+        <Table
+        sx ={{
+          overflow: 'hidden'
+        }}
+        >
           <TableBody>
             {[...Array(limit)].map((_, i) => (
               <TableRow key={i} sx={{ border: 'none' }}>
@@ -92,12 +96,19 @@ const ServerSideTable = ({
           elevation={0} 
           sx={{ 
               borderRadius: 0, 
-              overflowY: 'hidden', // Disable vertical overflow
-              border: 'none',      // Remove container border
+              overflowX: 'auto', 
+              overflowY: 'hidden', // PREVENT double vertical scrollbars
+              border: 'none',      
               bgcolor: 'transparent'
           }}
       >
-        <Table stickyHeader size="medium" sx={{ border: 'none' }}>
+        <Table 
+        
+        stickyHeader size="medium" 
+        sx={{ 
+          border: 'none' ,
+          overflow: 'hidden'
+          }}>
           <TableHead>
             <TableRow sx={{ border: 'none' }}>
               {columnsConfig.map((col) => (
