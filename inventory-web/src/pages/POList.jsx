@@ -93,7 +93,7 @@ const PurchaseOrderList = ({ isCompact }) => {
                 elevation={0}
                 sx={{ 
                     mb: 3, 
-                    p: 2, 
+                    p: 1, 
                     borderRadius: 2, 
                     border: `1px solid ${theme.palette.divider}`,
                     bgcolor: `${theme.palette.background.paper}`,

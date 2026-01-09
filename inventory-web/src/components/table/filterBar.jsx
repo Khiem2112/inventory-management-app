@@ -127,7 +127,17 @@ const FilterBar = ({
     statuses = [] 
 }) => {
     return (
-        <Stack direction="row" spacing={2} alignItems="center" flexWrap="nowrap" sx={{ width: '100%', overflowX: 'auto' }}>
+        <Stack 
+        direction="row" 
+        spacing={2} 
+        alignItems="center" 
+        lexWrap="nowrap" 
+        sx={{ 
+            width: '100%', 
+            overflowX: 'auto',
+            py: 1, 
+            px: 1 
+            }}>
             {/* Header Icon */}
             <FilterListIcon color="action" sx={{ mr: 1, flexShrink: 0 }} />
 
