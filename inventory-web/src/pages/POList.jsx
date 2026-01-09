@@ -7,7 +7,8 @@ import {
     TablePagination, 
     Paper, 
     Alert, 
-    useTheme 
+    useTheme,
+    Divider
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -79,47 +80,61 @@ const PurchaseOrderList = ({ isCompact }) => {
           bgcolor: 'transparent',
           }}> {/* Outer Page Container */}
             
-            {/* 1. Page Title Section */}
+            {/* 1. Page Title */}
             <Box sx={{ mb: 3 }}>
                 <Typography variant="h4" fontWeight="700" color="text.primary">
                     {isCompact ? "Orders" : "Purchase Order List"}
                 </Typography>
             </Box>
 
-            {/* 2. Main Actions Field (Create Button & Filter Bar) */}
-            <Box 
+            {/* 2. Unified Action Bar (Button + Filters) */}
+            {/* This Paper container stays visible even in compact mode, preventing jumps */}
+            <Paper 
+                elevation={0}
                 sx={{ 
                     mb: 3, 
                     p: 2, 
                     borderRadius: 2, 
                     border: `1px solid ${theme.palette.divider}`,
-                    bgcolor: `${theme.palette.background.paper}`
+                    bgcolor: `${theme.palette.background.paper}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 2,
+                    // Ensure the container has a minimum height so it doesn't collapse
+                    minHeight: '72px' 
                 }}
             >
-                <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-start' }}>
-                    <Button
-                        variant="contained"
-                        startIcon={<AddIcon />}
-                        onClick={() => navigate('create')}
-                        size={isCompact ? "small" : "medium"}
-                    >
-                        Create New PO
-                    </Button>
-                </Box>
-                
+                {/* Create Button - Always Visible */}
+                <Button
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={() => navigate('create')}
+                    size={isCompact ? "small" : "medium"}
+                    sx={{ whiteSpace: 'nowrap' }} 
+                >
+                    {isCompact ? "New" : "Create New PO"}
+                </Button>
+
+                {/* Filters - Only Visible in Full View */}
                 {!isCompact && (
-                    <FilterBar 
-                        allColumnsConfig={columnsConfigForFilterTable}
-                        onStatusChange={(status) => setFilterState(prev => ({ ...prev, status, page: 1 }))}
-                        onSupplierChange={(vendor_id) => setFilterState(prev => ({ ...prev, vendor_id, page: 1 }))}
-                        initialStatus={filterState?.status}
-                        initialSupplierId={filterState?.vendor_id}
-                        suppliers={queryResult?.meta.suppliers || []}
-                        statuses={queryResult?.meta.statuses || []}
-                        onColumnToggle={setVisibleKeys}
-                    />
+                    <>
+                        <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+                        
+                        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                            <FilterBar 
+                                allColumnsConfig={columnsConfigForFilterTable}
+                                onStatusChange={(status) => setFilterState(prev => ({ ...prev, status, page: 1 }))}
+                                onSupplierChange={(vendor_id) => setFilterState(prev => ({ ...prev, vendor_id, page: 1 }))}
+                                initialStatus={filterState?.status}
+                                initialSupplierId={filterState?.vendor_id}
+                                suppliers={queryResult?.meta.suppliers || []}
+                                statuses={queryResult?.meta.statuses || []}
+                                onColumnToggle={setVisibleKeys}
+                            />
+                        </Box>
+                    </>
                 )}
-            </Box>
+            </Paper>
 
             {/* Error Display */}
             {isError && (
@@ -136,12 +151,9 @@ const PurchaseOrderList = ({ isCompact }) => {
                     borderRadius: 2, 
                     overflow: 'hidden',
                     bgcolor: 'transparent',
-                    
-                    // FLEX GROW IS KEY:
-                    flexGrow: 1,  // "Fill whatever vertical space is left"
+                    flexGrow: 1, 
                     display: 'flex',
                     flexDirection: 'column',
-                    
                     transition: 'all 0.3s ease'
                 }}
             >
@@ -150,7 +162,6 @@ const PurchaseOrderList = ({ isCompact }) => {
                     minHeight: 400,
                     flexGrow: 1, 
                     overflow: 'auto'
-                    
                     }}>
                     <ServerSideTable 
                         data={poData}
