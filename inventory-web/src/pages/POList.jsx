@@ -117,6 +117,11 @@ const PurchaseOrderList = ({
         navigate('create')
     }
 
+    const columnsConfigForFilterTable = PO_COLUMNS_CONFIG.map(col => ({
+            ...col,
+            isVisible: visibleKeys.includes(col.key)
+        }))
+
 
     return (
         <div className={`po-list-view ${isCompact ? 'po-list-view--compact' : ''}`}>
@@ -142,7 +147,7 @@ const PurchaseOrderList = ({
             {!isCompact && 
             <FilterBar 
             // 1. Pass the full configuration for the checklist build (LABEL, isRequired)
-            allColumnsConfig={PO_COLUMNS_CONFIG}
+            allColumnsConfig={columnsConfigForFilterTable}
             onStatusChange={handleStatusFilterirng}
             onSupplierChange={handleSupplierFiltering}
             initialStatus={filterState?.status}

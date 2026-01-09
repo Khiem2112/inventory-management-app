@@ -16,6 +16,8 @@ import {
   TextField,
   IconButton,
   requirePropFactory,
+  Stack,
+  useTheme,
   Pagination
 } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
@@ -113,6 +115,8 @@ function ProductsList() {
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
   };
+
+  const theme = useTheme()
   // --- Conditional Rendering for Loading and Errors ---
   if (isFetchingProducts) {
     return (
@@ -156,42 +160,32 @@ function ProductsList() {
         p: 3 // Adds a padding of 3 units on all sides
       }}
     >
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between', // Pushes children to opposite ends of the container
-          alignItems: 'center',
-          mb: 3 // Adds a bottom margin of 3 units
-        }}
+      <Stack 
+      direction="row" 
+      justifyContent="space-between" 
+      alignItems="center" sx={{ mb: 4 }}
+      gap='10px'
       >
-        <Typography 
-          variant="h4" // Sets the font style to a heading 4 (h4)
-          component="h1" // Renders the HTML element as an h1 for accessibility and SEO
-        >
+        <Typography variant="h4" fontWeight="700" color="text.primary">
           Inventory Products
         </Typography>
-        <Box 
-          sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: 2 // Adds space of 2 units between children elements
-          }}
-        >
+        
+        <Stack direction="row" spacing={2} alignItems="center">
           <TextField
-            variant="outlined" // Adds a border around the input field
-            size="small" // Sets the height and padding to a smaller size
-            placeholder="Search products..." // Text that appears when the input field is empty
-            sx={{ width: 250 }} // Sets a fixed width
+            variant="outlined"
+            size="small"
+            placeholder="Search products..."
+            sx={{ width: 280, bgcolor: 'background.paper' }}
           />
           <Button
-            variant="contained" // Fills the button with the theme's primary color
-            startIcon={<AddCircleOutlineIcon />} // Displays an icon to the left of the button text
-            onClick = {handleOpenAddDialog} // A function that is executed when the button is clicked
+            variant="contained"
+            startIcon={<AddCircleOutlineIcon />}
+            onClick={() => { setDialogType('add'); setIsDialogOpen(true); }}
           >
             New Product
           </Button>
-        </Box>
-      </Box>
+        </Stack>
+      </Stack>
 
           {/* The Add Product Dialog */}
       {dialogType === 'add' ? 
@@ -208,16 +202,16 @@ function ProductsList() {
       <Paper 
         elevation={3} // Adds a shadow effect to the component, with a value of 3 (higher is more prominent)
         sx={{ 
-          borderRadius: '12px', // Rounds the corners of the component
-          overflow: 'hidden' // Hides any child content that goes outside the boundary of the component
-        }}
+          border: `1px solid ${theme.palette.divider}`, 
+          borderRadius: 2, 
+          overflow: 'hidden' }}
       >
         <TableContainer> {/* A wrapper component that enables a horizontal scrollbar for large tables */}
           <Table>
             <TableHead> {/* Defines the header section of the table */}
               <TableRow 
                 sx={{ 
-                  bgcolor: '#42a5f5' // Sets the background color of the row using a specific hex code
+                  bgcolor: 'primary.main'// Sets the background color of the row using a specific hex code
                 }}
               >
                 <TableCell 
