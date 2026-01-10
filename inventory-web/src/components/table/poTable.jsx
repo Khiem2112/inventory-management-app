@@ -16,6 +16,27 @@ import { alpha } from '@mui/material';
 import StatusBadge from "../status/statusBadge";
 import RowActions from "./rowActions";
 
+// --- 1. Dynamic Alignment Logic ---
+// PO ID: Left | Numbers/Currency: Right | Others: Center
+const getAlignment = (col) => {
+  if (col.key === 'purchase_order_id') return 'left';
+  if (col.type === 'currency' || col.type === 'number') return 'right';
+  return 'center';
+};
+
+// --- 2. Render Cell Content ---
+const RenderCellData = ({ columnsConfig, item, colKey }) => {
+  const column = columnsConfig.find(c => c.key === colKey);
+  const value = item[colKey];
+
+  if (column.type === 'currency') return `$${parseFloat(value || 0).toFixed(2)}`;
+  if (column.type === 'status') return <StatusBadge status={value} />;
+  if (colKey === 'create_date') return new Date(value).toLocaleDateString();
+  if (column.type === 'actions') return <RowActions item={item} />;
+  
+  return value;
+};
+
 const ServerSideTable = ({ 
     data, 
     limit, 
@@ -24,27 +45,6 @@ const ServerSideTable = ({
     onRowClick, 
     selectedId
 }) => {
-
-  // --- 1. Dynamic Alignment Logic ---
-  // PO ID: Left | Numbers/Currency: Right | Others: Center
-  const getAlignment = (col) => {
-    if (col.key === 'purchase_order_id') return 'left';
-    if (col.type === 'currency' || col.type === 'number') return 'right';
-    return 'center';
-  };
-
-  // --- 2. Render Cell Content ---
-  const RenderCellData = ({ item, colKey }) => {
-    const column = columnsConfig.find(c => c.key === colKey);
-    const value = item[colKey];
-
-    if (column.type === 'currency') return `$${parseFloat(value || 0).toFixed(2)}`;
-    if (column.type === 'status') return <StatusBadge status={value} />;
-    if (colKey === 'create_date') return new Date(value).toLocaleDateString();
-    if (column.type === 'actions') return <RowActions item={item} />;
-    
-    return value;
-  };
 
   const theme = useTheme()
 
@@ -160,7 +160,7 @@ const ServerSideTable = ({
                       key={col.key} 
                       align={getAlignment(col)}
                     >
-                      <RenderCellData item={item} colKey={col.key} />
+                      <RenderCellData columnsConfig={columnsConfig} item={item} colKey={col.key} />
                     </TableCell>
                   ))}
                 </TableRow>
