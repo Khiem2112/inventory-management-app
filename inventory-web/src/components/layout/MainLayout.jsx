@@ -129,7 +129,7 @@ const MainLayout = () => {
                 sx={{ 
                     flexGrow: 1, 
                     height: '100vh',
-                    bgcolor: '#f8f9fa',
+                    bgcolor: 'transparent',
                     overflow: 'hidden',
                     display: 'flex',       // Ensure children stack correctly
                     flexDirection: 'column'

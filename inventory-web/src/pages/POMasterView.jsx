@@ -69,7 +69,7 @@ const POMasterView = () => {
                 // 2. Layout
                 height: '100%',
                 overflowY: 'auto',
-                bgcolor: 'white',
+                bgcolor: 'transparent',
                 
                 // 3. Visibility Management
                 // We physically hide it when closed so it doesn't trap focus or clicks

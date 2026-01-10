@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-const DEFAULT_STATE = { page: 1, limit: 8 };
+const DEFAULT_STATE = { page: 1, limit: 10 };
 
 // Helper to read state from the URL
 const parseUrlState = (search) => {
