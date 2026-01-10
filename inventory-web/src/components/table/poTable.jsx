@@ -89,25 +89,33 @@ const ServerSideTable = ({
       sx={{ 
         border: `1px solid ${theme.palette.divider}`, 
         borderRadius: 2, 
-        overflow: 'hidden' }}
+        overflow: 'hidden', 
+        // Force the Paper to take full height of the parent flex container
+        height: '100%', 
+        display: 'flex', 
+        flexDirection: 'column'
+      }}
     >
        <TableContainer 
           component={Paper} 
           elevation={0} 
           sx={{ 
               borderRadius: 0, 
-              overflowX: 'auto', 
-              overflowY: 'hidden', // PREVENT double vertical scrollbars
+              overflow: 'auto', 
               border: 'none',      
-              bgcolor: 'transparent'
+              bgcolor: 'transparent',
+              height: '100%',
+              flexGrow: 1
+
           }}
       >
         <Table 
-        
-        stickyHeader size="medium" 
+        stickyHeader 
+        size="medium" 
         sx={{ 
           border: 'none' ,
-          overflow: 'hidden'
+          tableLayout: 'fixed',
+          overflow: 'auto'
           }}>
           <TableHead>
             <TableRow sx={{ border: 'none' }}>
@@ -142,7 +150,9 @@ const ServerSideTable = ({
                       '&.Mui-selected': { 
                           bgcolor: alpha(theme.palette.primary.main, 0.08), // Theme-aware selection
                           '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.12) }
-                      }
+                      },
+                      border: 'none',
+                      height: 70
                   }}
                 >
                   {columnsConfig.map((col) => (
@@ -159,7 +169,7 @@ const ServerSideTable = ({
 
             {/* Empty Filler Rows */}
             {emptyRowsCount > 0 && [...Array(emptyRowsCount)].map((_, index) => (
-              <TableRow key={`empty-${index}`} sx={{ height: 60, border: 'none' }}>
+              <TableRow key={`empty-${index}`} sx={{ height: 70, border: 'none' }}>
                 <TableCell colSpan={columnsConfig.length} sx={{ borderBottom: 'none' }} />
               </TableRow>
             ))}
