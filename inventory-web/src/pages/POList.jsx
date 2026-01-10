@@ -159,9 +159,13 @@ const PurchaseOrderList = ({ isCompact }) => {
             >
                 {/* Table Area */}
                 <Box sx={{ 
-                    minHeight: 400,
-                    flexGrow: 1, 
-                    overflow: 'hidden'
+                    minHeight: 0,       // Allow shrinking
+                    flexGrow: 0, 
+                    overflow: 'hidden', // Force scroll management to the child
+                    
+                    // --- THE CRITICAL FIX ---
+                    display: 'flex',       
+                    flexDirection: 'column'
                     }}>
                     <ServerSideTable 
                         data={poData}

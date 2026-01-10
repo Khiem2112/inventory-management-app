@@ -104,7 +104,6 @@ const ServerSideTable = ({
               overflow: 'auto', 
               border: 'none',      
               bgcolor: 'transparent',
-              height: '100%',
               flexGrow: 1
 
           }}
