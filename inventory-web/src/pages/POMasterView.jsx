@@ -14,7 +14,7 @@ const POMasterView = () => {
             display: 'flex',              // Use Flexbox for sliding alignment
             height: '100%',
             minHeight: '600px',
-            overflow: 'hidden',           // Prevent page scroll during animation
+            overflow: 'hidden',
             bgcolor: 'transparent',
             position: 'relative'          // Anchor for absolute positioning if needed
         }}>
@@ -34,8 +34,7 @@ const POMasterView = () => {
                     display: 'flex',      // Pass layout context down
                     flexDirection: 'column',
                     flexShrink: 0,        // Prevent compression
-                    overflowY: 'auto',    // Internal Scroll
-                    overflowX: 'hidden',  // Hide horizontal scroll during resize
+                    overflow: 'hidden',
                     bgcolor: 'transparent',
                     zIndex: 2,            // Keep above the right pane slightly
                     

@@ -16,6 +16,27 @@ import { alpha } from '@mui/material';
 import StatusBadge from "../status/statusBadge";
 import RowActions from "./rowActions";
 
+// --- 1. Dynamic Alignment Logic ---
+// PO ID: Left | Numbers/Currency: Right | Others: Center
+const getAlignment = (col) => {
+  if (col.key === 'purchase_order_id') return 'left';
+  if (col.type === 'currency' || col.type === 'number') return 'right';
+  return 'center';
+};
+
+// --- 2. Render Cell Content ---
+const RenderCellData = ({ columnsConfig, item, colKey }) => {
+  const column = columnsConfig.find(c => c.key === colKey);
+  const value = item[colKey];
+
+  if (column.type === 'currency') return `$${parseFloat(value || 0).toFixed(2)}`;
+  if (column.type === 'status') return <StatusBadge status={value} />;
+  if (colKey === 'create_date') return new Date(value).toLocaleDateString();
+  if (column.type === 'actions') return <RowActions item={item} />;
+  
+  return value;
+};
+
 const ServerSideTable = ({ 
     data, 
     limit, 
@@ -24,27 +45,6 @@ const ServerSideTable = ({
     onRowClick, 
     selectedId
 }) => {
-
-  // --- 1. Dynamic Alignment Logic ---
-  // PO ID: Left | Numbers/Currency: Right | Others: Center
-  const getAlignment = (col) => {
-    if (col.key === 'purchase_order_id') return 'left';
-    if (col.type === 'currency' || col.type === 'number') return 'right';
-    return 'center';
-  };
-
-  // --- 2. Render Cell Content ---
-  const RenderCellData = ({ item, colKey }) => {
-    const column = columnsConfig.find(c => c.key === colKey);
-    const value = item[colKey];
-
-    if (column.type === 'currency') return `$${parseFloat(value || 0).toFixed(2)}`;
-    if (column.type === 'status') return <StatusBadge status={value} />;
-    if (colKey === 'create_date') return new Date(value).toLocaleDateString();
-    if (column.type === 'actions') return <RowActions item={item} />;
-    
-    return value;
-  };
 
   const theme = useTheme()
 
@@ -89,25 +89,33 @@ const ServerSideTable = ({
       sx={{ 
         border: `1px solid ${theme.palette.divider}`, 
         borderRadius: 2, 
-        overflow: 'hidden' }}
+        overflow: 'hidden', 
+        // Force the Paper to take full height of the parent flex container
+        height: '100%', 
+        display: 'flex', 
+        flexDirection: 'column'
+      }}
     >
        <TableContainer 
           component={Paper} 
           elevation={0} 
           sx={{ 
               borderRadius: 0, 
-              overflowX: 'auto', 
-              overflowY: 'hidden', // PREVENT double vertical scrollbars
+              overflow: 'auto', 
               border: 'none',      
-              bgcolor: 'transparent'
+              bgcolor: 'transparent',
+              height: '100%',
+              flexGrow: 1
+
           }}
       >
         <Table 
-        
-        stickyHeader size="medium" 
+        stickyHeader 
+        size="medium" 
         sx={{ 
           border: 'none' ,
-          overflow: 'hidden'
+          tableLayout: 'fixed',
+          overflow: 'auto'
           }}>
           <TableHead>
             <TableRow sx={{ border: 'none' }}>
@@ -142,7 +150,9 @@ const ServerSideTable = ({
                       '&.Mui-selected': { 
                           bgcolor: alpha(theme.palette.primary.main, 0.08), // Theme-aware selection
                           '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.12) }
-                      }
+                      },
+                      border: 'none',
+                      height: 70
                   }}
                 >
                   {columnsConfig.map((col) => (
@@ -150,7 +160,7 @@ const ServerSideTable = ({
                       key={col.key} 
                       align={getAlignment(col)}
                     >
-                      <RenderCellData item={item} colKey={col.key} />
+                      <RenderCellData columnsConfig={columnsConfig} item={item} colKey={col.key} />
                     </TableCell>
                   ))}
                 </TableRow>
@@ -159,7 +169,7 @@ const ServerSideTable = ({
 
             {/* Empty Filler Rows */}
             {emptyRowsCount > 0 && [...Array(emptyRowsCount)].map((_, index) => (
-              <TableRow key={`empty-${index}`} sx={{ height: 60, border: 'none' }}>
+              <TableRow key={`empty-${index}`} sx={{ height: 70, border: 'none' }}>
                 <TableCell colSpan={columnsConfig.length} sx={{ borderBottom: 'none' }} />
               </TableRow>
             ))}

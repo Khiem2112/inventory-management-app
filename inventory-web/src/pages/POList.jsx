@@ -161,7 +161,7 @@ const PurchaseOrderList = ({ isCompact }) => {
                 <Box sx={{ 
                     minHeight: 400,
                     flexGrow: 1, 
-                    overflow: 'auto'
+                    overflow: 'hidden'
                     }}>
                     <ServerSideTable 
                         data={poData}
