@@ -128,9 +128,9 @@ const MainLayout = () => {
                 component="main" 
                 sx={{ 
                     flexGrow: 1, 
-                    minHeight: '100vh',
+                    height: '100vh',
                     bgcolor: '#f8f9fa',
-                    overflowX: 'hidden',
+                    overflow: 'hidden',
                     display: 'flex',       // Ensure children stack correctly
                     flexDirection: 'column'
                 }}
@@ -150,8 +150,13 @@ const MainLayout = () => {
                         pr: '20%', // The specific right margin you wanted
                         
                         // Ensure this Box is the definitive "boundary"
+                        display: 'flex',
+                        flexDirection: 'column',
+                        overflow: 'hidden', // Ensure this container doesn't scroll
+                        // --- FIX END ---
+
                         width: '100%', 
-                        position: 'relative' 
+                        position: 'relative'
                     }}
                 >
                     <Outlet />
