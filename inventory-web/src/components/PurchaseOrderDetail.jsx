@@ -44,106 +44,107 @@ const DetailHeader = ({ headerData, onClose }) => {
     const isDraft = headerData.status === 'Draft';
 
     return (
-        <Paper elevation={0} sx={{ p: 3, borderBottom: '1px solid #e0e0e0', borderRadius: 0 }}>
-            {/* The Close Button */}
-            <Tooltip title="Back to List">
-                    <IconButton 
-                        onClick={onClose}
-                        sx={{ 
-                            mr: 2, 
-                            mt: -0.5,
-                            color: 'text.secondary' 
-                        }}
+        <>
+        {/* The Close Button */}
+        <Tooltip title="Back to List">
+                <IconButton 
+                    onClick={onClose}
+                    sx={{ 
+                        mr: 2, 
+                        mt: -0.5,
+                        color: 'text.secondary' 
+                    }}
+                >
+                    <ArrowBackIcon />
+                </IconButton>
+            </Tooltip>
+        {/* Top Row: ID and Status */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
+            <Box>
+                <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1 }}>
+                    Purchase Order
+                </Typography>
+                <Typography variant="h4" fontWeight="800" color="#2c3e50">
+                    #{headerData.purchase_order_id}
+                </Typography>
+                {/*EDIT BUTTON (Only for Draft POs) */}
+                {isDraft && (
+                    <Button 
+                        variant="outlined" 
+                        size="small" 
+                        startIcon={<EditIcon />}
+                        onClick={() => navigate(`/purchase-orders/${headerData.purchase_order_id}/edit`)}
                     >
-                        <ArrowBackIcon />
-                    </IconButton>
-                </Tooltip>
-            {/* Top Row: ID and Status */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
-                <Box>
-                    <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1 }}>
-                        Purchase Order
-                    </Typography>
-                    <Typography variant="h4" fontWeight="800" color="#2c3e50">
-                        #{headerData.purchase_order_id}
-                    </Typography>
-                    {/*EDIT BUTTON (Only for Draft POs) */}
-                    {isDraft && (
-                        <Button 
-                            variant="outlined" 
-                            size="small" 
-                            startIcon={<EditIcon />}
-                            onClick={() => navigate(`/purchase-orders/${headerData.purchase_order_id}/edit`)}
-                        >
-                            Edit
-                        </Button>
-                    )}
-                </Box>
-                <StatusBadge status={headerData.status} />
+                        Edit
+                    </Button>
+                )}
             </Box>
+            <StatusBadge status={headerData.status} />
+        </Box>
 
-            {/* Data Grid based on PO_COLUMNS_CONFIG */}
-            <Grid container spacing={3}>
-                {/* Supplier */}
-                <Grid item xs={12} md={4}>
-                    <Typography variant="caption" color="text.secondary" display="block">
-                        Supplier Name
-                    </Typography>
-                    <Typography variant="h6" color="primary.main">
-                        {headerData.supplier_name}
-                    </Typography>
-                </Grid>
+        {/* Data Grid based on PO_COLUMNS_CONFIG */}
+        <Grid container spacing={3}>
+            {/* Supplier */}
+            <Grid item xs={12} md={4}>
+                <Typography variant="caption" color="text.secondary" display="block">
+                    Supplier Name
+                </Typography>
+                <Typography variant="h6" color="primary.main">
+                    {headerData.supplier_name}
+                </Typography>
+            </Grid>
 
-                {/* Total Price */}
-                <Grid item xs={6} md={4}>
-                    <Typography variant="caption" color="text.secondary" display="block">
-                        Total Price
-                    </Typography>
-                    <Typography variant="h6" fontWeight="bold">
-                        ${parseFloat(headerData.total_price || 0).toLocaleString()}
-                    </Typography>
-                </Grid>
+            {/* Total Price */}
+            <Grid item xs={6} md={4}>
+                <Typography variant="caption" color="text.secondary" display="block">
+                    Total Price
+                </Typography>
+                <Typography variant="h6" fontWeight="bold">
+                    ${parseFloat(headerData.total_price || 0).toLocaleString()}
+                </Typography>
+            </Grid>
 
-                {/* Plan ID */}
-                <Grid item xs={6} md={4}>
-                    <Typography variant="caption" color="text.secondary" display="block">
-                        Plan ID
+            {/* Plan ID */}
+            <Grid item xs={6} md={4}>
+                <Typography variant="caption" color="text.secondary" display="block">
+                    Plan ID
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <InventoryIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                    <Typography variant="body1">
+                        {headerData.purchase_plan_id || 'N/A'}
                     </Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <InventoryIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                        <Typography variant="body1">
-                            {headerData.purchase_plan_id || 'N/A'}
+                </Box>
+            </Grid>
+
+            <Grid item xs={12}>
+                <Divider sx={{ my: 1, borderStyle: 'dashed' }} />
+            </Grid>
+
+            {/* Metadata Row */}
+            <Grid item xs={6} md={4}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <PersonIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                    <Box>
+                        <Typography variant="caption" display="block" color="text.secondary">Created By</Typography>
+                        <Typography variant="body2" fontWeight={500}>{headerData.create_user_name || 'System'}</Typography>
+                    </Box>
+                </Box>
+            </Grid>
+            <Grid item xs={6} md={4}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <CalendarTodayIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                    <Box>
+                        <Typography variant="caption" display="block" color="text.secondary">Creation Date</Typography>
+                        <Typography variant="body2" fontWeight={500}>
+                            {headerData.create_date ? new Date(headerData.create_date).toLocaleDateString() : 'N/A'}
                         </Typography>
                     </Box>
-                </Grid>
-
-                <Grid item xs={12}>
-                    <Divider sx={{ my: 1, borderStyle: 'dashed' }} />
-                </Grid>
-
-                {/* Metadata Row */}
-                <Grid item xs={6} md={4}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <PersonIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                        <Box>
-                            <Typography variant="caption" display="block" color="text.secondary">Created By</Typography>
-                            <Typography variant="body2" fontWeight={500}>{headerData.create_user_name || 'System'}</Typography>
-                        </Box>
-                    </Box>
-                </Grid>
-                <Grid item xs={6} md={4}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <CalendarTodayIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                        <Box>
-                            <Typography variant="caption" display="block" color="text.secondary">Creation Date</Typography>
-                            <Typography variant="body2" fontWeight={500}>
-                                {headerData.create_date ? new Date(headerData.create_date).toLocaleDateString() : 'N/A'}
-                            </Typography>
-                        </Box>
-                    </Box>
-                </Grid>
+                </Box>
             </Grid>
-        </Paper>
+        </Grid>
+    </>
+            
     );
 };
 
@@ -178,7 +179,13 @@ const LineItemsTable = ({ items, loading }) => {
             borderRadius: 2
         }}
         >
-            <Table stickyHeader size="small">
+            <Table 
+            stickyHeader 
+            size="small"
+            sx= {{
+                tableLayout: 'fixed'
+            }}
+            >
                 <TableHead>
                     <TableRow>
                         {PO_DETAIL_ITEMS_CONFIG.filter(c => c.isVisible).map((col) => (
@@ -269,7 +276,6 @@ const POApprovalFooter = ({ status, onApprove, onReject, onGeneratePDF, isProces
                     left: 0, 
                     right: 0,
                     p: 2, 
-                    borderTop: '1px solid #e0e0e0',
                     zIndex: 10
                 }}
             >
@@ -366,7 +372,7 @@ const PODetailView = ({
                 display: 'flex', 
                 alignItems: 'center', 
                 justifyContent: 'center', 
-                bgcolor: '#f8f9fa',
+                bgcolor: `${theme.palette.background.paper}`,
                 color: 'text.secondary',
                 flexDirection: 'column'
             }}>
@@ -376,12 +382,25 @@ const PODetailView = ({
             </Box>
         );
     }
-
+    const theme = useTheme()
     // Scenario 2: PO Selected
     const isIssued = header?.status === 'Issued' || header?.status === 'Open';
 
     return (
-        <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'white', position: 'relative' }}>
+        <Paper 
+        elevation={0}
+        sx={{ 
+            height: '100%', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            borderRadius: 2,
+            bgcolor: `${theme.palette.background.paper}`, 
+            position: 'relative',
+            px: 3,
+            paddingTop: 2
+        }}
+            
+            >
             
             {/* WATERMARK BACKGROUND */}
             {isIssued && (
@@ -399,12 +418,19 @@ const PODetailView = ({
                     ISSUED
                 </Box>
             )}
-
-            <DetailHeader headerData={header} onClose={onClose} />
-            <Divider />
+            <Paper 
+                elevation={0} 
+                sx={{ 
+                    bgcolor: `${theme.palette.background.paper}`,
+                    border: 'none' 
+                    
+                }}
+                    >
+                <DetailHeader headerData={header} onClose={onClose} />
+            </Paper>
             
             <Box sx={{ flexGrow: 1, overflow: 'auto', zIndex: 1 }}>
-                <Typography variant="subtitle2" sx={{ p: 2, bgcolor: '#fafafa', color: 'text.secondary', fontWeight: 'bold' }}>
+                <Typography variant="subtitle2" sx={{ p: 2, color: 'text.secondary', fontWeight: 'bold' }}>
                     LINE ITEMS
                 </Typography>
                 <LineItemsTable items={items} loading={itemsLoading} />
@@ -418,7 +444,7 @@ const PODetailView = ({
                 onGeneratePDF={onGeneratePDF}
                 isProcessing={isProcessing}
             />
-        </Box>
+        </Paper>
     );
 };
 
