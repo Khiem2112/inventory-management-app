@@ -16,14 +16,14 @@ const POMasterView = () => {
             minHeight: '600px',
             overflow: 'hidden',
             bgcolor: 'transparent',
-            position: 'relative'          // Anchor for absolute positioning if needed
+            position: 'relative',
+            gap: '30px'          // Anchor for absolute positioning if needed
         }}>
             {/* LEFT PANE: The List 
               - Default: width 100%
               - Active: width 450px
             */}
-            <Paper
-                elevation={2}
+            <Box
                 sx={{
                     // 1. Animation Logic
                     width: isDetailView ? '450px' : '100%',
@@ -37,12 +37,7 @@ const POMasterView = () => {
                     overflow: 'hidden',
                     bgcolor: 'transparent',
                     zIndex: 2,            // Keep above the right pane slightly
-                    
-                    // 3. Dynamic Borders
-                    borderRight: isDetailView 
-                        ? `1px solid ${theme.palette.divider}` 
-                        : 'none',
-                    
+
                     // 4. White-space handling
                     // Prevents table columns from "dancing" while width is changing
                     whiteSpace: 'nowrap', 
@@ -51,7 +46,7 @@ const POMasterView = () => {
                 <Box sx={{ flexGrow: 1, height: '100%', overflow: 'hidden' }}>
                     <PurchaseOrderList isCompact={isDetailView} />
                 </Box>
-            </Paper>
+            </Box>
 
             {/* RIGHT PANE: The Detail
               - Default: width 0, opacity 0
