@@ -118,7 +118,7 @@ const PurchaseOrderList = ({ isCompact }) => {
                         flexShrink: 0 
                     }} 
                 >
-                    {isCompact ? "New" : "Create New PO"}
+                    "Create New PO"
                 </Button>
 
                 {/* Filters - Only Visible in Full View */}
@@ -126,32 +126,42 @@ const PurchaseOrderList = ({ isCompact }) => {
                     <>
                         <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
                         
-                        <Box 
-                        sx={{ 
-                            flexGrow: 1, 
-                            minWidth: '800px',
-
+                        {/* Enable two Box to wrap the filterBar */}
+                        {/* Box 1: act as the mask wrapper, handle the actual animated width */}
+                        <Box sx={{ 
+                            
+                            overflow: 'hidden', // Clip the content that hasn't been revealed yet
                             animation: 'fadeIn 0.5s ease-in-out',
-                            '@keyframes fadeIn': {
-                                '0%': { opacity: 0 },
-                                '50%': { opacity: 0 }, // Stay invisible for first half of slide
-                                '100%': { opacity: 1 }
-                            } }}>
-                            <FilterBar 
-                                allColumnsConfig={columnsConfigForFilterTable}
-                                onStatusChange={(status) => setFilterState(prev => ({ ...prev, status, page: 1 }))}
-                                onSupplierChange={(vendor_id) => setFilterState(prev => ({ ...prev, vendor_id, page: 1 }))}
-                                initialStatus={filterState?.status}
-                                initialSupplierId={filterState?.vendor_id}
-                                suppliers={queryResult?.meta.suppliers || []}
-                                statuses={queryResult?.meta.statuses || []}
-                                onColumnToggle={setVisibleKeys}
-                            />
+                                '@keyframes fadeIn': {
+                                    '0%': { opacity: 0 },
+                                    '50%': { opacity: 0 }, // Stay invisible for first half of slide
+                                    '100%': { opacity: 1 }
+                                }
+                        }}>
+                            {/* Ignores the animation size, set a min size of 800px to prevent the filter bar's children perform wrap space and affect the height */}
+                            <Box 
+                            sx={{ 
+                                flexGrow: 1, 
+                                minWidth: '800px',
+
+                                 }}>
+                                <FilterBar 
+                                    allColumnsConfig={columnsConfigForFilterTable}
+                                    onStatusChange={(status) => setFilterState(prev => ({ ...prev, status, page: 1 }))}
+                                    onSupplierChange={(vendor_id) => setFilterState(prev => ({ ...prev, vendor_id, page: 1 }))}
+                                    initialStatus={filterState?.status}
+                                    initialSupplierId={filterState?.vendor_id}
+                                    suppliers={queryResult?.meta.suppliers || []}
+                                    statuses={queryResult?.meta.statuses || []}
+                                    onColumnToggle={setVisibleKeys}
+                                />
+                            </Box>
                         </Box>
+                        
                     </>
                 )}
             </Paper>
-
+                    
             {/* Error Display */}
             {isError && (
                 <Alert severity="error" sx={{ mb: 3 }}>
