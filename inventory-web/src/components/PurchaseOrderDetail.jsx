@@ -268,8 +268,7 @@ const POApprovalFooter = ({ status, onApprove, onReject, onGeneratePDF, isProces
     return (
         <>
             {/* STICKY FOOTER CONTAINER */}
-            <Paper 
-                elevation={6} 
+            <Box 
                 sx={{ 
                     position: 'sticky', 
                     bottom: 0, 
@@ -319,7 +318,7 @@ const POApprovalFooter = ({ status, onApprove, onReject, onGeneratePDF, isProces
                         </Button>
                     )}
                 </Box>
-            </Paper>
+            </Box>
 
             {/* REJECT REASON MODAL */}
             <Dialog open={rejectModalOpen} onClose={() => setRejectModalOpen(false)} maxWidth="sm" fullWidth>
@@ -418,16 +417,9 @@ const PODetailView = ({
                     ISSUED
                 </Box>
             )}
-            <Paper 
-                elevation={0} 
-                sx={{ 
-                    bgcolor: `${theme.palette.background.paper}`,
-                    border: 'none' 
-                    
-                }}
-                    >
+            <Box>
                 <DetailHeader headerData={header} onClose={onClose} />
-            </Paper>
+            </Box>
             
             <Box sx={{ flexGrow: 1, overflow: 'auto', zIndex: 1 }}>
                 <Typography variant="subtitle2" sx={{ p: 2, color: 'text.secondary', fontWeight: 'bold' }}>

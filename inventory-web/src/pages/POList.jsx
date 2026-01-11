@@ -109,7 +109,7 @@ const PurchaseOrderList = ({ isCompact }) => {
                     variant="contained"
                     startIcon={<AddIcon />}
                     onClick={() => navigate('create')}
-                    size={isCompact ? "small" : "medium"}
+                    size="medium"
                     sx={{ whiteSpace: 'nowrap' }} 
                 >
                     {isCompact ? "New" : "Create New PO"}
