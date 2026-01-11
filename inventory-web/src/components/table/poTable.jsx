@@ -84,18 +84,6 @@ const ServerSideTable = ({
 
   return (
     // Add a Paper to set border
-    <Paper
-      elevation={3} // Adds a shadow effect to the component, with a value of 3 (higher is more prominent)
-      sx={{ 
-        border: `1px solid ${theme.palette.divider}`, 
-        borderRadius: 2, 
-        overflow: 'hidden', 
-        // Force the Paper to take full height of the parent flex container
-        height: '100%', 
-        display: 'flex', 
-        flexDirection: 'column'
-      }}
-    >
        <TableContainer 
           component={Paper} 
           elevation={0} 
@@ -175,8 +163,6 @@ const ServerSideTable = ({
           </TableBody>
         </Table>
       </TableContainer>
-    </Paper>
-
    
   );
 };
