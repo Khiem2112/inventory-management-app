@@ -101,7 +101,10 @@ const PurchaseOrderList = ({ isCompact }) => {
                     alignItems: 'center',
                     gap: 2,
                     // Ensure the container has a minimum height so it doesn't collapse
-                    minHeight: '72px' 
+                    minHeight: '72px',
+                    height: '72px',
+                    overflow: 'hidden', 
+                    whiteSpace: 'nowrap'
                 }}
             >
                 {/* Create Button - Always Visible */}
@@ -110,7 +113,10 @@ const PurchaseOrderList = ({ isCompact }) => {
                     startIcon={<AddIcon />}
                     onClick={() => navigate('create')}
                     size="medium"
-                    sx={{ whiteSpace: 'nowrap' }} 
+                    sx={{ 
+                        whiteSpace: 'nowrap', 
+                        flexShrink: 0 
+                    }} 
                 >
                     {isCompact ? "New" : "Create New PO"}
                 </Button>
@@ -120,7 +126,17 @@ const PurchaseOrderList = ({ isCompact }) => {
                     <>
                         <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
                         
-                        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                        <Box 
+                        sx={{ 
+                            flexGrow: 1, 
+                            minWidth: '800px',
+
+                            animation: 'fadeIn 0.5s ease-in-out',
+                            '@keyframes fadeIn': {
+                                '0%': { opacity: 0 },
+                                '50%': { opacity: 0 }, // Stay invisible for first half of slide
+                                '100%': { opacity: 1 }
+                            } }}>
                             <FilterBar 
                                 allColumnsConfig={columnsConfigForFilterTable}
                                 onStatusChange={(status) => setFilterState(prev => ({ ...prev, status, page: 1 }))}
@@ -158,14 +174,17 @@ const PurchaseOrderList = ({ isCompact }) => {
                 }}
             >
                 {/* Table Area */}
-                <Box sx={{ 
+                <Paper 
+                elevation={0}
+                sx={{ 
                     minHeight: 0,       // Allow shrinking
                     flexGrow: 0, 
                     overflow: 'hidden', // Force scroll management to the child
                     
                     // --- THE CRITICAL FIX ---
                     display: 'flex',       
-                    flexDirection: 'column'
+                    flexDirection: 'column',
+                    borderRadius: 2
                     }}>
                     <ServerSideTable 
                         data={poData}
@@ -175,7 +194,7 @@ const PurchaseOrderList = ({ isCompact }) => {
                         onRowClick={(poItem) => navigate(`/purchase-orders/${poItem.purchase_order_id}`)}
                         selectedId={selectedId}
                     />
-                </Box>
+                </Paper>
 
                 {/* Pagination Area */}
                 <Box 
