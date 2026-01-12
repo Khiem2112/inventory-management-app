@@ -188,7 +188,11 @@ const FilterBar = ({
             <Box sx={{ flexGrow: 1 }} />
 
             {/* Column Selection */}
-            <Box sx={{ flexShrink: 0 }}>
+            <Box 
+            sx={{ 
+                flexShrink: 0,
+                marginLeft: 'auto'
+                }}>
                 <ColumnToggler 
                     allColumnsConfig={allColumnsConfig} 
                     onToggle={onColumnToggle} 
