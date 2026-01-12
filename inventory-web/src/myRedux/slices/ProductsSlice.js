@@ -184,6 +184,7 @@ const productsSlice = createSlice({
                 state.pagination.currentPage = action.payload.current_page
                 state.pagination.limit = action.payload.limit
                 state.pagination.totalPage = action.payload.total_pages
+                state.pagination.totalCount = action.payload.total_records
             })
             .addCase(fetchSomeProductsAsync.rejected, (state, action) => {
                 state.status.getSome = 'failed';
