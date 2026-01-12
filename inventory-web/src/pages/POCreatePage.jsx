@@ -201,6 +201,7 @@ const POCreatePage = () => {
     // Different page title and button based on create or edit purpose
     const pageTitle = isEditMode ? `Edit Purchase Order #${existingData?.header?.display_id || id}` : "New Purchase Order";
     const confirmButtonText = isEditMode ? "Save Changes" : "Confirm Order";
+    const totalAmount = calculateTotal();
 
     // render loading state
     if (isEditMode && isLoading) {
@@ -238,159 +239,179 @@ const POCreatePage = () => {
 
     return (
         <FormProvider {...methods}>
-            <Box sx={{maxWidth: 1200, mx: 'auto' }}>
-                {/* Header Actions */}
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-                    <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/purchase-orders')} sx={{ mr: 2 }}>
-                        Cancel
+            {/* ROOT CONTAINER: Centered Layout with Padding */}
+            <Box sx={{ maxWidth: 1200, minHeight: '100%' }}>
+                
+                {/* HEADER: Stack for alignment */}
+                <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 4 }}>
+                    <Button 
+                        startIcon={<ArrowBackIcon />} 
+                        onClick={() => navigate('/purchase-orders')} 
+                        sx = {{
+                            color:"white",
+                            bgcolor:"primary.main"
+                        }}
+                    >
+                        Go to List
                     </Button>
-                    <Typography variant="h4" fontWeight="bold">{[pageTitle]}</Typography>
-                </Box>
+                    <Typography variant="h4" fontWeight="bold">
+                        {pageTitle}
+                    </Typography>
+                </Stack>
 
                 {createMutation.isError && (
-                    <Alert severity="error" sx={{ mb: 2 }}>
-                        Failed to create PO. Please check your inputs.
+                    <Alert severity="error" sx={{ mb: 3 }}>
+                        Failed to save PO. Please check your inputs.
                     </Alert>
                 )}
 
+                {/* MAIN LAYOUT: Grid for Sidebar vs Content */}
                 <Grid container spacing={3}>
-                    {/* LEFT COL: Form */}
+                    
+                    {/* LEFT COLUMN: Form Inputs */}
                     <Grid item xs={12} md={8}>
-                        {/* AC1: Vendor Selection */}
-                        <Paper sx={{ p: 3, mb: 3 }}>
-                            <Typography variant="h6" gutterBottom>Vendor Details</Typography>
-                            <Grid container spacing={2}>
-                                <Grid item xs={12} md={6}>
-                                    <Autocomplete
-                                        options={vendorOptions}
-                                        value={watch('supplier_obj')}
-                                        isOptionEqualToValue={(option, value) => 
-                                            option.supplier_id === value.supplier_id
-                                        }
-                                        getOptionLabel={(option) => option.name}
-                                        onOpen={async () => {
-                                            const results = await searchVendors(""); // Load initial
-                                            setVendorOptions(results);
-                                        }}
-                                        onChange={(_, newValue) => {
-                                            setValue('supplier_id', newValue?.id);
-                                            setValue('supplier_obj', newValue);
-                                        }}
-                                        renderInput={(params) => (
-                                            <TextField 
-                                                {...params} 
-                                                label="Select Vendor" 
-                                                required 
-                                                error={!!errors.supplier_id}
-                                            />
-                                        )}
-                                    />
+                        <Stack spacing={3}>
+                            
+                            {/* SECTION 1: Vendor Selection */}
+                            <Paper elevation={2} sx={{ p: 3, bgcolor: 'background.paper' }}>
+                                <Typography variant="h6" gutterBottom fontWeight="bold">
+                                    Vendor Details
+                                </Typography>
+                                <Grid container spacing={2}>
+                                    <Grid item xs={12} md={6}>
+                                        <Autocomplete
+                                            options={vendorOptions}
+                                            value={watch('supplier_obj')}
+                                            isOptionEqualToValue={(option, value) => option.supplier_id === value.supplier_id}
+                                            getOptionLabel={(option) => option.name}
+                                            onOpen={async () => {
+                                                const results = await searchVendors("");
+                                                setVendorOptions(results);
+                                            }}
+                                            onChange={(_, newValue) => {
+                                                setValue('supplier_id', newValue?.id);
+                                                setValue('supplier_obj', newValue);
+                                            }}
+                                            renderInput={(params) => (
+                                                <TextField 
+                                                    {...params} 
+                                                    label="Select Vendor" 
+                                                    required 
+                                                    error={!!errors.supplier_id}
+                                                />
+                                            )}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12} md={6}>
+                                        <TextField 
+                                            label="Payment Terms" 
+                                            fullWidth 
+                                            disabled 
+                                            value={watch('supplier_obj')?.payment_terms || ''} 
+                                            helperText="Auto-populated from Vendor"
+                                        />
+                                    </Grid>
                                 </Grid>
-                                <Grid item xs={12} md={6}>
-                                    <TextField 
-                                        label="Payment Terms" 
-                                        fullWidth 
-                                        disabled 
-                                        value={watch('supplier_obj')?.payment_terms || ''} 
-                                        helperText="Auto-populated from Vendor"
-                                    />
-                                </Grid>
-                            </Grid>
-                        </Paper>
+                            </Paper>
 
-                        {/* AC2 & AC3: Line Items */}
-                        <POLineItemsForm />
+                            {/* SECTION 2: Line Items (Component handles its own Paper/Layout) */}
+                            <POLineItemsForm />
+                        </Stack>
                     </Grid>
 
-                    {/* RIGHT COL: Summary & Actions */}
+                    {/* RIGHT COLUMN: Summary & Actions */}
                     <Grid item xs={12} md={4}>
-                        <Paper sx={{ p: 3, position: 'sticky', top: 20 }}>
-                            <Typography variant="h6" gutterBottom>Order Summary</Typography>
-                            <Divider sx={{ my: 2 }} />
+                        {/* STICKY WRAPPER: Box handles positioning */}
+                        <Box sx={{ position: 'sticky', top: 24 }}>
                             
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                <Typography color="text.secondary">Subtotal</Typography>
-                                <Typography fontWeight="bold">${calculateTotal().toFixed(2)}</Typography>
-                            </Box>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                <Typography color="text.secondary">Tax (0%)</Typography>
-                                <Typography fontWeight="bold">$0.00</Typography>
-                            </Box>
-                            <Divider sx={{ my: 2 }} />
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-                                <Typography variant="h6">Total</Typography>
-                                <Typography variant="h6" color="primary">${calculateTotal().toFixed(2)}</Typography>
-                            </Box>
+                            {/* VISUAL SURFACE: Paper handles look */}
+                            <Paper elevation={3} sx={{ p: 3, bgcolor: 'background.paper' }}>
+                                <Typography variant="h6" gutterBottom fontWeight="bold">
+                                    Order Summary
+                                </Typography>
+                                <Divider sx={{ my: 2 }} />
+                                
+                                {/* Calculations Stack */}
+                                <Stack spacing={1} sx={{ mb: 2 }}>
+                                    <Stack direction="row" justifyContent="space-between">
+                                        <Typography color="text.secondary">Subtotal</Typography>
+                                        <Typography fontWeight="bold">${totalAmount.toFixed(2)}</Typography>
+                                    </Stack>
+                                    <Stack direction="row" justifyContent="space-between">
+                                        <Typography color="text.secondary">Tax (0%)</Typography>
+                                        <Typography fontWeight="bold">$0.00</Typography>
+                                    </Stack>
+                                </Stack>
 
-                            {calculateTotal() > 5000 && (
-                                <Alert severity="warning" sx={{ mb: 2 }}>
-                                    High Value PO: Approval will be required for ${calculateTotal()}
-                                </Alert>
-                            )}
+                                <Divider sx={{ mb: 2 }} />
+                                
+                                <Stack direction="row" justifyContent="space-between" sx={{ mb: 3 }}>
+                                    <Typography variant="h6">Total</Typography>
+                                    <Typography variant="h6" color="primary.main">
+                                        ${totalAmount.toFixed(2)}
+                                    </Typography>
+                                </Stack>
 
-                            {/* AC5: Actions */}
-                            <Grid container spacing={2}>
-                                <Grid item xs={6}>
+                                {totalAmount > 5000 && (
+                                    <Alert severity="warning" sx={{ mb: 2 }}>
+                                        High Value PO: Approval will be required.
+                                    </Alert>
+                                )}
+
+                                {/* ACTION BUTTONS */}
+                                <Stack direction="row" spacing={2}>
                                     <Button 
                                         fullWidth 
                                         variant="outlined" 
                                         startIcon={<SaveIcon />}
                                         onClick={handleSubmit(d => onSubmit(d, true))}
-                                        disabled={createMutation.isPending}
+                                        disabled={createMutation.isPending || updateMutation.isPending}
                                     >
                                         Draft
                                     </Button>
-                                </Grid>
-                                <Grid item xs={6}>
                                     <Button 
                                         fullWidth 
                                         variant="contained" 
-                                        startIcon={createMutation.isPending ? <CircularProgress size={20} color="inherit"/> : <SendIcon />}
+                                        startIcon={(createMutation.isPending || updateMutation.isPending) ? <CircularProgress size={20} color="inherit"/> : <SendIcon />}
                                         onClick={handleSubmit(d => onSubmit(d, false))}
-                                        disabled={createMutation.isPending}
+                                        disabled={createMutation.isPending || updateMutation.isPending}
                                     >
                                         {confirmButtonText}
                                     </Button>
-                                </Grid>
-                            </Grid>
-                        </Paper>
+                                </Stack>
+                            </Paper>
+                        </Box>
                     </Grid>
                 </Grid>
 
-                {/* --- EXIT GUARD DIALOG --- */}
-                    <Dialog
-                        open={showExitDialog}
-                        onClose={handleStayOnPage}
-                        aria-labelledby="alert-dialog-title"
-                        aria-describedby="alert-dialog-description"
-                    >
-                        <DialogTitle id="alert-dialog-title">
-                            {"Unsaved Changes"}
-                        </DialogTitle>
-                        <DialogContent>
-                            <DialogContentText id="alert-dialog-description">
-                                You have unsaved changes in this Purchase Order. <br/>
-                                Would you like to save it as a <strong>Draft</strong> before leaving?
-                            </DialogContentText>
-                        </DialogContent>
-                        <DialogActions>
-                            <Button onClick={handleStayOnPage} color="inherit">
-                                Cancel
-                            </Button>
-                            <Button onClick={handleDiscardAndLeave} color="error">
-                                Discard & Leave
-                            </Button>
-                            <Button 
-                                onClick={handleSaveDraftAndLeave} 
-                                variant="contained" 
-                                color="primary" 
-                                autoFocus
-                                disabled={createMutation.isPending}
-                            >
-                                {createMutation.isPending ? "Saving..." : "Save Draft"}
-                            </Button>
-                        </DialogActions>
-                    </Dialog>
+                {/* --- EXIT DIALOG --- */}
+                <Dialog
+                    open={showExitDialog}
+                    onClose={handleStayOnPage}
+                >
+                    <DialogTitle>Unsaved Changes</DialogTitle>
+                    <DialogContent>
+                        <DialogContentText>
+                            You have unsaved changes in this Purchase Order. <br/>
+                            Would you like to save it as a <strong>Draft</strong> before leaving?
+                        </DialogContentText>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={handleStayOnPage} color="inherit">
+                            Cancel
+                        </Button>
+                        <Button onClick={handleDiscardAndLeave} color="error">
+                            Discard & Leave
+                        </Button>
+                        <Button 
+                            onClick={handleSaveDraftAndLeave} 
+                            variant="contained" 
+                            autoFocus
+                        >
+                            Save Draft
+                        </Button>
+                    </DialogActions>
+                </Dialog>
             </Box>
         </FormProvider>
     );
