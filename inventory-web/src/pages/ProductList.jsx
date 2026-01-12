@@ -158,16 +158,25 @@ function ProductsList() {
           display: 'flex',
           flexDirection: 'column',
           overflow: 'auto', 
-          bgcolor: 'background.paper'
-        }}
+          bgcolor: 'background.paper',
+          }}
       >
-        <TableContainer sx={{ flexGrow: 1, overflow: 'auto' }}>
+        <TableContainer sx={{ 
+          flexGrow: 1, 
+          overflow: 'auto',
+          scrollbarWidth: 'none', 
+    
+          // Hide Scrollbar for Chrome, Safari, Edge
+          '&::-webkit-scrollbar': {
+            display: 'none',
+          }
+ }}>
           <Table 
             stickyHeader 
             size="medium" // 'medium' usually adds more padding than 'small'
             sx={{
               tableLayout: 'fixed', // Strict column sizing
-              minWidth: 650,        // Prevent crushing on small screens
+              minWidth: 650,
             }}
           >
             <TableHead>
