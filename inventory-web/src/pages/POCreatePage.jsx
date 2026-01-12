@@ -5,7 +5,8 @@ import { useNavigate, useBlocker, useBeforeUnload, useParams } from 'react-route
 import { 
     Box, Typography, Grid, Paper, Button, Autocomplete, TextField, 
     Divider, CircularProgress, Alert, Snackbar, 
-    Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions
+    Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,
+    Stack
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import SendIcon from '@mui/icons-material/Send';
@@ -22,63 +23,61 @@ const POCreatePage = () => {
     const { id } = useParams();
     const queryClient = useQueryClient()
     const isEditMode = Boolean(id);
-    const [vendorOptions, setVendorOptions] = useState([]);
-    
-    // 1. Setup Form
-    const methods = useForm({
-        defaultValues: {
-            supplier_id: null,
-            supplier_obj: null, // Helper for Autocomplete UI
-            purchase_plan_id: null,
-            items: [] 
-        }
-    });
-
-    // Get formState from methods
-    const { formState: { isDirty, isSubmitSuccessful }, reset, setValue, register, watch } = methods;
-
-    // Fetch Data if Edit Mode ---
-    const { data: existingData, isLoading: isLoadingData } = useQuery({
+    const [vendorOptions, setVendorOptions] = useState([]);     
+    const { data: existingData, isLoading } = useQuery({
         queryKey: ['poDetail', id],
         queryFn: () => fetchPurchaseOrderDetail(id),
-        enabled: isEditMode,
-        refetchOnWindowFocus: false,
+        enabled: isEditMode, // Only run query in edit mode
     });
 
-    // Populate Form on Data Load
-    useEffect(() => {
-        if (existingData) {
-            // Guard: Prevent editing if not Draft
-            if (existingData.header.status !== 'Draft') {
-                alert("Only Draft orders can be edited.");
-                navigate(`/purchase-orders/${id}`);
-                return;
-            }
+    // 2. Prepare "Default" Values (Synchronous fallback)
+    const emptyValues = {
+        supplier_id: null,
+        supplier_obj: null,
+        purchase_plan_id: null,
+        items: []
+    };
 
-            // Map API Data -> Form Structure
-            const formData = {
-                supplier_id: existingData.header.supplier_id, // Ensure this exists in your header API response
-                // Reconstruct supplier_obj for the Autocomplete to show the name
-                supplier_obj: { 
-                    supplier_id: existingData.header.supplier_id, 
-                    name: existingData.header.supplier_name,
-                    payment_terms: "Net 30" // Mock or fetch if available in header
-                },
-                purchase_plan_id: existingData.header.purchase_plan_id,
-                items: existingData.items.map(item => ({
-                    product_id: item.product_id,
-                    item_description: item.item_description, // or item.product_name depending on API
-                    quantity: item.quantity,
-                    unit_price: item.unit_price,
-                    // If needed, store original ID to handle updates vs new lines
-                    purchase_order_item_id: item.purchase_order_item_id 
-                }))
-            };
+    // 3. Prepare "Loaded" Values (Transformation Logic)
+    // We memoize this so it doesn't trigger re-renders if the data structure is deep
+    const loadedValues = React.useMemo(() => {
+        if (!existingData) return emptyValues;
 
-            // Reset form with fetched values
-            reset(formData);
+        return {
+            supplier_id: existingData.header.supplier_id,
+            supplier_obj: { 
+                supplier_id: existingData.header.supplier_id, 
+                name: existingData.header.supplier_name,
+                payment_terms: "Net 30" 
+            },
+            purchase_plan_id: existingData.header.purchase_plan_id,
+            items: existingData.items.map(item => ({
+                product_id: item.product_id,
+                item_description: item.item_description,
+                quantity: item.quantity,
+                unit_price: item.unit_price,
+                purchase_order_item_id: item.purchase_order_item_id 
+            }))
+        };
+    }, [existingData]);
+
+    // 4. Initialize Form with `values` prop
+    const methods = useForm({
+        defaultValues: emptyValues, // Used for initial render or 'Create' mode
+        values: isEditMode ? loadedValues : undefined, // AUTO-RESET when this data is ready
+        resetOptions: {
+            keepDirtyValues: true // Optional: Prevent overwriting if user started typing while loading
         }
-    }, [existingData, reset, id, navigate]);
+    });
+
+    const { 
+        formState: { isDirty, isSubmitSuccessful, errors }, 
+        handleSubmit, 
+        control, 
+        watch, 
+        setValue 
+        // Note: 'reset' is rarely needed now because 'values' handles it automatically
+    } = methods;
 
     // 2. Setup Mutation (Create API)
     const createMutation = useMutation({
@@ -107,7 +106,7 @@ const POCreatePage = () => {
     });
 
     // 3. Watchers for Summary Card
-    const items = useWatch({ control: methods.control, name: 'items' });
+    const items = useWatch({ control: control, name: 'items' });
     const calculateTotal = () => {
         return items.reduce((acc, item) => {
             return acc + ((item.quantity || 0) * (item.unit_price || 0));
@@ -169,7 +168,7 @@ const POCreatePage = () => {
     };
 
     const handleSaveDraftAndLeave = () => {
-        methods.handleSubmit((data) => {
+        handleSubmit((data) => {
             const payload = { /* ... construct payload ... */ 
                 supplier_id: data.supplier_obj?.supplier_id, 
                 is_draft: true,
@@ -199,15 +198,53 @@ const POCreatePage = () => {
         }
     };
 
+    // Different page title and button based on create or edit purpose
+    const pageTitle = isEditMode ? `Edit Purchase Order #${existingData?.header?.display_id || id}` : "New Purchase Order";
+    const confirmButtonText = isEditMode ? "Save Changes" : "Confirm Order";
+
+    // render loading state
+    if (isEditMode && isLoading) {
+        return <Box sx={{ p: 5, textAlign: 'center' }}><CircularProgress /></Box>;
+    }
+
+    
+    if (existingData && existingData.header.status !== 'Draft') {
+        // You can render a "Read Only" alert or redirect immediately
+        return (
+            <Box sx={{ p: 4, textAlign: 'center' }}>
+                <Alert severity="warning" sx={{ mb: 2 }}>
+                    Purchase Order #{id} is already <strong>{existingData.header.status}</strong> and cannot be edited.
+                </Alert>
+
+                <Stack
+                direction='row'
+                justifyContent='space-around'
+                >
+                    <Button variant="contained" onClick={() => navigate(`/purchase-orders/${id}`)}>
+                        Go to Details
+                    </Button>
+
+                    <Button variant="contained" onClick={() => navigate(`/purchase-orders`)}>
+                        Go Purchase Orders List
+                    </Button>
+                </Stack>
+
+
+            </Box>
+        );
+    }
+
+
+
     return (
         <FormProvider {...methods}>
-            <Box sx={{ p: 3, maxWidth: 1200, mx: 'auto' }}>
+            <Box sx={{maxWidth: 1200, mx: 'auto' }}>
                 {/* Header Actions */}
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
                     <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/purchase-orders')} sx={{ mr: 2 }}>
                         Cancel
                     </Button>
-                    <Typography variant="h4" fontWeight="bold">New Purchase Order</Typography>
+                    <Typography variant="h4" fontWeight="bold">{[pageTitle]}</Typography>
                 </Box>
 
                 {createMutation.isError && (
@@ -236,15 +273,15 @@ const POCreatePage = () => {
                                             setVendorOptions(results);
                                         }}
                                         onChange={(_, newValue) => {
-                                            methods.setValue('supplier_id', newValue?.id);
-                                            methods.setValue('supplier_obj', newValue);
+                                            setValue('supplier_id', newValue?.id);
+                                            setValue('supplier_obj', newValue);
                                         }}
                                         renderInput={(params) => (
                                             <TextField 
                                                 {...params} 
                                                 label="Select Vendor" 
                                                 required 
-                                                error={!!methods.formState.errors.supplier_id}
+                                                error={!!errors.supplier_id}
                                             />
                                         )}
                                     />
@@ -254,7 +291,7 @@ const POCreatePage = () => {
                                         label="Payment Terms" 
                                         fullWidth 
                                         disabled 
-                                        value={methods.watch('supplier_obj')?.payment_terms || ''} 
+                                        value={watch('supplier_obj')?.payment_terms || ''} 
                                         helperText="Auto-populated from Vendor"
                                     />
                                 </Grid>
@@ -298,7 +335,7 @@ const POCreatePage = () => {
                                         fullWidth 
                                         variant="outlined" 
                                         startIcon={<SaveIcon />}
-                                        onClick={methods.handleSubmit(d => onSubmit(d, true))}
+                                        onClick={handleSubmit(d => onSubmit(d, true))}
                                         disabled={createMutation.isPending}
                                     >
                                         Draft
@@ -309,10 +346,10 @@ const POCreatePage = () => {
                                         fullWidth 
                                         variant="contained" 
                                         startIcon={createMutation.isPending ? <CircularProgress size={20} color="inherit"/> : <SendIcon />}
-                                        onClick={methods.handleSubmit(d => onSubmit(d, false))}
+                                        onClick={handleSubmit(d => onSubmit(d, false))}
                                         disabled={createMutation.isPending}
                                     >
-                                        Confirm
+                                        {confirmButtonText}
                                     </Button>
                                 </Grid>
                             </Grid>
