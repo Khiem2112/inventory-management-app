@@ -49,7 +49,10 @@ function ProductsList() {
   const totalCount = useSelector(state => state.products.pagination.totalCount) || 0;
   const currentPage = useSelector(state => state.products.pagination.currentPage);
   const limit = useSelector(state => state.products.pagination.limit);
-  
+
+  console.log(`Check pagination current page: `, currentPage)
+  console.log(`Check pagination totalcount: `, totalCount)
+  console.log(`Check pagination limit: `, limit)
   // Local State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dialogType, setDialogType] = useState(null);
