@@ -129,7 +129,7 @@ const PurchaseOrderList = ({ isCompact }) => {
                         {/* Enable two Box to wrap the filterBar */}
                         {/* Box 1: act as the mask wrapper, handle the actual animated width */}
                         <Box sx={{ 
-                            
+                            flexGrow: 1,
                             overflow: 'hidden', // Clip the content that hasn't been revealed yet
                             animation: 'fadeIn 0.5s ease-in-out',
                                 '@keyframes fadeIn': {
