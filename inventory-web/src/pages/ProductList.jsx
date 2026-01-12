@@ -31,7 +31,6 @@ import { fetchAllProductsAsync,
          setSelectedProduct,
          assignSelectedProduct,
          fetchSomeProductsAsync} from '../myRedux/slices/ProductsSlice';
-import { wsConnectStart, wsDisconnect } from '../myRedux/action/wsActions';
 import API_CONFIG from '../config';
 
 function ProductsList() {
@@ -54,13 +53,6 @@ function ProductsList() {
   const wsStatus = useSelector(state => state.products.wsStatus)
   const WS_URL = `${API_CONFIG.getEffectiveBaseUrl()}`
   // The useWebSocket hook provides everything you need
-    // Handle incoming messages from the WebSocket
-    useEffect(()=>{
-      dispatch(wsConnectStart({url:WS_URL}))
-      return () => {
-        dispatch(wsDisconnect())
-      }
-    }, [dispatch])
 
     // Display connection status
     const statusStyles = {
