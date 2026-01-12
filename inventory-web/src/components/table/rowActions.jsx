@@ -42,7 +42,7 @@ const RowActions = ({ item, onEdit, onDelete, onCreateManifest }) => {
     }
 
     const handleCreateShipmentManifest = (item) => {
-        navigate(`/purchase-orders/${item.purchase_order_id}/create-shipment-manifest`)
+        navigate(`/purchase-orders/create`)
 
     }
     
