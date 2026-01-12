@@ -1,22 +1,22 @@
 import React, { useState } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { 
-    Box, Paper, Typography, Grid, TextField, Button, 
-    Dialog, DialogTitle, DialogContent, DialogActions,
+    Box, Paper, Typography, TextField, Button, 
+    Dialog, DialogTitle, DialogContent, 
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-    CircularProgress, IconButton, Divider
+    CircularProgress, IconButton, Divider, Stack 
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import FilterAltIcon from '@mui/icons-material/FilterAlt'; // New icon
+import FilterAltIcon from '@mui/icons-material/FilterAlt'; 
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 
 import { searchManifests } from '../services/grServices';
 
 const DockReceivingSearch = ({ onManifestSelect }) => {
-    const { register, handleSubmit, control } = useForm();
+    const { register, handleSubmit } = useForm();
     
     // --- State ---
     const [isModalOpen, setModalOpen] = useState(false);
@@ -27,7 +27,6 @@ const DockReceivingSearch = ({ onManifestSelect }) => {
     const onSubmit = async (data) => {
         setIsSearching(true);
         setModalOpen(true); 
-        
         try {
             const results = await searchManifests(data);
             setSearchResults(results);
@@ -45,54 +44,51 @@ const DockReceivingSearch = ({ onManifestSelect }) => {
 
     return (
         <LocalizationProvider dateAdapter={AdapterDateFns}>
+            {/* Visual Container: Paper handles the "card" look */}
             <Paper 
-            elevation={2} 
-            sx={{
-                height: '100%', 
-                bgcolor: 'white',
-                padding: 2 
-                }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 1 }}>
+                elevation={2} 
+                sx={{
+                    height: '100%', 
+                    bgcolor: 'background.paper', // THEME COLOR
+                    p: 2 
+                }}
+            >
+                {/* Header: Replaced Flex Box with Stack */}
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
                     <FilterAltIcon color="primary" />
                     <Typography variant="h6" fontWeight="bold">
                         Search Filters
                     </Typography>
-                </Box>
+                </Stack>
                 
                 <form onSubmit={handleSubmit(onSubmit)}>
-                    <Grid container spacing={2}>
-                        {/* Stack fields vertically for the sidebar layout */}
-                        <Grid item xs={12}>
-                            <TextField 
-                                label="Manifest ID" 
-                                fullWidth 
-                                size="small" 
-                                type="number"
-                                placeholder="e.g. 12"
-                                {...register('manifest_id')} 
-                            />
-                        </Grid>
-                        <Grid item xs={12}>
-                            <TextField 
-                                label="Supplier Name" 
-                                fullWidth 
-                                size="small" 
-                                placeholder="e.g. ConnectAll"
-                                {...register('supplier_name')} 
-                            />
-                        </Grid>
-                        <Grid item xs={12}>
-                            <TextField 
-                                label="Tracking / Ref #" 
-                                fullWidth 
-                                size="small" 
-                                placeholder="e.g. TN211..."
-                                {...register('tracking_ref')} 
-                            />
-                        </Grid>
+                    {/* Form Layout: Replaced Grid with vertical Stack for cleaner sidebar look */}
+                    <Stack spacing={2}>
+                        <TextField 
+                            label="Manifest ID" 
+                            fullWidth 
+                            size="small" 
+                            type="number"
+                            placeholder="e.g. 12"
+                            {...register('manifest_id')} 
+                        />
+                        <TextField 
+                            label="Supplier Name" 
+                            fullWidth 
+                            size="small" 
+                            placeholder="e.g. ConnectAll"
+                            {...register('supplier_name')} 
+                        />
+                        <TextField 
+                            label="Tracking / Ref #" 
+                            fullWidth 
+                            size="small" 
+                            placeholder="e.g. TN211..."
+                            {...register('tracking_ref')} 
+                        />
                         
-                        <Grid item xs={12}>
-                            <Divider sx={{ my: 1 }} />
+                        <Box>
+                            <Divider sx={{ mb: 2 }} />
                             <Button 
                                 type="submit" 
                                 variant="contained" 
@@ -102,12 +98,12 @@ const DockReceivingSearch = ({ onManifestSelect }) => {
                             >
                                 Find Manifests
                             </Button>
-                        </Grid>
-                    </Grid>
+                        </Box>
+                    </Stack>
                 </form>
             </Paper>
 
-            {/* --- SEARCH RESULTS MODAL (Unchanged Logic) --- */}
+            {/* --- SEARCH RESULTS MODAL --- */}
             <Dialog 
                 open={isModalOpen} 
                 onClose={() => setModalOpen(false)}
@@ -123,9 +119,9 @@ const DockReceivingSearch = ({ onManifestSelect }) => {
                 
                 <DialogContent dividers>
                     {isSearching ? (
-                        <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
+                        <Stack alignItems="center" sx={{ p: 5 }}>
                             <CircularProgress />
-                        </Box>
+                        </Stack>
                     ) : searchResults.length === 0 ? (
                         <Typography align="center" color="text.secondary" sx={{ py: 4 }}>
                             No manifests found matching your criteria.

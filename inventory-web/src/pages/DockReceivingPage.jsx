@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom'; // <--- 1. Use Router Params
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Box, Typography, Button, Alert, CircularProgress, Snackbar, Paper } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { Box, Typography, Alert, CircularProgress, Snackbar, Paper, Stack } from '@mui/material';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import DockReceivingSearch from '../components/DockReceivingSearch';
 import ReceivingGrid from '../components/ReceivingGrid';
@@ -12,11 +11,9 @@ const DockReceivingPage = () => {
     // --- 1. State via URL ---
     const [searchParams, setSearchParams] = useSearchParams();
     const activeManifestId = searchParams.get('manifest_id');
-    const queryClient = useQueryClient();
-
     const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
 
-    // --- 2. Data Fetching (Only if ID exists) ---
+    // --- 2. Data Fetching ---
     const { 
         data: manifestData, 
         isLoading, 
@@ -29,9 +26,9 @@ const DockReceivingPage = () => {
         retry: 1
     });
 
-    // --- 3. Mutation (Finalize) ---
+    // --- 3. Mutation ---
     const finalizeMutation = useMutation({
-        mutationFn: finalizeManifest, // <--- Use new service function
+        mutationFn: finalizeManifest,
         onSuccess: (data) => {
             setToast({ 
                 open: true, 
@@ -59,12 +56,11 @@ const DockReceivingPage = () => {
     };
 
     const handleSubmitReceipt = (formData) => {
-        // Construct the payload required by the API
         const payload = {
             type: 'sm',
             sm_id: activeManifestId,
             lines: formData.lines.map(line => ({
-                sm_line_id: line.id, // Maps to 'id' from the fetchManifestDetails response (e.g., 26, 31)
+                sm_line_id: line.id,
                 received_quantity: line?.asset_items.length || 0,
                 asset_items: line.asset_items.map(asset_item => ({
                     serial_number: asset_item?.serial_number,
@@ -72,67 +68,77 @@ const DockReceivingPage = () => {
                 }))
             }))
         };
-
-        // Trigger mutation
-        finalizeMutation.mutate(
-            payload 
-        );
-    };
-
-    const pageLayoutStyles = {
-        display: 'grid',
-        gridTemplateColumns: '350px 1fr', // Fixed sidebar, fluid content
-        gap: 3,
-        height: 'calc(100vh - 100px)', // Adjust based on your header height
-        overflow: 'hidden' 
+        finalizeMutation.mutate(payload);
     };
 
     return (
-        <Box sx={{maxWidth: 1600, mx: 'auto', height: '100%' }}>
+        // Root Container: Sets outer margins
+        <Stack 
+            direction='column'
+            sx={{height: '100%'}}>
             
-            <Box sx={{ mb: 2 }}>
+            {/* Header: Uses Stack for vertical rhythm */}
+            <Stack spacing={0.5} sx={{ mb: 3 }}>
                 <Typography variant="h4" fontWeight="bold">Dock Receiving</Typography>
                 <Typography variant="body2" color="text.secondary">
                     Process inbound shipments and verify inventory counts.
                 </Typography>
-            </Box>
+            </Stack>
 
-            <Box sx={pageLayoutStyles}>
+            {/* Layout: Grid is still best for Sidebar + Fluid Content, but we use Theme spacing */}
+            <Box sx={{ 
+                display: 'grid',
+                gridTemplateColumns: '350px 1fr', 
+                gap: 3,
+                height: '100%', 
+                overflow: 'hidden' 
+            }}>
                 
-                {/* --- LEFT COLUMN: SEARCH --- */}
-                <Box sx={{ overflowY: 'auto', pr: 1 }}>
+                {/* LEFT COLUMN: SEARCH */}
+                <Box sx={{ overflowY: 'auto'}}>
                     <DockReceivingSearch onManifestSelect={handleManifestSelect} />
                 </Box>
 
-                {/* --- RIGHT COLUMN: GRID OR PLACEHOLDER --- */}
+                {/* RIGHT COLUMN: CONTENT */}
                 <Box sx={{ overflowY: 'auto', height: '100%' }}>
                     {!activeManifestId ? (
-                        // EMPTY STATE
+                        // EMPTY STATE: Visuals managed by Paper, Layout by Stack
                         <Paper 
+                            variant="outlined"
                             sx={{ 
                                 height: '100%', 
-                                display: 'flex', 
-                                flexDirection: 'column', 
-                                alignItems: 'center', 
-                                justifyContent: 'center',
-                                bgcolor: '#f8f9fa',
-                                border: '2px dashed #e0e0e0'
+                                bgcolor: 'background.default', // THEME COLOR
+                                borderColor: 'divider',       // THEME COLOR
+                                borderStyle: 'dashed',
+                                borderWidth: 2
                             }}
-                            elevation={0}
                         >
-                            <InventoryIcon sx={{ fontSize: 80, color: 'text.secondary', opacity: 0.3, mb: 2 }} />
-                            <Typography variant="h6" color="text.secondary">No Manifest Selected</Typography>
-                            <Typography variant="body2" color="text.secondary">
-                                Use the search panel on the left to find a shipment.
-                            </Typography>
+                            <Stack 
+                                alignItems="center" 
+                                justifyContent="center" 
+                                spacing={2} 
+                                sx={{ height: '100%' }}
+                            >
+                                <InventoryIcon sx={{ fontSize: 80, color: 'text.secondary', opacity: 0.3 }} />
+                                <Box sx={{ textAlign: 'center' }}>
+                                    <Typography variant="h6" color="text.secondary">No Manifest Selected</Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                        Use the search panel on the left to find a shipment.
+                                    </Typography>
+                                </Box>
+                            </Stack>
                         </Paper>
                     ) : (
                         // ACTIVE STATE
-                        <Box>
+                        <Box
+                        sx ={{
+                            height: '100%'
+                        }}
+                        >
                             {isLoading && (
-                                <Box sx={{ display: 'flex', justifyContent: 'center', p: 10 }}>
+                                <Stack alignItems="center" sx={{ p: 10 }}>
                                     <CircularProgress />
-                                </Box>
+                                </Stack>
                             )}
 
                             {isError && (
@@ -153,7 +159,6 @@ const DockReceivingPage = () => {
                 </Box>
             </Box>
 
-            {/* Toast Notification */}
             <Snackbar 
                 open={toast.open} 
                 autoHideDuration={6000} 
@@ -164,7 +169,7 @@ const DockReceivingPage = () => {
                     {toast.message}
                 </Alert>
             </Snackbar>
-        </Box>
+        </Stack>
     );
 };
 
