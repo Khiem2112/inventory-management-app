@@ -223,6 +223,16 @@ const PurchaseOrderList = ({ isCompact }) => {
                             setPaginationState(prev => ({ ...prev, limit: parseInt(event.target.value, 10), page: 1 }));
                         }}
                         rowsPerPageOptions={[10, 20, 50]}
+                        sx= {{
+                        '& .MuiTablePagination-displayedRows': {
+                        // 1. Force all numbers to be equal width (like code font)
+                        fontVariantNumeric: 'tabular-nums', 
+                        
+                        // 2. Reserve specific space so it doesn't shrink/grow
+                        minWidth: '100px', 
+                        textAlign: 'right' 
+                    }
+                        }}
                     />
                 </Box>
             </Paper>

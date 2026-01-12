@@ -267,7 +267,15 @@ function ProductsList() {
           rowsPerPageOptions={[5, 10, 25]}
           sx={{ 
             borderTop: `1px solid ${theme.palette.divider}`,
-            flexShrink: 0
+            flexShrink: 0,
+            '& .MuiTablePagination-displayedRows': {
+            // 1. Force all numbers to be equal width (like code font)
+            fontVariantNumeric: 'tabular-nums', 
+            
+            // 2. Reserve specific space so it doesn't shrink/grow
+            minWidth: '100px', 
+            textAlign: 'right' 
+        }
            }}
         />
       </Paper>
