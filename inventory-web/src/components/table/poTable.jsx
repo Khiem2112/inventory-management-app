@@ -92,7 +92,13 @@ const ServerSideTable = ({
               overflow: 'auto', 
               border: 'none',      
               bgcolor: 'transparent',
-              flexGrow: 1
+              flexGrow: 1,
+              scrollbarWidth: 'none', 
+    
+              // Hide Scrollbar for Chrome, Safari, Edge
+              '&::-webkit-scrollbar': {
+                display: 'none',
+              }
 
           }}
       >

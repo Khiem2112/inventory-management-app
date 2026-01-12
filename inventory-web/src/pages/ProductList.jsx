@@ -158,16 +158,25 @@ function ProductsList() {
           display: 'flex',
           flexDirection: 'column',
           overflow: 'auto', 
-          bgcolor: 'background.paper'
-        }}
+          bgcolor: 'background.paper',
+          }}
       >
-        <TableContainer sx={{ flexGrow: 1, overflow: 'auto' }}>
+        <TableContainer sx={{ 
+          flexGrow: 1, 
+          overflow: 'auto',
+          scrollbarWidth: 'none', 
+    
+          // Hide Scrollbar for Chrome, Safari, Edge
+          '&::-webkit-scrollbar': {
+            display: 'none',
+          }
+ }}>
           <Table 
             stickyHeader 
             size="medium" // 'medium' usually adds more padding than 'small'
             sx={{
               tableLayout: 'fixed', // Strict column sizing
-              minWidth: 650,        // Prevent crushing on small screens
+              minWidth: 650,
             }}
           >
             <TableHead>
@@ -258,7 +267,15 @@ function ProductsList() {
           rowsPerPageOptions={[5, 10, 25]}
           sx={{ 
             borderTop: `1px solid ${theme.palette.divider}`,
-            flexShrink: 0
+            flexShrink: 0,
+            '& .MuiTablePagination-displayedRows': {
+            // 1. Force all numbers to be equal width (like code font)
+            fontVariantNumeric: 'tabular-nums', 
+            
+            // 2. Reserve specific space so it doesn't shrink/grow
+            minWidth: '100px', 
+            textAlign: 'right' 
+        }
            }}
         />
       </Paper>
