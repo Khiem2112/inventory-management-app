@@ -4,10 +4,14 @@ import {
     Checkbox, FormControlLabel, Divider, Stack, Typography, 
     IconButton, Tooltip, useTheme
 } from '@mui/material';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import FilterListIcon from '@mui/icons-material/FilterList';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { PO_COLUMNS_CONFIG } from '../../services/poService';
+import dayjs from 'dayjs';
 
 /**
  * MUI Refactored Column Toggler
@@ -118,7 +122,11 @@ const ColumnToggler = ({ allColumnsConfig, onToggle }) => {
  */
 const FilterBar = ({ 
     onSupplierChange, 
-    onStatusChange, 
+    onStatusChange,
+    onStartDateChange, 
+    onEndDateChange,  
+    startDate,         
+    endDate,
     initialSupplierId,
     initialStatus,
     onColumnToggle, 
@@ -127,78 +135,88 @@ const FilterBar = ({
     statuses = [] 
 }) => {
     return (
-        <Stack 
-        direction="row" 
-        spacing={2} 
-        alignItems="center" 
-        lexWrap="nowrap" 
-        sx={{ 
-            width: '100%', 
-            overflowX: 'auto',
-            py: 1, 
-            px: 1 
-            }}>
-            {/* Header Icon */}
-            <FilterListIcon color="action" sx={{ mr: 1, flexShrink: 0 }} />
-
-            {/* Vendor Filter */}
-            <TextField
-                select
-                label="Vendor"
-                size="small"
-                value={initialSupplierId || ""}
-                onChange={(e) => onSupplierChange(Number(e.target.value))}
-                sx={{ minWidth: 200, flexShrink: 0 }}
-            >
-                <MenuItem value="">All Suppliers</MenuItem>
-                {suppliers.map(s => (
-                    <MenuItem key={s.supplier_id} value={s.supplier_id}>
-                        {s.name || "Unknown Supplier"}
-                    </MenuItem>
-                ))}
-            </TextField>
-
-            {/* Status Filter */}
-            <TextField
-                select
-                label="Status"
-                size="small"
-                value={initialStatus || ""}
-                onChange={(e) => onStatusChange(e.target.value)}
-                sx={{ minWidth: 160, flexShrink: 0 }}
-            >
-                <MenuItem value="">All Statuses</MenuItem>
-                {statuses.map(status => (
-                    <MenuItem key={status} value={status}>
-                        {status}
-                    </MenuItem>
-                ))}
-            </TextField>
-
-            {/* Date Filter */}
-            <TextField
-                label="Created Date"
-                type="date"
-                size="small"
-                InputLabelProps={{ shrink: true }}
-                sx={{ minWidth: 160, flexShrink: 0 }}
-            />
-
-            {/* Spacer to push Toggler to the right */}
-            <Box sx={{ flexGrow: 1 }} />
-
-            {/* Column Selection */}
-            <Box 
+        <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <Stack 
+            direction="row" 
+            spacing={2} 
+            alignItems="center" 
+            lexWrap="nowrap" 
             sx={{ 
-                flexShrink: 0,
-                marginLeft: 'auto'
+                width: '100%', 
+                overflowX: 'auto',
+                py: 1, 
+                px: 1 
                 }}>
-                <ColumnToggler 
-                    allColumnsConfig={allColumnsConfig} 
-                    onToggle={onColumnToggle} 
+                {/* Header Icon */}
+                <FilterListIcon color="action" sx={{ mr: 1, flexShrink: 0 }} />
+
+                {/* Vendor Filter */}
+                <TextField
+                    select
+                    label="Vendor"
+                    size="small"
+                    value={initialSupplierId || ""}
+                    onChange={(e) => onSupplierChange(Number(e.target.value))}
+                    sx={{ minWidth: 200, flexShrink: 0 }}
+                >
+                    <MenuItem value="">All Suppliers</MenuItem>
+                    {suppliers.map(s => (
+                        <MenuItem key={s.supplier_id} value={s.supplier_id}>
+                            {s.name || "Unknown Supplier"}
+                        </MenuItem>
+                    ))}
+                </TextField>
+
+                {/* Status Filter */}
+                <TextField
+                    select
+                    label="Status"
+                    size="small"
+                    value={initialStatus || ""}
+                    onChange={(e) => onStatusChange(e.target.value)}
+                    sx={{ minWidth: 160, flexShrink: 0 }}
+                >
+                    <MenuItem value="">All Statuses</MenuItem>
+                    {statuses.map(status => (
+                        <MenuItem key={status} value={status}>
+                            {status}
+                        </MenuItem>
+                    ))}
+                </TextField>
+
+                {/* Start Date Filter */}
+                <DatePicker
+                    label="From"
+                    value={startDate ? dayjs(startDate) : null}
+                    onChange={(newValue) => onStartDateChange(newValue ? newValue.format('YYYY-MM-DD') : null)}
+                    slotProps={{ textField: { size: 'small', sx: { width: 170 } } }}
                 />
-            </Box>
-        </Stack>
+
+                {/* End Date Filter */}
+                <DatePicker
+                    label="To"
+                    value={endDate ? dayjs(endDate) : null}
+                    onChange={(newValue) => onEndDateChange(newValue ? newValue.format('YYYY-MM-DD') : null)}
+                    slotProps={{ textField: { size: 'small', sx: { width: 170 } } }}
+                />
+
+                {/* Spacer to push Toggler to the right */}
+                <Box sx={{ flexGrow: 1 }} />
+
+                {/* Column Selection */}
+                <Box 
+                sx={{ 
+                    flexShrink: 0,
+                    marginLeft: 'auto'
+                    }}>
+                    <ColumnToggler 
+                        allColumnsConfig={allColumnsConfig} 
+                        onToggle={onColumnToggle} 
+                    />
+                </Box>
+            </Stack>
+        </LocalizationProvider>
+        
     );
 };
 

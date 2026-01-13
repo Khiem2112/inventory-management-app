@@ -23,7 +23,7 @@ from app.schemas.purchase_order import (
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import desc, inspect, func
-from datetime import datetime, date
+from datetime import datetime, date, time, timedelta
 from typing import Optional
 from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
@@ -62,6 +62,8 @@ def get_purchase_order_paginated(
   current_user: UserORM = Depends(get_current_user),
   page: int = Query(1, ge=1, description='Page number (1-based)'),
   limit: int = Query(10, ge=1, le=100, description='Items per page'),
+  start_date: Optional[date] = Query(None, description="Filter PO created on or after this date (ISO 8601: YYYY-MM-DD)"),
+  end_date: Optional[date] = Query(None, description="Filter PO created on or before this date (ISO 8601: YYYY-MM-DD)"),
   status_filter: Optional[str] = Query(None, alias="status", description="Filter by status"),
   vendor_id: Optional[int] = Query(None, description="Filter by Vendor ID")
 ):
@@ -78,7 +80,15 @@ def get_purchase_order_paginated(
       query = query.filter(PurchaseOrderORM.Status == status_filter)
     if vendor_id:
       query = query.filter(PurchaseOrderORM.SupplierId == vendor_id)
-
+    if start_date and end_date:
+        if end_date < start_date:
+            raise ValueError(f"Start date > End date")
+        start_datetime = datetime.combine(start_date, time.min)
+        end_datetime = datetime.combine(end_date + timedelta(days=1), time.min)
+        query = query.filter(PurchaseOrderORM.CreateDate > start_datetime,
+                             PurchaseOrderORM.CreateDate < end_datetime
+                             )
+    
     # 3. Calculate Meta Data (Total Records)
     total_records = query.count()
     total_pages = (total_records + limit - 1) // limit
@@ -140,7 +150,7 @@ def get_purchase_order_paginated(
     logger.error(f"Unexpected Error: {e}")
     raise HTTPException(
       status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-      detail="An unexpected error occurred."
+      detail=f"An unexpected error occurred: {e}"
     )
     
 @router.get('/{purchase_order_id}', 
