@@ -3,33 +3,35 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-const DEFAULT_STATE = { page: 1, limit: 10 };
+// Erase the Default state since we just manage two default state which is page and limit --> too few
 
 // Helper to read state from the URL
 const parseUrlState = (search) => {
     const params = new URLSearchParams(search);
     
-    // Read and type-cast with defaults
-    const page = parseInt(params.get('page')) || DEFAULT_STATE.page;
-    const limit = parseInt(params.get('limit')) || DEFAULT_STATE.limit;
-    const status = params.get('status') || DEFAULT_STATE.status;
-    const vendor_id = params.get('vendor_id') || DEFAULT_STATE.vendor_id;
-
-    return { page, limit, status, vendor_id };
+    return {
+        page: parseInt(params.get('page')) || 1,
+        limit: parseInt(params.get('limit')) || 10,
+        status: params.get('status') || '',
+        vendor_id: params.get('vendor_id') || '',
+        // NEW: Parse dates from URL
+        start_date: params.get('start_date') || null,
+        end_date: params.get('end_date') || null
+    };
 };
 
 // Helper to write state back to the URL
 const buildUrlSearch = (state) => {
     const newParams = new URLSearchParams();
-    
-    if (state.page !== DEFAULT_STATE.page) newParams.set('page', state.page);
-    if (state.limit !== DEFAULT_STATE.limit) newParams.set('limit', state.limit);
-    if (state.status !== DEFAULT_STATE.status && state.status) newParams.set('status', state.status);
-    if (state.vendor_id !== DEFAULT_STATE.vendor_id && state.vendor_id) newParams.set('vendor_id', state.vendor_id);
-
+    if (state.page !== 1) newParams.set('page', state.page);
+    if (state.limit !== 10) newParams.set('limit', state.limit);
+    if (state.status) newParams.set('status', state.status);
+    if (state.vendor_id) newParams.set('vendor_id', state.vendor_id);
+    // NEW: Persist dates to URL
+    if (state.start_date) newParams.set('start_date', state.start_date);
+    if (state.end_date) newParams.set('end_date', state.end_date);
     return newParams.toString();
 };
-
 export const usePoUrlState = () => {
     const location = useLocation();
     const navigate = useNavigate();
@@ -64,6 +66,8 @@ export const usePoUrlState = () => {
         const prevFilterState = {
             status: prevState.status,
             vendor_id: prevState.vendor_id,
+            start_date: prevState.create_date || null,
+            end_date: prevState.end_date || null
         };
         
         // 2. Determine the new filter values: execute the callback if 'update' is a function
@@ -107,7 +111,12 @@ export const usePoUrlState = () => {
 }, [])
 
     // 5. Expose split states for TanStack Query compatibility
-    const filterState = useMemo(() => ({ status: unifiedState.status, vendor_id: unifiedState.vendor_id }), [unifiedState]);
+    const filterState = useMemo(() => ({ 
+        status: unifiedState.status, 
+        vendor_id: unifiedState.vendor_id,
+        start_date: unifiedState.start_date, 
+        end_date: unifiedState.end_date
+    }), [unifiedState]);
     const paginationState = useMemo(() => ({ page: unifiedState.page, limit: unifiedState.limit }), [unifiedState]);
 
     return { filterState, setFilterState, paginationState, setPaginationState };

@@ -153,6 +153,11 @@ const PurchaseOrderList = ({ isCompact }) => {
                                     initialSupplierId={filterState?.vendor_id}
                                     suppliers={queryResult?.meta.suppliers || []}
                                     statuses={queryResult?.meta.statuses || []}
+
+                                    startDate={filterState?.start_date}
+                                    endDate={filterState?.end_date}
+                                    onStartDateChange={(date) => setFilterState(prev => ({ ...prev, start_date: date }))}
+                                    onEndDateChange={(date) => setFilterState(prev => ({ ...prev, end_date: date }))}
                                     onColumnToggle={setVisibleKeys}
                                 />
                             </Box>

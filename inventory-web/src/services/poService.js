@@ -51,7 +51,10 @@ const buildQueryParams = (pagination, filters) => {
 
     if (filters.status) params.append('status', filters.status);
     if (filters.vendor_id) params.append('vendor_id', filters.vendor_id);
-    // Add other filters as needed
+    
+    // NEW: Add Date Range filters
+    if (filters.start_date) params.append('start_date', filters.start_date);
+    if (filters.end_date) params.append('end_date', filters.end_date);
     
     return params.toString();
 };
