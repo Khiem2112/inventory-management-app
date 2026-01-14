@@ -119,7 +119,7 @@ const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
                                     <TableCell>Product / SKU</TableCell>
                                     <TableCell align="center">Ref ID</TableCell>
                                     <TableCell width="25%">Receiving Progress</TableCell>
-                                    <TableCell align="center" sx={{ width: 150 }}>Qty Input</TableCell>
+                                    <TableCell align="center" sx={{ width: 150 }}>Scanned Assets</TableCell>
                                     <TableCell align="right">Receiving Strategy</TableCell>
                                     <TableCell align="center">Status</TableCell>
                                 </TableRow>
@@ -152,19 +152,18 @@ const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
                                             <TableCell>
                                                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                                                     <ManifestLineProgress 
-                                                        declared={declared} 
-                                                        received={received} 
-                                                        remaining={remaining} 
-                                                    />
-                                                    {/* Optional: Small text below bar for quick reference */}
-                                                    <Typography variant="caption" color="text.secondary" align="center">
-                                                        {received} received / {remaining} remaining
-                                                    </Typography>
+                                                    declared={declared} 
+                                                    received={received} 
+                                                    scanned={currentInput} /* PASS INPUT HERE */
+                                                />
+                                                <Typography variant="caption" color="text.secondary" align="center">
+                                                    {/* Text breakdown for clarity */}
+                                                    {received} Rec / {currentInput} Scan / {Math.max(0, declared - received - currentInput)} Rem
+                                                </Typography>
                                                 </Box>
                                             </TableCell>
                                             <TableCell>
                                                 <Stack direction="row" justifyContent="flex-end" alignItems="center" spacing={1}>
-                                                    <Chip label={`${assetItems.length} Assets`} size="small" color={assetItems.length > 0 ? "primary" : "default"} />
                                                     <Button
                                                         size="small" variant="outlined" startIcon={<QrCodeIcon />}
                                                         onClick={() => openSerialDialog(index)}
@@ -251,43 +250,73 @@ const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
 export default ReceivingGrid;
 
 
-const ManifestLineProgress = ({ declared, received, remaining }) => {
-    // Safety check to avoid division by zero
+const ManifestLineProgress = ({ declared, received, scanned }) => {
+    // Safety check
     const total = declared || 1; 
+
+    // 1. Calculate Raw Percentages
+    const receivedPercent = (received / total) * 100;
+    const scannedPercent = (scanned / total) * 100;
     
-    // Calculate percentages for width
-    // We clamp values to ensure visual stability (e.g., if received > declared)
-    const receivedPercent = Math.min(100, Math.max(0, (received / total) * 100));
-    const remainingPercent = Math.min(100, Math.max(0, (remaining / total) * 100));
+    // 2. Calculate Remaining (Visual only)
+    // We safeguard against negative values if scanned + received > declared
+    const remainingCount = Math.max(0, declared - received - scanned);
+    const remainingPercent = (remainingCount / total) * 100;
 
     return (
-        <Box sx={{ width: '100%', height: 24, display: 'flex', borderRadius: 1, overflow: 'hidden', bgcolor: '#eee' }}>
+        <Box sx={{ 
+            width: '100%', 
+            height: 24, 
+            display: 'flex', 
+            borderRadius: 1, 
+            overflow: 'hidden', 
+            bgcolor: '#eee', // Gray background acts as overflow protection
+            border: '1px solid #e0e0e0'
+        }}>
             
-            {/* GREEN SECTION: Received */}
-            <Tooltip title={`${received}/${declared} has been received`} arrow>
-                <Box 
-                    sx={{ 
-                        width: `${receivedPercent}%`, 
-                        bgcolor: '#4caf50', // Green
-                        cursor: 'pointer',
-                        transition: 'width 0.3s ease',
-                        '&:hover': { opacity: 0.9 }
-                    }} 
-                />
-            </Tooltip>
+            {/* GREEN: Historically Received */}
+            {received > 0 && (
+                <Tooltip title={`${received} already received`} arrow>
+                    <Box 
+                        sx={{ 
+                            width: `${receivedPercent}%`, 
+                            bgcolor: '#4caf50', // Green
+                            transition: 'width 0.3s ease',
+                            '&:hover': { opacity: 0.9 }
+                        }} 
+                    />
+                </Tooltip>
+            )}
 
-            {/* ORANGE SECTION: Remaining */}
-            <Tooltip title={`${remaining}/${declared} is remaining`} arrow>
-                <Box 
-                    sx={{ 
-                        flexGrow: 1, // Takes up the rest of the space
-                        bgcolor: '#ff9800', // Orange
-                        cursor: 'pointer',
-                        transition: 'width 0.3s ease',
-                        '&:hover': { opacity: 0.9 }
-                    }} 
-                />
-            </Tooltip>
+            {/* YELLOW: Currently Scanned (The "Input") */}
+            {scanned > 0 && (
+                <Tooltip title={`${scanned} currently scanned/input`} arrow>
+                    <Box 
+                        sx={{ 
+                            width: `${scannedPercent}%`, 
+                            bgcolor: '#ffeb3b', // Yellow
+                            transition: 'width 0.3s ease',
+                            cursor: 'pointer',
+                            '&:hover': { opacity: 0.9 }
+                        }} 
+                    />
+                </Tooltip>
+            )}
+
+            {/* ORANGE: Remaining to be done */}
+            {remainingCount > 0 && (
+                <Tooltip title={`${remainingCount} remaining`} arrow>
+                    <Box 
+                        sx={{ 
+                            width: `${remainingPercent}%`, // Uses remaining width
+                            bgcolor: '#ff9800', // Orange
+                            transition: 'width 0.3s ease',
+                            cursor: 'help',
+                            '&:hover': { opacity: 0.9 }
+                        }} 
+                    />
+                </Tooltip>
+            )}
         </Box>
     );
 };
