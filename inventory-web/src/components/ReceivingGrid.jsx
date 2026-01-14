@@ -118,10 +118,8 @@ const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
                                 <TableRow>
                                     <TableCell>Product / SKU</TableCell>
                                     <TableCell align="center">Ref ID</TableCell>
-                                    <TableCell align="right">Declared</TableCell>
-                                    <TableCell align="right">Received</TableCell>
-                                    <TableCell align="right">Remaining</TableCell>
-                                    <TableCell align="center" sx={{ width: 150 }}>Qty Input</TableCell>
+                                    <TableCell width="25%">Receiving Progress</TableCell>
+                                    <TableCell align="center" sx={{ width: 150 }}>Scanned Assets</TableCell>
                                     <TableCell align="right">Receiving Strategy</TableCell>
                                     <TableCell align="center">Status</TableCell>
                                 </TableRow>
@@ -132,6 +130,8 @@ const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
                                     const currentLineData = watchedLines[index]; 
                                     const assetItems = currentLineData?.asset_items || [];
                                     const currentInput = currentLineData?.quantity_input || 0;
+                                    const declared = currentLineData?.quantity_declared || 0;
+                                    const received = currentLineData?.quantity_received || 0;
                                     const remaining = currentLineData?.quantity_remaining || 0;
                                     const isOver = Number(currentInput) > remaining;
                                     const isComplete = Number(currentInput) === remaining;
@@ -149,18 +149,21 @@ const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
                                             <TableCell align="center">
                                                 <Chip label={line.id} size="small" variant="outlined" />
                                             </TableCell>
-                                            <TableCell align="right">
-                                                <Typography fontWeight="500">{currentLineData?.quantity_declared || 0}</Typography>
-                                            </TableCell>
-                                            <TableCell align="right">
-                                                <Typography fontWeight="500">{currentLineData?.quantity_received || 0}</Typography>
-                                            </TableCell>
-                                            <TableCell align="right">
-                                                <Typography fontWeight="500">{remaining}</Typography>
+                                            <TableCell>
+                                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                                    <ManifestLineProgress 
+                                                    declared={declared} 
+                                                    received={received} 
+                                                    scanned={currentInput} /* PASS INPUT HERE */
+                                                />
+                                                <Typography variant="caption" color="text.secondary" align="center">
+                                                    {/* Text breakdown for clarity */}
+                                                    {received} Rec / {currentInput} Scan / {Math.max(0, declared - received - currentInput)} Rem
+                                                </Typography>
+                                                </Box>
                                             </TableCell>
                                             <TableCell>
                                                 <Stack direction="row" justifyContent="flex-end" alignItems="center" spacing={1}>
-                                                    <Chip label={`${assetItems.length} Assets`} size="small" color={assetItems.length > 0 ? "primary" : "default"} />
                                                     <Button
                                                         size="small" variant="outlined" startIcon={<QrCodeIcon />}
                                                         onClick={() => openSerialDialog(index)}
@@ -245,3 +248,75 @@ const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
 };
 
 export default ReceivingGrid;
+
+
+const ManifestLineProgress = ({ declared, received, scanned }) => {
+    // Safety check
+    const total = declared || 1; 
+
+    // 1. Calculate Raw Percentages
+    const receivedPercent = (received / total) * 100;
+    const scannedPercent = (scanned / total) * 100;
+    
+    // 2. Calculate Remaining (Visual only)
+    // We safeguard against negative values if scanned + received > declared
+    const remainingCount = Math.max(0, declared - received - scanned);
+    const remainingPercent = (remainingCount / total) * 100;
+
+    return (
+        <Box sx={{ 
+            width: '100%', 
+            height: 24, 
+            display: 'flex', 
+            borderRadius: 1, 
+            overflow: 'hidden', 
+            bgcolor: '#eee', // Gray background acts as overflow protection
+            border: '1px solid #e0e0e0'
+        }}>
+            
+            {/* GREEN: Historically Received */}
+            {received > 0 && (
+                <Tooltip title={`${received} already received`} arrow>
+                    <Box 
+                        sx={{ 
+                            width: `${receivedPercent}%`, 
+                            bgcolor: '#4caf50', // Green
+                            transition: 'width 0.3s ease',
+                            '&:hover': { opacity: 0.9 }
+                        }} 
+                    />
+                </Tooltip>
+            )}
+
+            {/* YELLOW: Currently Scanned (The "Input") */}
+            {scanned > 0 && (
+                <Tooltip title={`${scanned} currently scanned/input`} arrow>
+                    <Box 
+                        sx={{ 
+                            width: `${scannedPercent}%`, 
+                            bgcolor: '#ffeb3b', // Yellow
+                            transition: 'width 0.3s ease',
+                            cursor: 'pointer',
+                            '&:hover': { opacity: 0.9 }
+                        }} 
+                    />
+                </Tooltip>
+            )}
+
+            {/* ORANGE: Remaining to be done */}
+            {remainingCount > 0 && (
+                <Tooltip title={`${remainingCount} remaining`} arrow>
+                    <Box 
+                        sx={{ 
+                            width: `${remainingPercent}%`, // Uses remaining width
+                            bgcolor: '#ff9800', // Orange
+                            transition: 'width 0.3s ease',
+                            cursor: 'help',
+                            '&:hover': { opacity: 0.9 }
+                        }} 
+                    />
+                </Tooltip>
+            )}
+        </Box>
+    );
+};
