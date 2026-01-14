@@ -118,9 +118,7 @@ const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
                                 <TableRow>
                                     <TableCell>Product / SKU</TableCell>
                                     <TableCell align="center">Ref ID</TableCell>
-                                    <TableCell align="right">Declared</TableCell>
-                                    <TableCell align="right">Received</TableCell>
-                                    <TableCell align="right">Remaining</TableCell>
+                                    <TableCell width="25%">Receiving Progress</TableCell>
                                     <TableCell align="center" sx={{ width: 150 }}>Qty Input</TableCell>
                                     <TableCell align="right">Receiving Strategy</TableCell>
                                     <TableCell align="center">Status</TableCell>
@@ -132,6 +130,8 @@ const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
                                     const currentLineData = watchedLines[index]; 
                                     const assetItems = currentLineData?.asset_items || [];
                                     const currentInput = currentLineData?.quantity_input || 0;
+                                    const declared = currentLineData?.quantity_declared || 0;
+                                    const received = currentLineData?.quantity_received || 0;
                                     const remaining = currentLineData?.quantity_remaining || 0;
                                     const isOver = Number(currentInput) > remaining;
                                     const isComplete = Number(currentInput) === remaining;
@@ -149,14 +149,18 @@ const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
                                             <TableCell align="center">
                                                 <Chip label={line.id} size="small" variant="outlined" />
                                             </TableCell>
-                                            <TableCell align="right">
-                                                <Typography fontWeight="500">{currentLineData?.quantity_declared || 0}</Typography>
-                                            </TableCell>
-                                            <TableCell align="right">
-                                                <Typography fontWeight="500">{currentLineData?.quantity_received || 0}</Typography>
-                                            </TableCell>
-                                            <TableCell align="right">
-                                                <Typography fontWeight="500">{remaining}</Typography>
+                                            <TableCell>
+                                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                                    <ManifestLineProgress 
+                                                        declared={declared} 
+                                                        received={received} 
+                                                        remaining={remaining} 
+                                                    />
+                                                    {/* Optional: Small text below bar for quick reference */}
+                                                    <Typography variant="caption" color="text.secondary" align="center">
+                                                        {received} received / {remaining} remaining
+                                                    </Typography>
+                                                </Box>
                                             </TableCell>
                                             <TableCell>
                                                 <Stack direction="row" justifyContent="flex-end" alignItems="center" spacing={1}>
@@ -245,3 +249,45 @@ const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
 };
 
 export default ReceivingGrid;
+
+
+const ManifestLineProgress = ({ declared, received, remaining }) => {
+    // Safety check to avoid division by zero
+    const total = declared || 1; 
+    
+    // Calculate percentages for width
+    // We clamp values to ensure visual stability (e.g., if received > declared)
+    const receivedPercent = Math.min(100, Math.max(0, (received / total) * 100));
+    const remainingPercent = Math.min(100, Math.max(0, (remaining / total) * 100));
+
+    return (
+        <Box sx={{ width: '100%', height: 24, display: 'flex', borderRadius: 1, overflow: 'hidden', bgcolor: '#eee' }}>
+            
+            {/* GREEN SECTION: Received */}
+            <Tooltip title={`${received}/${declared} has been received`} arrow>
+                <Box 
+                    sx={{ 
+                        width: `${receivedPercent}%`, 
+                        bgcolor: '#4caf50', // Green
+                        cursor: 'pointer',
+                        transition: 'width 0.3s ease',
+                        '&:hover': { opacity: 0.9 }
+                    }} 
+                />
+            </Tooltip>
+
+            {/* ORANGE SECTION: Remaining */}
+            <Tooltip title={`${remaining}/${declared} is remaining`} arrow>
+                <Box 
+                    sx={{ 
+                        flexGrow: 1, // Takes up the rest of the space
+                        bgcolor: '#ff9800', // Orange
+                        cursor: 'pointer',
+                        transition: 'width 0.3s ease',
+                        '&:hover': { opacity: 0.9 }
+                    }} 
+                />
+            </Tooltip>
+        </Box>
+    );
+};
