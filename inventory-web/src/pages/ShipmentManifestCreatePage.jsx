@@ -312,6 +312,7 @@ const Step1_Details = (
         setValue(`lines.${activeLineIndex}.asset_items`, newSerials);
         // Also update the declared quantity to match the serial count
         setValue(`lines.${activeLineIndex}.quantity_declared`, newSerials.length);
+        setSerialDialogOpen(false)
     };
 
     // --- Form Setup ---
