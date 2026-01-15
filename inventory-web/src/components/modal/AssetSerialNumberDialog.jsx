@@ -1,18 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
-    Box, TextField, Button, CircularProgress, IconButton, Dialog, 
+    Box, TextField, Button, IconButton, Dialog, 
     DialogTitle, DialogContent, DialogActions, List, ListItem, 
-    ListItemText, ListItemSecondaryAction, Alert, AlertTitle, 
+    ListItemText, Alert, AlertTitle, 
     Snackbar, Link, Typography, Chip, 
-    Tooltip, Stack
+    Tooltip, Stack, Divider
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import InfoIcon from '@mui/icons-material/Info';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import WarningAmberIcon from '@mui/icons-material/WarningAmber'; // For Duplicates
-import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline'; // For Invalid
-import CheckCircleIcon from '@mui/icons-material/CheckCircle'; // For Valid
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline'; // For Pending
+import WarningAmberIcon from '@mui/icons-material/WarningAmber'; 
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline'; 
+import CheckCircleIcon from '@mui/icons-material/CheckCircle'; 
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline'; 
+import ThumbUpIcon from '@mui/icons-material/ThumbUp';
+import ThumbDownIcon from '@mui/icons-material/ThumbDown';
+import BlockIcon from '@mui/icons-material/Block';
 import { useMutation } from '@tanstack/react-query';
 import { useFormContext } from 'react-hook-form'; 
 import { verifyShipmentLineAssets, verifyAssetsExistence } from '../../services/grServices';
@@ -103,44 +106,45 @@ const SerialNumberDialog = ({
     open, onClose, onSave, 
     initialSerials = [], maxQty, productName, manifestLineId, receivingStrategy 
 }) => {
-    const { getValues } = useFormContext(); 
+    const { getValues } = useFormContext() || {}; 
     
     // --- STATE ---
     const [serials, setSerials] = useState([]);
     const [currentSerial, setCurrentSerial] = useState("");
     const [needsVerification, setNeedsVerification] = useState(false);
     const [snackbar, setSnackbar] = useState({ open: false, message: '' });
-    console.log(`Current serials: `, serials)
 
     // --- INITIALIZATION ---
     useEffect(() => {
         if (open) {
-            setSerials(initialSerials.map(s => ({ 
-                serial_number: s.serial_number, 
-                status: 'pending' 
-            })));
+            const formatted = initialSerials.map(s => {
+                if (typeof s === 'string') {
+                    return { serial_number: s, status: 'pending', isAccepted: true };
+                }
+                return { 
+                    ...s, 
+                    status: s.status || 'pending', 
+                    isAccepted: s.isAccepted !== undefined ? s.isAccepted : true 
+                };
+            });
+            setSerials(formatted);
             setNeedsVerification(false);
             setCurrentSerial("");
             mutation.reset(); 
         }
-    }, [open]);
+    }, [open, initialSerials]);
 
     // --- MUTATION ---
     const mutation = useMutation({
-        // FIX: We destructure { assets } because your onClick passes an object.
         mutationFn: ({ assets }) => {
-            // 1. Prepare the clean array of objects required by both services
             const cleanAssetsArray = assets.map(s => ({ serial_number: s.serial_number }));
 
-            // 2. Branch Logic based on Strategy
             if (receivingStrategy === 'asset_specified') {
-                // Strategy A: Shipment Line Verification (needs line_id wrapper)
                 return verifyShipmentLineAssets({ 
                     line_id: manifestLineId, 
                     assets: cleanAssetsArray 
                 });
             } else {
-                // Strategy B: Asset Existence/Uniqueness (needs array directly)
                 return verifyAssetsExistence(cleanAssetsArray);
             }
         },
@@ -148,7 +152,6 @@ const SerialNumberDialog = ({
             let badSerials = [];
             let goodSerials = [];
             
-            // Handle different response keys from the two services
             if (receivingStrategy === 'asset_specified') {
                 badSerials = data.redundant_asset_serials || [];
                 goodSerials = data.matched_asset_serials || [];
@@ -158,8 +161,15 @@ const SerialNumberDialog = ({
             }
 
             setSerials(prev => prev.map(item => {
-                if (badSerials.includes(item.serial_number)) return { ...item, status: 'invalid' };
-                if (goodSerials.includes(item.serial_number)) return { ...item, status: 'valid' };
+                const sn = item.serial_number;
+                if (badSerials.includes(sn)) {
+                    // Invalid items are auto-rejected
+                    return { ...item, status: 'invalid', isAccepted: false };
+                }
+                if (goodSerials.includes(sn)) {
+                    // Valid items are auto-accepted
+                    return { ...item, status: 'valid', isAccepted: true };
+                }
                 return item;
             }));
 
@@ -195,7 +205,7 @@ const SerialNumberDialog = ({
             return;
         }
 
-        if (serials.length + uniqueNewItems.length > maxQty) {
+        if (maxQty && serials.length + uniqueNewItems.length > maxQty) {
             const remainingSpace = maxQty - serials.length;
             setSnackbar({
                 open: true,
@@ -204,18 +214,15 @@ const SerialNumberDialog = ({
             return; 
         }
 
-        const newObjects = uniqueNewItems.map(sn => ({ serial_number: sn, status: 'pending' }));
+        const newObjects = uniqueNewItems.map(sn => ({ 
+            serial_number: sn, 
+            status: 'pending', 
+            isAccepted: true 
+        }));
+        
         setSerials([...serials, ...newObjects]);
         setCurrentSerial("");
         setNeedsVerification(true);
-
-        if (rawItems.length > uniqueNewItems.length) {
-            const ignoredCount = rawItems.length - uniqueNewItems.length;
-            setSnackbar({
-                open: true,
-                message: `Added ${uniqueNewItems.length} items. ${ignoredCount} duplicates ignored.`
-            });
-        }
     };
 
     const handleDelete = (index) => {
@@ -225,23 +232,37 @@ const SerialNumberDialog = ({
         setNeedsVerification(true);
     };
 
+    const toggleAcceptance = (index) => {
+        const newList = [...serials];
+        newList[index].isAccepted = !newList[index].isAccepted;
+        setSerials(newList);
+    };
+
     // --- COMPUTED LISTS ---
     const getGlobalDuplicates = () => {
+        if (!getValues) return new Set();
         const allLines = getValues('lines') || [];
         const otherSerials = new Set();
         allLines.forEach(line => {
             if (line.id !== manifestLineId && line.asset_items) {
                 line.asset_items.forEach(item => {
-                    if (item.serial_number) otherSerials.add(item.serial_number);
+                    const sn = typeof item === 'string' ? item : item.serial_number;
+                    if (sn) otherSerials.add(sn);
                 });
             }
         });
         return new Set([...otherSerials]);
     };
-    const globalDuplicateSet = getGlobalDuplicates();
+    
+    const globalDuplicateSet = useMemo(() => getGlobalDuplicates(), [serials]);
 
-    const duplicateList = serials.filter(s => globalDuplicateSet.has(s.serial_number)).map(s => s.serial_number);
-    const invalidList = serials.filter(s => s.status === 'invalid').map(s => s.serial_number);
+    const duplicateList = serials
+        .filter(s => globalDuplicateSet.has(s.serial_number))
+        .map(s => s.serial_number);
+        
+    const invalidList = serials
+        .filter(s => s.status === 'invalid')
+        .map(s => s.serial_number);
 
     return (
         <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -272,7 +293,7 @@ const SerialNumberDialog = ({
                     )}
 
                     {invalidList.length > 0 && !needsVerification && (
-                        <Alert severity="error">
+                        <Alert severity="warning"> {/* CHANGED: Red -> Orange (Warning) */}
                             <AlertTitle>Invalid Serials</AlertTitle>
                             Please remove items: <TruncatedSerialList items={invalidList} title="Invalid Items" />
                         </Alert>
@@ -298,75 +319,96 @@ const SerialNumberDialog = ({
                 
                 <List dense sx={{ maxHeight: 250, overflow: 'auto', bgcolor: '#f9f9f9', borderRadius: 1 }}>
                     {serials.map((item, idx) => {
-                        // Calculate Independent States
                         const isGlobalDuplicate = globalDuplicateSet.has(item.serial_number);
                         const isBackendInvalid = item.status === 'invalid';
                         const isBackendValid = item.status === 'valid';
                         const isPending = item.status === 'pending';
                         
-                        // Row Color Logic: Red if ANY error exists
-                        const hasError = isGlobalDuplicate || isBackendInvalid;
-                        const rowBgColor = hasError ? '#ffebee' : (isBackendValid ? '#e8f5e9' : 'transparent');
-                        console.log(`Handle row ${idx} where those logic is `)
+                        const isAccepted = item.isAccepted;
+
+                        // --- STYLING LOGIC ---
+                        // Rejection (Red) takes precedence visually over Invalid (Orange) if they conflict, 
+                        // but usually invalid items are rejected.
+                        const rowBgColor = isGlobalDuplicate 
+                            ? '#ffebee' // Red tint for Dupes
+                            : isBackendInvalid 
+                                ? '#fff3e0' // Orange tint for Invalid (CHANGED)
+                                : 'transparent';
+                        
+                        const textColor = !isAccepted ? 'error.main' : 'text.primary'; // CHANGED: Rejected text is Red
+                        const textDecoration = !isAccepted ? 'line-through' : 'none';
 
                         return (
                             <ListItem key={idx} divider sx={{ bgcolor: rowBgColor }}>
-                                <ListItemText 
-                                    primary={
-                                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pr: 2 }}>
-                                            <Typography variant="body2">{item.serial_number}</Typography>
-                                            
-                                            {/* VISUAL TAGS FOR STATUS */}
-                                            <Stack direction="row" spacing={1}>
-                                                
-                                                {/* 1. FE Integrity Tag */}
-                                                {isGlobalDuplicate && (
-                                                    <Chip 
-                                                        label="Duplicate" 
-                                                        color="error" 
-                                                        size="small" 
-                                                        icon={<WarningAmberIcon />}
-                                                        variant="outlined"
-                                                    />
-                                                )}
+                                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                                    
+                                    {/* SERIAL NUMBER & STATUS CHIPS */}
+                                    <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Typography 
+                                            variant="body2"
+                                            sx={{ 
+                                                textDecoration: textDecoration,
+                                                color: textColor,
+                                                fontWeight: isBackendValid ? 'bold' : 'normal',
+                                                mr: 1
+                                            }}
+                                        >
+                                            {item.serial_number}
+                                        </Typography>
+                                        
+                                        {/* Status Tags */}
+                                        {isGlobalDuplicate && <Chip label="Duplicate" color="error" size="small" variant="outlined" icon={<WarningAmberIcon />} />}
+                                        
+                                        {isBackendInvalid && (
+                                            <Chip 
+                                                label="Invalid" 
+                                                color="warning" // CHANGED: Red -> Orange
+                                                size="small" 
+                                                variant="outlined" 
+                                                icon={<ErrorOutlineIcon />} 
+                                            />
+                                        )}
+                                        
+                                        {isBackendValid && (
+                                            <Chip 
+                                                label="Verified" 
+                                                color="success" 
+                                                size="small" 
+                                                variant="outlined" 
+                                                icon={<CheckCircleIcon />} 
+                                            />
+                                        )}
+                                        
+                                        {/* Show Rejected Chip explicitly if not accepted */}
+                                        {!isAccepted && (
+                                            <Chip 
+                                                label="Rejected" 
+                                                color="error" // CHANGED: Red for Rejection
+                                                size="small" 
+                                                variant="outlined" 
+                                                icon={<BlockIcon />} 
+                                            />
+                                        )}
+                                        
+                                        {isPending && <Chip label="Pending" size="small" variant="outlined" />}
+                                    </Box>
 
-                                                {/* 2. BE Integrity Tag */}
-                                                {isBackendInvalid && (
-                                                    <Chip 
-                                                        label="Invalid" 
-                                                        color="error" 
-                                                        size="small" 
-                                                        icon={<ErrorOutlineIcon />} 
-                                                        variant="outlined"
-                                                    />
-                                                )}
-                                                {isBackendValid && (
-                                                    <Chip 
-                                                        label="Verified" 
-                                                        color="success" 
-                                                        size="small" 
-                                                        icon={<CheckCircleIcon />} 
-                                                        variant="outlined"
-                                                    />
-                                                )}
-                                                {isPending && (
-                                                    <Chip 
-                                                        label="Pending" 
-                                                        size="small" 
-                                                        icon={<HelpOutlineIcon />} 
-                                                        variant="outlined"
-                                                        sx={{ borderColor: 'text.disabled', color: 'text.secondary' }}
-                                                    />
-                                                )}
-                                            </Stack>
-                                        </Box>
-                                    }
-                                />
-                                <ListItemSecondaryAction>
-                                    <IconButton edge="end" size="small" onClick={() => handleDelete(idx)}>
-                                        <DeleteIcon fontSize="small" />
-                                    </IconButton>
-                                </ListItemSecondaryAction>
+                                    {/* ACTIONS (Inline, not floating) */}
+                                    <Stack direction="row" spacing={0.5}>
+                                        <Tooltip title={isAccepted ? "Reject" : "Accept"}>
+                                            <IconButton size="small" onClick={() => toggleAcceptance(idx)}>
+                                                {isAccepted 
+                                                    ? <ThumbUpIcon color="success" fontSize="small" /> 
+                                                    : <ThumbDownIcon color="error" fontSize="small" />
+                                                }
+                                            </IconButton>
+                                        </Tooltip>
+
+                                        <IconButton size="small" onClick={() => handleDelete(idx)}>
+                                            <DeleteIcon fontSize="small" />
+                                        </IconButton>
+                                    </Stack>
+                                </Box>
                             </ListItem>
                         );
                     })}
@@ -376,32 +418,23 @@ const SerialNumberDialog = ({
                 <Button onClick={onClose}>Cancel</Button>
                 
                 <Button 
-                    // This matches the structure in mutationFn
                     onClick={() => mutation.mutate({ assets: serials })}
                     disabled={mutation.isPending || serials.length === 0}
                 >
                     {mutation.isPending ? "Checking..." : "Verify Assets"}
                 </Button>
-                <Tooltip title={invalidList.length > 0 
-                            ? "Fix invalid serials" 
-                            : duplicateList.length > 0 
-                            ? "Remove duplicates" 
-                            : needsVerification 
-                            ? "Verify serials" 
-                            : "Save"} placement="right">
-                    <span style={{ display: 'inline-block' }}>
-                        <Button 
-                        onClick={() => onSave(serials)} 
-                        variant="contained" 
-                        disabled={invalidList.length > 0 || duplicateList.length > 0 || needsVerification}
-                    >
-                        Save
-                        </Button>
-
-                    </span>
-                    
-                </Tooltip>
                 
+                <Tooltip title="Save changes" placement="right">
+                    <span>
+                        <Button 
+                            onClick={() => onSave(serials)} 
+                            variant="contained" 
+                            disabled={needsVerification}
+                        >
+                            Save
+                        </Button>
+                    </span>
+                </Tooltip>
             </DialogActions>
 
             <Snackbar
