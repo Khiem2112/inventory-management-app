@@ -30,22 +30,22 @@ const ManifestLineProgress = ({ declared, received, accepted, rejected }) => {
             }}>
                 {received > 0 && (
                     <Tooltip title={`${received} Historically Received`}>
-                        <Box sx={{ width: `${receivedPercent}%`, bgcolor: '#4caf50' }} />
+                        <Box sx={{ width: `${receivedPercent}%`, bgcolor: 'primary.light' }} />
                     </Tooltip>
                 )}
                 {accepted > 0 && (
                     <Tooltip title={`${accepted} Accepted (Current Session)`}>
-                        <Box sx={{ width: `${acceptedPercent}%`, bgcolor: '#fdd835', cursor: 'pointer' }} />
+                        <Box sx={{ width: `${acceptedPercent}%`, bgcolor: 'success.light', cursor: 'pointer' }} />
                     </Tooltip>
                 )}
                 {remainingCount > 0 && (
                     <Tooltip title={`${remainingCount} Remaining`}>
-                        <Box sx={{ width: `${remainingPercent}%`, bgcolor: '#ff9800' }} />
+                        <Box sx={{ width: `${remainingPercent}%`, bgcolor: 'pending.light' }} />
                     </Tooltip>
                 )}
                 {rejected > 0 && (
                     <Tooltip title={`${rejected} Rejected`}>
-                        <Box sx={{ width: `${rejectedPercent}%`, bgcolor: '#d32f2f' }} />
+                        <Box sx={{ width: `${rejectedPercent}%`, bgcolor: 'error.light' }} />
                     </Tooltip>
                 )}
             </Box>
@@ -111,7 +111,6 @@ const ReceivingGrid = ({ manifestData, onSubmit, isSubmitting }) => {
                                 <Box>
                                     <Typography variant="h6" fontWeight="bold">
                                         {manifestData.manifest_code || "New Manifest"}
-                                    </Typography>
                                     </Typography>
                                     <Stack direction="row" spacing={1} alignItems="center">
                                         <Typography variant="body2" color="text.secondary">

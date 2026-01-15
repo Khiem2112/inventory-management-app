@@ -132,7 +132,7 @@ const SerialNumberDialog = ({
             setCurrentSerial("");
             mutation.reset(); 
         }
-    }, [open, initialSerials]);
+    }, [open]);
 
     // --- MUTATION ---
     const mutation = useMutation({
