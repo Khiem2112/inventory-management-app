@@ -104,7 +104,11 @@ const TruncatedSerialList = ({ items, title, maxDisplay = 5 }) => {
 // --- Main Component ---
 const SerialNumberDialog = ({ 
     open, onClose, onSave, 
-    initialSerials = [], maxQty, productName, manifestLineId, receivingStrategy 
+    initialSerials = [], 
+    maxQty, 
+    productName, 
+    manifestLineId, 
+    receivingStrategy 
 }) => {
     const { getValues } = useFormContext() || {}; 
     
@@ -113,6 +117,9 @@ const SerialNumberDialog = ({
     const [currentSerial, setCurrentSerial] = useState("");
     const [needsVerification, setNeedsVerification] = useState(false);
     const [snackbar, setSnackbar] = useState({ open: false, message: '' });
+
+    // Helper: Check strategy
+    const isAssetSpecified = receivingStrategy === 'asset_specified';
 
     // --- INITIALIZATION ---
     useEffect(() => {
@@ -139,7 +146,7 @@ const SerialNumberDialog = ({
         mutationFn: ({ assets }) => {
             const cleanAssetsArray = assets.map(s => ({ serial_number: s.serial_number }));
 
-            if (receivingStrategy === 'asset_specified') {
+            if (isAssetSpecified) {
                 return verifyShipmentLineAssets({ 
                     line_id: manifestLineId, 
                     assets: cleanAssetsArray 
@@ -152,7 +159,7 @@ const SerialNumberDialog = ({
             let badSerials = [];
             let goodSerials = [];
             
-            if (receivingStrategy === 'asset_specified') {
+            if (isAssetSpecified) {
                 badSerials = data.redundant_asset_serials || [];
                 goodSerials = data.matched_asset_serials || [];
             } else {
@@ -162,12 +169,14 @@ const SerialNumberDialog = ({
 
             setSerials(prev => prev.map(item => {
                 const sn = item.serial_number;
+                
                 if (badSerials.includes(sn)) {
-                    // Invalid items are auto-rejected
+                    // Invalid items are auto-rejected ONLY if we are in asset_specified mode
+                    // or if logic dictates. For now, we set isAccepted false for bad items
+                    // but the UI visibility depends on the flag.
                     return { ...item, status: 'invalid', isAccepted: false };
                 }
                 if (goodSerials.includes(sn)) {
-                    // Valid items are auto-accepted
                     return { ...item, status: 'valid', isAccepted: true };
                 }
                 return item;
@@ -293,7 +302,7 @@ const SerialNumberDialog = ({
                     )}
 
                     {invalidList.length > 0 && !needsVerification && (
-                        <Alert severity="warning"> {/* CHANGED: Red -> Orange (Warning) */}
+                        <Alert severity="warning">
                             <AlertTitle>Invalid Serials</AlertTitle>
                             Please remove items: <TruncatedSerialList items={invalidList} title="Invalid Items" />
                         </Alert>
@@ -327,16 +336,17 @@ const SerialNumberDialog = ({
                         const isAccepted = item.isAccepted;
 
                         // --- STYLING LOGIC ---
-                        // Rejection (Red) takes precedence visually over Invalid (Orange) if they conflict, 
-                        // but usually invalid items are rejected.
                         const rowBgColor = isGlobalDuplicate 
-                            ? '#ffebee' // Red tint for Dupes
+                            ? '#ffebee' 
                             : isBackendInvalid 
-                                ? '#fff3e0' // Orange tint for Invalid (CHANGED)
+                                ? '#fff3e0' 
                                 : 'transparent';
                         
-                        const textColor = !isAccepted ? 'error.main' : 'text.primary'; // CHANGED: Rejected text is Red
-                        const textDecoration = !isAccepted ? 'line-through' : 'none';
+                        // Condition styling on Strategy: Only strike/red if asset_specified AND rejected
+                        const showRejectionStyle = isAssetSpecified && !isAccepted;
+                        
+                        const textColor = showRejectionStyle ? 'error.main' : 'text.primary';
+                        const textDecoration = showRejectionStyle ? 'line-through' : 'none';
 
                         return (
                             <ListItem key={idx} divider sx={{ bgcolor: rowBgColor }}>
@@ -362,7 +372,7 @@ const SerialNumberDialog = ({
                                         {isBackendInvalid && (
                                             <Chip 
                                                 label="Invalid" 
-                                                color="warning" // CHANGED: Red -> Orange
+                                                color="warning" 
                                                 size="small" 
                                                 variant="outlined" 
                                                 icon={<ErrorOutlineIcon />} 
@@ -379,11 +389,11 @@ const SerialNumberDialog = ({
                                             />
                                         )}
                                         
-                                        {/* Show Rejected Chip explicitly if not accepted */}
-                                        {!isAccepted && (
+                                        {/* Show Rejected Chip ONLY if strategy is asset_specified */}
+                                        {isAssetSpecified && !isAccepted && (
                                             <Chip 
                                                 label="Rejected" 
-                                                color="error" // CHANGED: Red for Rejection
+                                                color="error" 
                                                 size="small" 
                                                 variant="outlined" 
                                                 icon={<BlockIcon />} 
@@ -393,16 +403,19 @@ const SerialNumberDialog = ({
                                         {isPending && <Chip label="Pending" size="small" variant="outlined" />}
                                     </Box>
 
-                                    {/* ACTIONS (Inline, not floating) */}
+                                    {/* ACTIONS */}
                                     <Stack direction="row" spacing={0.5}>
-                                        <Tooltip title={isAccepted ? "Reject" : "Accept"}>
-                                            <IconButton size="small" onClick={() => toggleAcceptance(idx)}>
-                                                {isAccepted 
-                                                    ? <ThumbUpIcon color="success" fontSize="small" /> 
-                                                    : <ThumbDownIcon color="error" fontSize="small" />
-                                                }
-                                            </IconButton>
-                                        </Tooltip>
+                                        {/* Toggle Button ONLY if strategy is asset_specified */}
+                                        {isAssetSpecified && (
+                                            <Tooltip title={isAccepted ? "Reject" : "Accept"}>
+                                                <IconButton size="small" onClick={() => toggleAcceptance(idx)}>
+                                                    {isAccepted 
+                                                        ? <ThumbUpIcon color="success" fontSize="small" /> 
+                                                        : <ThumbDownIcon color="error" fontSize="small" />
+                                                    }
+                                                </IconButton>
+                                            </Tooltip>
+                                        )}
 
                                         <IconButton size="small" onClick={() => handleDelete(idx)}>
                                             <DeleteIcon fontSize="small" />
