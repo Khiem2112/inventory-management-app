@@ -7,7 +7,8 @@ import {
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
     Stepper, Step, StepLabel, CircularProgress, Alert, Divider,
     Select, MenuItem, FormControl, IconButton, Chip, Dialog, DialogTitle, 
-    DialogContent, DialogActions, List, ListItem, ListItemText, ListItemSecondaryAction
+    DialogContent, DialogActions, List, ListItem, ListItemText, ListItemSecondaryAction,
+    Tooltip
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
@@ -27,8 +28,56 @@ import SerialNumberDialog from '../components/modal/AssetSerialNumberDialog'
 import ErrorDialog from '../components/common/ErrorDialog';
 import { fetchPOContext, submitManifest } from '../services/smServices';
 
-const steps = ['Select Purchase Order', 'Enter Shipment Details', 'Confirmation'];
+// --- NEW COMPONENT: Shipment Progress Bar ---
+const ShipmentProgress = ({ shipped, declaring, remaining, total }) => {
+    // Prevent division by zero
+    const safeTotal = total || 1;
+    
+    // Calculate widths
+    const shippedPct = Math.min(100, (shipped / safeTotal) * 100);
+    const declaringPct = Math.min(100, (declaring / safeTotal) * 100);
+    const remainingPct = Math.min(100, (remaining / safeTotal) * 100);
 
+    return (
+        <Box sx={{ width: '100%' }}>
+            <Box sx={{ 
+                display: 'flex', 
+                height: 12, // Slightly thicker for visibility
+                borderRadius: 1, 
+                overflow: 'hidden', 
+                bgcolor: '#f5f5f5', 
+                border: '1px solid #e0e0e0',
+                mb: 0.5 
+            }}>
+                {/* Green: Previously Shipped */}
+                {shipped > 0 && (
+                    <Tooltip title={`${shipped} Previously Shipped`}>
+                        <Box sx={{ width: `${shippedPct}%`, bgcolor: '#4caf50' }} /> 
+                    </Tooltip>
+                )}
+                {/* Yellow: Currently Declaring */}
+                {declaring > 0 && (
+                    <Tooltip title={`${declaring} Being Declared Now`}>
+                        <Box sx={{ width: `${declaringPct}%`, bgcolor: '#ffeb3b' }} /> 
+                    </Tooltip>
+                )}
+                {/* Orange: Remaining after this declaration */}
+                {remaining > 0 && (
+                    <Tooltip title={`${remaining} Remaining`}>
+                        <Box sx={{ width: `${remainingPct}%`, bgcolor: '#ff9800' }} /> 
+                    </Tooltip>
+                )}
+            </Box>
+            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', display: 'block', textAlign: 'center' }}>
+                <span style={{ color: '#2e7d32' }}>{shipped} Ship</span> / 
+                <span style={{ color: '#fbc02d', fontWeight: 'bold' }}> {declaring} Now</span> / 
+                <span style={{ color: '#ef6c00' }}> {remaining} Rem</span>
+            </Typography>
+        </Box>
+    );
+};
+
+const steps = ['Select Purchase Order', 'Enter Shipment Details', 'Confirmation'];
 
 const PONotFoundPage = ({ poId, onBack }) => (
     <Paper 
@@ -81,7 +130,6 @@ const POClearPage = ({ poId, onBack }) => {
                 borderRadius: 2
             }}
         >
-            {/* Changed to LocalShipping for a "Logistics" feel rather than "Final Completion" */}
             <LocalShippingIcon color="info" sx={{ fontSize: 80, mb: 2, opacity: 0.8 }} />
             
             <Typography variant="h5" gutterBottom fontWeight="bold" color="text.primary">
@@ -93,10 +141,9 @@ const POClearPage = ({ poId, onBack }) => {
                 There are no remaining quantities available to manifest at this time.
             </Typography>
 
-            {/* Added QC Disclaimer */}
             <Box sx={{ 
                 textAlign: 'left', 
-                bgcolor: '#fff4e5', // Light warning/info color
+                bgcolor: '#fff4e5', 
                 p: 2, 
                 borderRadius: 1, 
                 mb: 4,
@@ -113,7 +160,7 @@ const POClearPage = ({ poId, onBack }) => {
             </Box>
 
             <Button 
-                variant="outlined" // Outlined feels less "final" than contained
+                variant="outlined" 
                 color="primary"
                 startIcon={<ArrowBackIcon />}
                 onClick={onBack}
@@ -127,15 +174,12 @@ const POClearPage = ({ poId, onBack }) => {
 
 const UrlAwareStepper = () => {
     const location = useLocation();
-    
-    // Simple logic to determine active step based on URL
     let activeStep = 0;
     if (location.pathname.includes('/success')) {
         activeStep = 2;
     } else if (location.pathname.includes('/search')) {
         activeStep = 0;
     } else {
-        // If not search and not success, we assume it's the detail form (/:po_id)
         activeStep = 1;
     }
 
@@ -148,57 +192,47 @@ const UrlAwareStepper = () => {
     );
 };
 
-
-    // --- Render Steps ---
-
 const Step0_POSearch = () => {
-
     const navigate = useNavigate()
-
     const [poInput, setPoInput] = useState("");
 
     const handlePOSearch = () => {
         if (poInput.trim()) {
-            // Navigate to the dynamic route
             navigate(`../${poInput.trim()}`); 
         }
     };
 
-    console.log(`Step 0: PO Search is rendered`)
-
-
     return (
         <Paper sx={{ p: 4, maxWidth: 600, mx: 'auto', mt: 4, textAlign: 'center' }}>
-        <Typography variant="h6" gutterBottom>Start New Shipment</Typography>
-        <Typography variant="body2" color="text.secondary" paragraph>
-            Enter the Purchase Order number provided by the buyer to retrieve order details.
-        </Typography>
-        
-        <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-            <TextField 
-                fullWidth 
-                label="Purchase Order ID" 
-                placeholder="e.g. 33" 
-                value={poInput}
-                onChange={(e) => setPoInput(e.target.value)}
-            />
-            <Button 
-                variant="contained" 
-                size="large" 
-                startIcon={<SearchIcon/>}
-                onClick={handlePOSearch}
-                onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                        handlePOSearch();
-                    }
-                }}
-            >
-                Find
-            </Button>
-        </Box>
-    </Paper>
+            <Typography variant="h6" gutterBottom>Start New Shipment</Typography>
+            <Typography variant="body2" color="text.secondary" paragraph>
+                Enter the Purchase Order number provided by the buyer to retrieve order details.
+            </Typography>
+            
+            <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+                <TextField 
+                    fullWidth 
+                    label="Purchase Order ID" 
+                    placeholder="e.g. 33" 
+                    value={poInput}
+                    onChange={(e) => setPoInput(e.target.value)}
+                />
+                <Button 
+                    variant="contained" 
+                    size="large" 
+                    startIcon={<SearchIcon/>}
+                    onClick={handlePOSearch}
+                    onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                            handlePOSearch();
+                        }
+                    }}
+                >
+                    Find
+                </Button>
+            </Box>
+        </Paper>
     )
-    
 }
 
 // Single row in the Step1 Details
@@ -207,29 +241,44 @@ const ManifestItemData = ({
     field,
     onOpenSerialDialog
 }) => {
-
     const methods = useFormContext()
     const { register, control, formState: { errors } } = methods
-    // Get the form context from parent
+    
+    // Watch live values
     const shipmentMode = useWatch({
         control: control,
         name: `lines.${index}.shipment_mode`
-    })
+    });
 
     const assetItems = useWatch({
         control: control,
         name: `lines.${index}.asset_items`
-    }) || []
+    }) || [];
 
+    const quantityDeclared = useWatch({
+        control: control,
+        name: `lines.${index}.quantity_declared`
+    }) || 0;
 
-    // The data transform layer
-    const max = field.max_qty
-    const mode = shipmentMode
-    const assets = assetItems
+    const max = field.max_qty;
+    const total = field.total_quantity || field.max_qty; // Fallback if total not available
+    
+    // --- Calculate Progress Values ---
+    const previouslyShipped = Math.max(0, total - max);
+    const declaring = Number(quantityDeclared);
+    const remaining = Math.max(0, max - declaring);
+
+    const mode = shipmentMode;
+    const assets = assetItems;
 
     return (
         <>
-        <TableCell>{field.product_name}</TableCell>
+        {/* 1. Product */}
+        <TableCell>
+            <Typography variant="body2" fontWeight="bold">{field.product_name}</Typography>
+        </TableCell>
+        
+        {/* 2. SKU */}
         <TableCell>
             <TextField 
                 variant="standard"
@@ -238,29 +287,28 @@ const ManifestItemData = ({
                 {...register(`lines.${index}.supplier_sku`)} 
             />
         </TableCell>
-        {/* New Serial Number Input */}
+
+        {/* 3. Serial # */}
         <TableCell>
             <TextField 
                 variant="standard" 
                 fullWidth 
-                placeholder="Required"
-                {...register(`lines.${index}.supplier_serial_number`, { required: "Required" })}
-                error={!!errors.lines?.[index]?.supplier_serial_number}
+                placeholder="Batch/Serial (Optional)"
+                {...register(`lines.${index}.supplier_serial_number`)}
             />
         </TableCell>
-        <TableCell align="right">{max}</TableCell>
+
+        {/* 4. Progress (Renamed from Pending) */}
         <TableCell>
-            <Controller
-                name={`lines.${index}.shipment_mode`}
-                control={control}
-                render={({ field: selectField }) => (
-                    <Select {...selectField} size="small" fullWidth variant="standard">
-                        <MenuItem value="quantity_declared">Qty Declared</MenuItem>
-                        <MenuItem value="asset_specified">Specify Assets</MenuItem>
-                    </Select>
-                )}
+            <ShipmentProgress 
+                shipped={previouslyShipped} 
+                declaring={declaring} 
+                remaining={remaining} 
+                total={total} 
             />
         </TableCell>
+
+        {/* 5. Shipment Data (Input or Button) */}
         <TableCell align="right">
             {mode === 'quantity_declared' ? (
                 <TextField 
@@ -274,25 +322,42 @@ const ManifestItemData = ({
                 />
             ) : (
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1 }}>
-                    <Chip label={`${assets.length} Assets`} size="small" color={assets.length > 0 ? "primary" : "default"} />
+                    <Chip 
+                        label={`${assets.length} Selected`} 
+                        size="small" 
+                        color={assets.length > 0 ? "primary" : "default"} 
+                        variant={assets.length > 0 ? "filled" : "outlined"}
+                    />
                     <Button
                         size="small" variant="outlined" startIcon={<QrCodeIcon />}
                         onClick={() => onOpenSerialDialog(index)}
                     >
-                        Manage
+                        Assets
                     </Button>
-                    {/* Hidden input to enforce validation if needed */}
+                    {/* Hidden input to enforce validation */}
                     <input type="hidden" value={assets.length} {...register(`lines.${index}.quantity_declared`, { min: 1 })} />
                 </Box>
             )}
+        </TableCell>
+
+        {/* 6. Mode */}
+        <TableCell>
+            <Controller
+                name={`lines.${index}.shipment_mode`}
+                control={control}
+                render={({ field: selectField }) => (
+                    <Select {...selectField} size="small" fullWidth variant="standard">
+                        <MenuItem value="asset_specified">Specify Assets</MenuItem>
+                        <MenuItem value="quantity_declared">Qty Declared</MenuItem>
+                    </Select>
+                )}
+            />
         </TableCell>
         </>
     )
 }
 
-const Step1_Details = (
-) => {
-
+const Step1_Details = () => {
     // Dialog State
     const [serialDialogOpen, setSerialDialogOpen] = useState(false);
     const [activeLineIndex, setActiveLineIndex] = useState(null);
@@ -316,7 +381,6 @@ const Step1_Details = (
     };
 
     // --- Form Setup ---
-
     const methods = useForm({
         defaultValues: {
             tracking_number: '',
@@ -327,125 +391,114 @@ const Step1_Details = (
     });
 
     const { control, handleSubmit, register, watch, setValue, reset, getValues, formState: { errors } } = methods
-
     const { fields } = useFieldArray({ control, name: 'lines' });
-
 
     // Current PO params
     const { po_id: selectedPOId } = useParams();
-
-    // Pass submission result to step 2
     const navigate = useNavigate();
 
     // --- Mutation: Fetch PO Context ---
     const {
         data: poContext,
         isSuccess: isFetchingPOContextSuccess,
-        error: fetchingPOContextError,
         isError: isFetchingPOContextError,
         isLoading: isFetchingPOContextLoading
     } = useQuery({
         queryFn: () => fetchPOContext(selectedPOId),
         queryKey: selectedPOId
-});
+    });
 
-    // 2. Handle the "Cleared" state as Derived State (No useEffect needed for this!)
+    // 2. Handle the "Cleared" state as Derived State
     const shippableLines = useMemo(() => {
-    if (!poContext?.items) return [];
-    return poContext.items
-        .filter(item => item.quantity_remaining > 0)
-        .map(item => ({
-        purchase_order_item_id: item?.purchase_order_item_id,
-        product_id: item?.product_id,
-        product_name: item?.product_name,
-        max_qty: item?.quantity_remaining,
-        supplier_sku: item.item_description,
-        quantity_declared: item.quantity_remaining,
-        supplier_serial_number: ""
-        }));
+        if (!poContext?.items) return [];
+        return poContext.items
+            .filter(item => item.quantity_remaining > 0)
+            .map(item => ({
+                purchase_order_item_id: item?.purchase_order_item_id,
+                product_id: item?.product_id,
+                product_name: item?.product_name,
+                // Assuming item.quantity exists (Total Ordered) for progress calculation
+                total_quantity: item.quantity || item.quantity_remaining, 
+                max_qty: item?.quantity_remaining,
+                supplier_sku: item.item_description,
+                quantity_declared: item.quantity_remaining, // Default to full remaining? Or 0?
+                supplier_serial_number: "",
+                // CHANGE: Default to 'asset_specified'
+                shipment_mode: 'asset_specified' 
+            }));
     }, [poContext]);
 
     const isPOClear = poContext && shippableLines.length === 0;
 
-    // 3. Handle the FORM RESET as a Side Effect
+    // 3. Handle the FORM RESET
     useEffect(() => {
-    if (isFetchingPOContextSuccess) {
-        reset({
-        lines: shippableLines,
-        tracking_number: '',
-        carrier_name: '',
-        estimated_arrival: ''
-        });
-    }
+        if (isFetchingPOContextSuccess) {
+            reset({
+                lines: shippableLines,
+                tracking_number: '',
+                carrier_name: '',
+                estimated_arrival: ''
+            });
+        }
     }, [isFetchingPOContextSuccess, isPOClear, shippableLines, reset]);
     
-    // Error Handling: Set Not Found state
+    // Error Handling
     const isPONotFound = isFetchingPOContextError
 
     const handleBackToSearch = () => {
         navigate('/supplier/manifest/create/search');
-    } // Handle clear the po_id which navigate the page back to step0
-
+    } 
 
     // --- Mutation: Submit Manifest ---
     const submitManifestMutation = useMutation({
         mutationFn: submitManifest,
         onSuccess: (data) => {
             navigate('success', { state: { manifestSuccessResponse: data } })
-
         },
         onError: (error) => {
-            // Capture the error object and open the dialog
             setSubmitError(error)
             setErrorDialogOpen(true)
         }
     })
-            // Handle onSubmit to create new Shipment Manifest
+
     const onSubmit = (data) => {
-    const payload = {
-        purchase_order_id: Number(selectedPOId),
-        tracking_number: data.tracking_number,
-        carrier_name: data.carrier_name,
-        estimated_arrival: new Date(data.estimated_arrival).toISOString(), 
-        status: "posted", 
-        lines: data.lines.map(line => {
-            const baseLine = {
-                purchase_order_item_id: line.purchase_order_item_id,
-                supplier_serial_number: line.supplier_serial_number || "N/A",
-                supplier_sku: line.supplier_sku || "N/A",
-                shipment_mode: line.shipment_mode
-            };
+        const payload = {
+            purchase_order_id: Number(selectedPOId),
+            tracking_number: data.tracking_number,
+            carrier_name: data.carrier_name,
+            estimated_arrival: new Date(data.estimated_arrival).toISOString(), 
+            status: "posted", 
+            lines: data.lines.map(line => {
+                const baseLine = {
+                    purchase_order_item_id: line.purchase_order_item_id,
+                    supplier_serial_number: line.supplier_serial_number || "N/A",
+                    supplier_sku: line.supplier_sku || "N/A",
+                    shipment_mode: line.shipment_mode
+                };
 
-            // Conditional Payload based on Flow
-            if (line.shipment_mode === 'asset_specified') {
-                return {
-                    ...baseLine,
-                    asset_items: line.asset_items // Array of { serial_number }
-                };
-            } else {
-                // Flow: quantity_declared
-                return {
-                    ...baseLine,
-                    quantity: Number(line.quantity_declared) // API expects 'quantity' for this mode
-                };
-            }
-        })
+                if (line.shipment_mode === 'asset_specified') {
+                    return {
+                        ...baseLine,
+                        asset_items: line.asset_items 
+                    };
+                } else {
+                    return {
+                        ...baseLine,
+                        quantity: Number(line.quantity_declared) 
+                    };
+                }
+            })
+        };
+        console.log("Submitting Payload:", payload);
+        submitManifestMutation.mutate(payload);
     };
-    
-    console.log("Submitting Payload:", payload);
-    submitManifestMutation.mutate(payload);
-};
 
-    // Rendering logic when already haved data
-    if (isPONotFound) return (
-    <PONotFoundPage poId={selectedPOId} onBack={handleBackToSearch} />
-)
+    if (isPONotFound) return <PONotFoundPage poId={selectedPOId} onBack={handleBackToSearch} />
 
     if (isPOClear) {
-            return <POClearPage poId={selectedPOId} onBack={handleBackToSearch} />;
-        }
+        return <POClearPage poId={selectedPOId} onBack={handleBackToSearch} />;
+    }
     
-    // 1. Loading Guard (The "Pre-check" you requested)
     if (isFetchingPOContextLoading && selectedPOId) {
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
@@ -456,6 +509,7 @@ const Step1_Details = (
     }
 
     const activeLine = activeLineIndex !== null ? getValues(`lines.${activeLineIndex}`) : null;
+    
     return (
         <FormProvider {...methods} >
             <form onSubmit={handleSubmit(onSubmit)}>
@@ -496,51 +550,56 @@ const Step1_Details = (
                                 helperText={errors.carrier_name?.message}
                             />
                         </Grid>
-                                                {/* UPDATED: DateTimePicker with Controller */}
-                            <Grid item xs={12} md={4}>
-                                <LocalizationProvider dateAdapter={AdapterDateFns}>
-                                    <Controller
-                                        control={control}
-                                        name="estimated_arrival"
-                                        rules={{ required: "Required" }}
-                                        render={({ field, fieldState: { error } }) => (
-                                            <DateTimePicker
-                                                label="Est. Arrival"
-                                                value={field.value ? new Date(field.value) : null}
-                                                onChange={(date) => field.onChange(date)}
-                                                slotProps={{
-                                                    textField: {
-                                                        fullWidth: true,
-                                                        error: !!error,
-                                                        helperText: error?.message,
-                                                        variant: "outlined"
-                                                    }
-                                                }}
-                                            />
-                                        )}
-                                    />
-                                </LocalizationProvider>
-                            </Grid>
+                        <Grid item xs={12} md={4}>
+                            <LocalizationProvider dateAdapter={AdapterDateFns}>
+                                <Controller
+                                    control={control}
+                                    name="estimated_arrival"
+                                    rules={{ required: "Required" }}
+                                    render={({ field, fieldState: { error } }) => (
+                                        <DateTimePicker
+                                            label="Est. Arrival"
+                                            value={field.value ? new Date(field.value) : null}
+                                            onChange={(date) => field.onChange(date)}
+                                            slotProps={{
+                                                textField: {
+                                                    fullWidth: true,
+                                                    error: !!error,
+                                                    helperText: error?.message,
+                                                    variant: "outlined"
+                                                }
+                                            }}
+                                        />
+                                    )}
+                                />
+                            </LocalizationProvider>
+                        </Grid>
                     </Grid>
 
                     <Typography variant="h6" gutterBottom>Items to Ship</Typography>
                     <TableContainer sx={{ border: '1px solid #eee' }}>
-                        <Table size="small">
+                        {/* CHANGE 1: Fixed Layout */}
+                        <Table size="small" sx={{ tableLayout: 'fixed' }}>
                             <TableHead>
                                 <TableRow sx={{ bgcolor: '#fafafa' }}>
-                                    <TableCell width="25%">Product</TableCell>
-                                    <TableCell width="15%">Supplier SKU</TableCell>
-                                    <TableCell width="15%">Serial #</TableCell> {/* New Column */}
-
-                                    <TableCell width="15%">Pending</TableCell>
-                                    <TableCell width="20%">Mode</TableCell>
-                                    <TableCell width="25%" align="right">Shipment Data</TableCell>
+                                    {/* CHANGE 3: Reordered Columns */}
+                                    <TableCell width="15%">Product</TableCell>
+                                    <TableCell width="16%">Supplier SKU</TableCell>
+                                    <TableCell width="15%">Serial #</TableCell>
+                                    <TableCell width="20%">Progress</TableCell>
+                                    <TableCell width="24%" align="right">Shipment Data</TableCell>
+                                    <TableCell width="10%">Mode</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
                                 {fields.map((field, index) => {
                                     return (
-                                        <TableRow key={field.id}>
+                                        <TableRow 
+                                        key={field.id}
+                                        sx = {{
+                                            height: '53px'
+                                        }}
+                                        >
                                             <ManifestItemData index={index} field={field} onOpenSerialDialog={openSerialDialog}/>
                                         </TableRow>
                                     );
@@ -562,7 +621,6 @@ const Step1_Details = (
                         </Button>
                     </Box>
                 </Paper>
-                {/* Serial Number Modal */}
                 <SerialNumberDialog 
                     open={serialDialogOpen}
                     onClose={() => setSerialDialogOpen(false)}
@@ -571,7 +629,6 @@ const Step1_Details = (
                     maxQty={activeLine ? activeLine.quantity_remaining : 0}
                     productName={activeLine ? activeLine.product_name : ''}
                 />
-                {/* Error Dialog */}
                 <ErrorDialog
                     open={errorDialogOpen} 
                     onClose={() => setErrorDialogOpen(false)} 
@@ -580,34 +637,29 @@ const Step1_Details = (
                 />
             </form>
         </FormProvider>    
-);
-
+    );
 }
 
 const Step2_Success = () => {
-
     const navigate = useNavigate()
-
-    // Get the variable submissionResult from the location
     const location = useLocation()
     const submissionResult = location?.state?.manifestSuccessResponse || {}
 
     return (
-    <Paper sx={{ p: 5, textAlign: 'center', maxWidth: 600, mx: 'auto', mt: 4 }}>
-        <CheckCircleIcon color="success" sx={{ fontSize: 80, mb: 2 }} />
-        <Typography variant="h4" gutterBottom>Success!</Typography>
-        <Typography variant="body1" paragraph>
-            Shipment Manifest <strong>ID #{submissionResult?.id}</strong> has been created.
-        </Typography>
-        <Box sx={{ bgcolor: '#f0f9ff', p: 2, borderRadius: 2, mb: 3, textAlign: 'left' }}>
-            <Typography variant="body2"><strong>Status:</strong> {submissionResult?.status}</Typography>
-            <Typography variant="body2"><strong>Tracking:</strong> {submissionResult?.tracking_number}</Typography>
-            <Typography variant="body2"><strong>Est. Arrival:</strong> {new Date(submissionResult?.estimated_arrival).toLocaleString()}</Typography>
-        </Box>
-        <Button variant="outlined" onClick={() => navigate('search')}>Create Another</Button>
-    </Paper>
-);
-
+        <Paper sx={{ p: 5, textAlign: 'center', maxWidth: 600, mx: 'auto', mt: 4 }}>
+            <CheckCircleIcon color="success" sx={{ fontSize: 80, mb: 2 }} />
+            <Typography variant="h4" gutterBottom>Success!</Typography>
+            <Typography variant="body1" paragraph>
+                Shipment Manifest <strong>ID #{submissionResult?.id}</strong> has been created.
+            </Typography>
+            <Box sx={{ bgcolor: '#f0f9ff', p: 2, borderRadius: 2, mb: 3, textAlign: 'left' }}>
+                <Typography variant="body2"><strong>Status:</strong> {submissionResult?.status}</Typography>
+                <Typography variant="body2"><strong>Tracking:</strong> {submissionResult?.tracking_number}</Typography>
+                <Typography variant="body2"><strong>Est. Arrival:</strong> {new Date(submissionResult?.estimated_arrival).toLocaleString()}</Typography>
+            </Box>
+            <Button variant="outlined" onClick={() => navigate('search')}>Create Another</Button>
+        </Paper>
+    );
 } 
 
 /* The User flow:
@@ -623,13 +675,9 @@ const Step2_Success = () => {
 
 **/
 
-const ProtectedSuccessRoute =({
-    children
-}) => {
+const ProtectedSuccessRoute =({ children }) => {
     const location = useLocation()
-    const {
-        po_id
-    } = useParams()
+    const { po_id } = useParams()
     const isSuccessDataPresent = location?.state?.manifestSuccessResponse
 
     if (!isSuccessDataPresent) {
@@ -637,26 +685,22 @@ const ProtectedSuccessRoute =({
     }
     return children
 }
+
 const ShipmentManifestCreatePage = () => {
-
-    // Move the state-driven to url-driven for complex inventory managment system
-
     return (
         <Box sx={{ p: 3, maxWidth: 1000, mx: 'auto' }}>
             <Typography variant="h4" fontWeight="bold" gutterBottom>Create Shipment Manifest</Typography>
             <UrlAwareStepper/>
-        <Routes>
-            <Route path="*" element={<Navigate to="search" replace />} />
-            <Route path = 'search' element={<Step0_POSearch/> }/>
-            <Route path = ':po_id' element={<Step1_Details/> }/>
-            <Route path = ':po_id/success' element={
-                <ProtectedSuccessRoute>
-                    <Step2_Success/>
-                </ProtectedSuccessRoute>
+            <Routes>
+                <Route path="*" element={<Navigate to="search" replace />} />
+                <Route path = 'search' element={<Step0_POSearch/> }/>
+                <Route path = ':po_id' element={<Step1_Details/> }/>
+                <Route path = ':po_id/success' element={
+                    <ProtectedSuccessRoute>
+                        <Step2_Success/>
+                    </ProtectedSuccessRoute>
                 }/>
-
-        </Routes>
-
+            </Routes>
         </Box>
     );
 };
