@@ -12,7 +12,7 @@ const theme = createTheme({
     warning: { main: '#ed6c02', light: '#ff9800' }, // Pending / Low Stock
     error: { main: '#d32f2f', light: '#ef5350' },   // Cancelled
     info: { main: '#0288d1', light: '#03a9f4' },    // Draft / Issued
-    pending: {main: '#bc6c25'},
+    pending: {main: '#bc6c25', light: '#FFC50F'},
     
     background: {
       default: '#f8f9fa', // Neutral gray for the main screen background

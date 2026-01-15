@@ -100,7 +100,7 @@ const DockReceivingPage = () => {
                 </Box>
 
                 {/* RIGHT COLUMN: CONTENT */}
-                <Box sx={{ overflowY: 'auto', height: '100%' }}>
+                <Box sx={{ overflowY: 'hidden', height: '100%' }}>
                     {!activeManifestId ? (
                         // EMPTY STATE: Visuals managed by Paper, Layout by Stack
                         <Paper 
