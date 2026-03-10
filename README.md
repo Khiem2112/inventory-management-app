@@ -133,13 +133,13 @@ sequenceDiagram
     participant DB as SQL Server
     
     Client->>API: Request with expired Access Token
-    API-->>Client: 401 Unauthorized (Token Expired)
-    Client->>API: POST /auth/refresh (with HTTP-only Refresh Token)
-    API->>DB: Validate Refresh Token
-    DB-->>API: Token Valid
-    API-->>Client: 200 OK (New Access Token)
+    API-->>Client: 401 Unauthorized
+    Client->>API: POST /auth/refresh (with current Refresh Token)
+    API->>DB: Validate & DESTROY current Refresh Token
+    DB-->>API: Token Invalidated
+    API->>DB: Generate & Store NEW Refresh Token
+    API-->>Client: 200 OK (New Access Token + New Refresh Token)
     Client->>API: Retry original request with new token
-    API-->>Client: 200 OK (Data returned)
 ```
 ### (3) PO Lifecycle State Machine
 Strict state transitions preventing invalid procurement actions.
@@ -156,27 +156,36 @@ stateDiagram-v2
 Backend validation ensuring physical shipments do not exceed requested procurement totals.
 ```mermaid
 flowchart TD
-    A[Client Submits Manifest] --> B{Check PO Status}
-    B -- Not Issued --> C[Reject: Invalid State]
-    B -- Issued --> D{Validate Quantities}
-    D -- Exceeds PO Request --> E[Reject: Quantity Mismatch]
-    D -- Valid --> F[Generate Manifest Record]
-    F --> G[Update PO State]
+    A[Create Shipment Manifest] --> B[Process Manifest Lines]
+    B --> C{Line Item Type?}
+    C -- Asset Specified --> D[Map pre-defined Serial Numbers from Supplier]
+    C -- Quantity Declared --> E[Log expected Quantity (No Serials yet)]
+    D --> F[Generate Manifest Record]
+    E --> F
+    F --> G[Instantiate ASSET records in Database]
+    G --> H[Set ASSET status to 'In Transit']
 ```
 ### (5) Asset Verification Flow
 Decoupled client-side scanning and state management to minimize database transaction locks until final commit.
 ```mermaid
 sequenceDiagram
-    participant Scanner as Barcode Scanner / User
-    participant UI as @AssetSerialNumberDialog.jsx
-    participant API as FastAPI Bulk Save
+    participant UI as Client UI
+    participant API as FastAPI Backend
+    participant DB as SQL Server
 
-    Scanner->>UI: Scan Serial Number
-    UI->>UI: Local validation (Regex/Format)
-    UI->>UI: Add to "Pending Verification" Client State
-    Scanner->>UI: Scan Next Serial
-    UI->>UI: Update Client State (Accept/Reject categories)
-    Note over UI: User finalizes physical count
-    UI->>API: POST /assets/bulk (JSON Array of all states)
-    API-->>UI: 200 OK (Transaction Committed)
+    Note over UI: User scans/types serial number
+    UI->>UI: Validate Serial is not duplicated in current UI payload
+    UI->>API: POST /manifest/lines/verify_asset_uniqueness
+    
+    alt Line Type: Asset Specified
+        API->>DB: Query: Does Serial exist AND Status == 'In Transit' AND matches this SM Line?
+        DB-->>API: Match Result
+    else Line Type: Quantity Declared
+        API->>DB: Query: Is Serial globally unique across ALL records?
+        DB-->>API: Uniqueness Result
+    end
+    
+    API-->>UI: Return Verification State (Valid / Invalid)
+    Note over UI: User completes scanning
+    UI->>API: POST Bulk Receive Payload
 ```
