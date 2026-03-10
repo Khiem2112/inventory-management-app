@@ -17,25 +17,33 @@ Engineered for dense data environments, allowing users to toggle column visibili
 ### (3) Smart Data Entry
 Relational data creation made seamless. The UI utilizes an advanced autocomplete feature to query and select product metadata instantly during procurement.
 
-<img width="2559" height="1328" alt="image" src="https://github.com/user-attachments/assets/0ab33744-9e4d-427f-98a3-a747594e930e" />
+<img width="2559" height="1331" alt="image" src="https://github.com/user-attachments/assets/0e1b98a0-0633-44c4-875e-b84355f1ba95" />
 
 If user intent to leave the PO not create or drafted, it warns them
 
-<img width="2559" height="1331" alt="image" src="https://github.com/user-attachments/assets/c316b3aa-d40a-4a45-92c6-80b23883c919" />
+<img width="2559" height="1330" alt="image" src="https://github.com/user-attachments/assets/31713374-51ab-43b5-884b-18f211410c43" />
 
 
 ### (4) Multi-Step Form Wizard
 A guided, state-retaining wizard that ensures complex receiving manifests are built accurately before submission. 
-*Flow: (1) Search PO -> (2) Add Manifest Info -> (3) Success Confirmation*
+*Flow: (1) Search PO -> (2) Add Manifest Info -> (3) Success Confirmation -> (4) Create new Manifest
 
-![ezgif com-animated-gif-maker](https://github.com/user-attachments/assets/c9089a95-d192-49d7-a34d-e3b4e6c700cf)
+![ezgif com-animated-gif-maker (1)](https://github.com/user-attachments/assets/360a5738-4536-434a-8648-3d254d7770c8)
 
 ### (5) Dock Receiving & Bulk Verification
 Optimized for warehouse operations. Users can scan, accept, or reject multiple serial numbers in the client-side UI before committing the final bulk payload to the backend.
 
 1. Search for shipment manifest
 
-![Uploading image.png…]()
+![ezgif com-animated-gif-maker (2)](https://github.com/user-attachments/assets/9072abbc-141a-4bc0-bb53-8a2ecccdc58b)
+
+2. Tab Lite 8: Scan 5 received assets and accept them (supplier didn't declared their serial number so you don't need to check them)
+
+![ezgif com-animated-gif-maker (7)](https://github.com/user-attachments/assets/bd833535-d20f-43ae-8cf8-3f156ec1525f)
+
+3. ProBook X1: Scan received assets and reject them
+
+![ezgif com-animated-gif-maker (6)](https://github.com/user-attachments/assets/92e52f43-a9dc-46ce-a4b6-616e70f4102c)
 
 
 ### (6) Master Data Management
