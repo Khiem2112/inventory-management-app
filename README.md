@@ -2,6 +2,13 @@
 
 A production-ready, full-stack inventory platform designed to digitize hardware procurement, dock receiving, and quality control workflows. Built with React, FastAPI, and SQL Server.
 
+## Tech Stack Overview
+This project leverages a modern, decoupled architecture to ensure scalability and maintainability:
+* **Frontend (Client SPA):** React.js (built with Vite) utilizing Redux and Context API for robust, multi-step state management.
+* **Backend (REST API):** Python 3 with FastAPI, delivering high-performance, asynchronous endpoints. Relational data access is orchestrated via SQLAlchemy ORM.
+* **Database & Security:** Microsoft SQL Server (utilizing strict PascalCase schema conventions) secured by advanced JWT token rotation logic.
+* **Infrastructure:** Fully containerized using Docker and Docker Compose for highly reproducible local development environments.
+
 ## Noticeable UI Features
 
 ### (1) Master-Detail PO Items View
@@ -195,8 +202,9 @@ erDiagram
     Location ||--o{ StockMove : "is destination for"
 ```
 ### (2) JWT Auto-Refresh Sequence
-Strict relational integrity mapping the procurement lifecycle.
-Secure, seamless session management ensuring continuous warehouse operations without sudden logouts.
+To maintain a frictionless user experience while adhering to modern security standards, the application implements a resilient token refresh mechanism. The React client utilizes a short-lived **Access Token** for standard API authorization. 
+
+When this token expires, the client intercepts the `401 Unauthorized` response and automatically issues a silent request using a long-lived, HTTP-only **Refresh Token**. Crucially, the FastAPI backend immediately invalidates (destroys) the used Refresh Token in the database upon validation and issues a completely new token pair. This strict rotation logic prevents replay attacks and ensures absolute control over active sessions.
 ```mermaid
 sequenceDiagram
     participant Client as React App
@@ -224,17 +232,19 @@ stateDiagram
     Draft --> Cancelled : Aborted
 ```
 ### (4) Shipment Manifest Creation Flow
-Backend validation ensuring physical shipments do not exceed requested procurement totals.
+Enforces strict traceability. Every Shipment Manifest is generated directly from an approved Purchase Order, and each manifest line is hard-linked to a specific PO Line Item to prevent over-receiving. It then branches based on the tracking requirements of the hardware.
+
 ```mermaid
 flowchart TD
-    A[Create Shipment Manifest] --> B[Process Manifest Lines]
-    B --> C{Line Item Type?}
-    C -- Asset Specified --> D[Map pre-defined Serial Numbers from Supplier]
-    C -- Quantity Declared --> E["Log expected Quantity (No Serials yet)"]
-    D --> F[Generate Manifest Record]
-    E --> F
-    F --> G[Instantiate ASSET records in Database]
-    G --> H["Set ASSET status to 'In Transit'"]
+    A["Select Approved Purchase Order"] --> B["Initiate Shipment Manifest (SM)"]
+    B --> C["Link SM Line to specific PO Line Item"]
+    C --> D{"Line Item Type?"}
+    D -- Asset Specified --> E["Map pre-defined Serial Numbers"]
+    D -- Quantity Declared --> F["Log expected Quantity (No Serials yet)"]
+    E --> G["Generate Manifest & Lines in DB"]
+    F --> G
+    G --> H["Instantiate ASSET records"]
+    H --> I["Set ASSET status to 'In Transit'"]
 ```
 ### (5) Asset Verification Flow in Dock Receiving
 Decoupled client-side scanning and state management to minimize database transaction locks until final commit.
