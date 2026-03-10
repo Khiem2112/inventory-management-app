@@ -225,6 +225,8 @@ class SupplierService():
       # For asset specified
       assets_to_be_created: list[dict] = []
       for sm_line in sm_data.lines:
+        # Fix, scope the po_item_orm for each sm_line when creating asset | The old version reference all the asset to the last po item id of the sm line -> wrong
+        po_item_orm = po_item_lookup_map.get(sm_line.purchase_order_item_id)
         if sm_line.shipment_mode == "asset_specified":
           for asset_item in sm_line.asset_items:
             new_asset_dict = {
