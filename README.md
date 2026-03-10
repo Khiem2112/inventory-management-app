@@ -4,7 +4,7 @@ A production-ready, full-stack inventory platform designed to digitize hardware 
 
 ## Tech Stack Overview
 This project leverages a modern, decoupled architecture to ensure scalability and maintainability:
-* **Frontend (Client SPA):** React.js (built with Vite) utilizing Redux and Context API for robust, multi-step state management.
+* **Frontend (Client SPA):** React.js (built with Vite), React Hook Form, MUI, Zod,....
 * **Backend (REST API):** Python 3 with FastAPI, delivering high-performance, asynchronous endpoints. Relational data access is orchestrated via SQLAlchemy ORM.
 * **Database & Security:** Microsoft SQL Server (utilizing strict PascalCase schema conventions) secured by advanced JWT token rotation logic.
 * **Infrastructure:** Fully containerized using Docker and Docker Compose for highly reproducible local development environments.
