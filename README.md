@@ -24,7 +24,7 @@ If user intent to leave the PO not create or drafted, it warns them
 <img width="2559" height="1330" alt="image" src="https://github.com/user-attachments/assets/31713374-51ab-43b5-884b-18f211410c43" />
 
 
-### (4) Multi-Step Form Wizard
+### (4) Create Shipment Manifest Flow: Multi-Step Form Wizard
 A guided, state-retaining wizard that ensures complex receiving manifests are built accurately before submission. 
 *Flow: (1) Search PO -> (2) Add Manifest Info -> (3) Success Confirmation -> (4) Create new Manifest
 
@@ -149,6 +149,11 @@ erDiagram
         int DestinationLocationId
         int GoodsReceiptId
     }
+    Location {
+        int Id PK
+        string Name
+        string Description
+    }
     StockMove_Asset_Rel {
         int AssetId PK, FK
         int StockMoveId PK, FK
@@ -186,6 +191,8 @@ erDiagram
     User ||--o{ PurchaseOrder : "creates"
     User ||--o{ GoodsReceipt : "signs"
     User ||--o{ RefreshToken : "has"
+    Location ||--o{ StockMove : "is source for"
+    Location ||--o{ StockMove : "is destination for"
 ```
 ### (2) JWT Auto-Refresh Sequence
 Strict relational integrity mapping the procurement lifecycle.
@@ -229,7 +236,7 @@ flowchart TD
     F --> G[Instantiate ASSET records in Database]
     G --> H["Set ASSET status to 'In Transit'"]
 ```
-### (5) Asset Verification Flow
+### (5) Asset Verification Flow in Dock Receiving
 Decoupled client-side scanning and state management to minimize database transaction locks until final commit.
 ```mermaid
 sequenceDiagram
