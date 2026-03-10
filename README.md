@@ -60,68 +60,132 @@ Strict relational integrity mapping the procurement lifecycle.
 
 ```mermaid
 erDiagram
+    ShipmentManifest {
+        int Id PK
+        int SupplierId
+        int PurchaseOrderId
+        string TrackingNumber
+        string CarrierName
+        date EstimatedArrival
+        string Status
+        int CreatedByUserId
+    }
+    ShipmentManifestLine {
+        int Id PK
+        int ShipmentManifestId
+        string SupplierSerialNumber
+        string SupplierSKU
+        int QuantityDeclared
+        int PurchaseOrderItemId
+    }
+    PurchaseOrder {
+        int PurchaseOrderId PK
+        date CreatedDate
+        decimal TotalPrice
+        string Status
+        int SupplierId
+        int PurchasePlanId
+        int CreatedUserId
+        date ExpectedDeliveryDate
+        int ApprovedByUserId
+    }
+    PurchaseOrderItem {
+        int POItemId PK
+        int ProductId
+        int PurchaseOrderId
+        int Quantity
+        decimal UnitPrice
+    }
     Supplier {
         int SupplierId PK
         string SupplierName
-        string ContactName
-        string Status
-    }
-    PurchaseOrder {
-        string PoNumber PK
-        int SupplierId FK
-        date OrderDate
-        string Status
-        float TotalAmount
-        int CreatedBy FK
-    }
-    PoLineItem {
-        int LineItemId PK
-        string PoNumber FK
-        int ProductId FK
-        int QuantityOrdered
+        string Phone
+        string Email
+        string Address
+        string ContactPerson
     }
     Product {
         int ProductId PK
-        string Sku
-        string Name
+        string ProductName
+        string Measurement
+        decimal SellingPrice
+        decimal InternalPrice
+        string ProductImageUrl
+        string ProductImagePath
+        string ModelNumber
+        string SKU
+        string Manufacturer
+        string ProductSeries
         string Category
-    }
-    ShipmentManifest {
-        int ManifestId PK
-        string PoNumber FK
-        string CarrierName
-        string Status
-    }
-    GoodReceipt {
-        int ReceiptId PK
-        string PoNumber FK
-        int ManifestId FK
-        int ReceivedBy FK
-        date ReceiptDate
+        int SafetyStock
+        decimal PackageWeight_KG
+        decimal Dimensions_L_CM
+        decimal Dimensions_W_CM
+        decimal Dimensions_H_CM
     }
     Asset {
         int AssetId PK
-        int ProductId FK
         string SerialNumber
-        int ReceiptId FK
-        int ZoneId FK
-        string Status
+        int ProductId
+        int CurrentLocationId
+        string AssetStatus
+        int ReceivingDocumentId
+        date LastMovementDate
+        int ShipmentManifestLineId
     }
-    WarehouseZone {
-        int ZoneId PK
-        string ZoneName
-        int Capacity
-        int CurrentLoad
+    GoodsReceipt {
+        int ReceiptId PK
+        string ReceiptNumber
+        date ReceivedDate
+        int ReceivedByUserId
+        string TrackingNumber
+    }
+    StockMove {
+        int StockMoveId PK
+        int PurchaseOrderId
+        int Quantity
+        date MovementDate
+        int SourceLocationId
+        int DestinationLocationId
+        int GoodsReceiptId
+    }
+    StockMove_Asset_Rel {
+        int AssetId PK, FK
+        int StockMoveId PK, FK
+    }
+    User {
+        int UserId PK
+        string Username
+        string PasswordHash
+        string Name
+        string Phone
+        string RoleId
+    }
+    RefreshToken {
+        int Id PK
+        string JTI
+        string TokenHash
+        int UserId
     }
 
-    Supplier ||--o{ PurchaseOrder : "supplies"
-    PurchaseOrder ||--|{ PoLineItem : "contains"
-    Product ||--o{ PoLineItem : "defines"
-    PurchaseOrder ||--o{ ShipmentManifest : "tracks via"
-    ShipmentManifest ||--o{ GoodReceipt : "verified in"
-    GoodReceipt ||--|{ Asset : "logs"
-    Product ||--o{ Asset : "categorizes"
-    WarehouseZone ||--o{ Asset : "stores"
+    Supplier ||--o{ PurchaseOrder : "receives"
+    Supplier ||--o{ ShipmentManifest : "ships"
+    PurchaseOrder ||--|{ PurchaseOrderItem : "contains"
+    Product ||--o{ PurchaseOrderItem : "listed in"
+    Product ||--o{ Asset : "instantiates as"
+    PurchaseOrder ||--o{ ShipmentManifest : "includes"
+    PurchaseOrderItem ||--o{ ShipmentManifestLine : "fulfilled by"
+    ShipmentManifest ||--|{ ShipmentManifestLine : "contains"
+    ShipmentManifestLine ||--o{ Asset : "defines"
+    GoodsReceipt ||--o{ Asset : "receives"
+    GoodsReceipt ||--o{ StockMove : "triggers"
+    PurchaseOrder ||--o{ StockMove : "directs"
+    Asset ||--|{ StockMove_Asset_Rel : "junction"
+    StockMove ||--|{ StockMove_Asset_Rel : "junction"
+    User ||--o{ ShipmentManifest : "creates"
+    User ||--o{ PurchaseOrder : "creates"
+    User ||--o{ GoodsReceipt : "signs"
+    User ||--o{ RefreshToken : "has"
 ```
 ### (2) JWT Auto-Refresh Sequence
 Strict relational integrity mapping the procurement lifecycle.
@@ -144,7 +208,7 @@ sequenceDiagram
 ### (3) PO Lifecycle State Machine
 Strict state transitions preventing invalid procurement actions.
 ```mermaid
-stateDiagram-v2
+stateDiagram
     [*] --> Draft : Created
     Draft --> Issued : Approved by Manager
     Issued --> Partially_Received : Manifest Created (Incomplete)
@@ -159,11 +223,11 @@ flowchart TD
     A[Create Shipment Manifest] --> B[Process Manifest Lines]
     B --> C{Line Item Type?}
     C -- Asset Specified --> D[Map pre-defined Serial Numbers from Supplier]
-    C -- Quantity Declared --> E[Log expected Quantity (No Serials yet)]
+    C -- Quantity Declared --> E["Log expected Quantity (No Serials yet)"]
     D --> F[Generate Manifest Record]
     E --> F
     F --> G[Instantiate ASSET records in Database]
-    G --> H[Set ASSET status to 'In Transit']
+    G --> H["Set ASSET status to 'In Transit'"]
 ```
 ### (5) Asset Verification Flow
 Decoupled client-side scanning and state management to minimize database transaction locks until final commit.
