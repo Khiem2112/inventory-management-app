@@ -16,6 +16,7 @@ from typing import List, Annotated
 from app.services.socket_manager import ConnectionManager
 from app.utils.logger import setup_logger
 from app.utils.dependencies import FormBody
+from app.routers.product.bulk_import import router as bulk_import_router
 import cloudinary.uploader
 import cloudinary
 
@@ -25,6 +26,7 @@ router = APIRouter(
   prefix='/products',
   tags =['product']
 )
+router.include_router(router=bulk_import_router)
 
 # logger
 logger = setup_logger()

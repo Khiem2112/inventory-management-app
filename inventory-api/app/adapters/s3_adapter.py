@@ -5,11 +5,11 @@ class S3StorageAdapter:
   def __init__(self):
     # In production, these come from your .env file
     self.s3 = boto3.client(
-        's3',
-        endpoint_url='http://localhost:9000',
-        aws_access_key_id='admin',
-        aws_secret_access_key='password123',
-        config=Config(signature_version='s3v4')
+      's3',
+      endpoint_url='http://localhost:9000',
+      aws_access_key_id='admin',
+      aws_secret_access_key='password123',
+      config=Config(signature_version='s3v4')
     )
     self.bucket_name = "inventory-imports"
     self._ensure_bucket_exists()
