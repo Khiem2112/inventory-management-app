@@ -6,3 +6,4 @@ app/practice
 __pycache__
 *.ini
 *.pycrefs/desktop.ini
+/logs
